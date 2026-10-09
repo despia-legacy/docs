@@ -49,6 +49,14 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.healthkit.workouts()` | `days`?: number<br/>`included`?: array | array | iOS, Android | Lists the person's workouts for the last days, with the totals you ask for. |
 | `dsx.module.healthkit.write()` | `type`: string<br/>`unit`?: string<br/>`value`: number | `type`<br/>`value`<br/>`written` | iOS, Android | Saves one health value, such as a weight, to Apple Health or Health Connect. |
 
+## Events
+
+Subscribe with `window.dsx.module.healthkit.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `unavailable` | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).

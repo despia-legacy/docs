@@ -1,0 +1,96 @@
+---
+title: "Push notifications"
+description: "How a tapped push reaches your page on Despia V4, with OneSignal or with Despia's own notifications package, and how to read the push permission."
+icon: "bell-ring"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+<RuntimeCheck />
+
+## When the user taps a push
+
+Put a `path` (and, if you like, `metadata`) in the push's data. When the user taps the notification, Despia V4 does two things, in this order:
+
+1. **It routes the page.** The URL changes to `path` through the History API (`pushState`) and a `popstate` event fires. Most single-page app routers navigate on `popstate` by themselves, so no code is needed. There is no reload.
+2. **It calls `window.onNotificationEvent`** once, with `{ type: 'open', path, metadata }`, if your page defines it.
+
+```javascript
+// optional: only needed if your router ignores popstate, or you use metadata
+window.onNotificationEvent = (event) => {
+  // event.type === 'open'
+  if (event.path) router.navigate(event.path)
+  if (event.metadata) restoreState(event.metadata)
+}
+```
+
+| App state when the push is tapped | What the page gets |
+| :-- | :-- |
+| Closed (cold launch) | The tap is held until the page has loaded, then routed and delivered once. |
+| In the background | Routed and delivered when the app comes back, with no reload. |
+| In the foreground | Nothing when the push arrives (the system shows the banner). Tapping the banner routes and delivers as above. |
+
+This is the same order and payload as on Despia V3, so pages written for Despia V3 keep working unchanged. It is verified on iOS and on Android with OneSignal pushes, in all three app states.
+
+{/* TODO-VERIFY: proofs used OneSignal pushes (iOS simulator, Android API 36 emulator; lane PUSH-TAP-PROOF / PUSH-TAP-ANDROID). The iOS fix (wip/claude/push-tap-fixes 2d6d82e899) must be in the release build. Not covered: pushes sent with data.url, and taps on pushes from your own APNs/FCM sender (on Android, Despia V3 and V4 both route only OneSignal taps). */}
+
+### Send a path from your backend
+
+With OneSignal's REST API, put the path in `data`:
+
+```javascript
+body: JSON.stringify({
+  app_id: process.env.ONESIGNAL_APP_ID,
+  include_external_user_ids: [userId],
+  headings: { en: 'Your order shipped' },
+  contents: { en: 'Tap to track it' },
+  data: { path: '/orders/42', metadata: { orderId: 42 } },
+})
+```
+
+## OneSignal, or Despia's own notifications
+
+| | OneSignal | Despia notifications |
+| :-- | :-- | :-- |
+| Package | [OneSignal](/packages/onesignal) (`onesignal`) | [Notify](/packages/notify) (`notify`) |
+| Who sends pushes | OneSignal (dashboard or REST API) | Your own server, straight to APNs / FCM |
+| Link a push to your user | `dsx.module.onesignal.login({ externalId })` | Save the token from the `notify.token` event on your server |
+| Device id | `dsx.module.onesignal.subscription.get()` | `notify.token` event (`{ kind, token }`) |
+| Tap routing (`path` → `popstate` → `onNotificationEvent`) | Yes | Listen to `notify.opened` |
+
+Both use the same permission calls on `notify`.
+
+### Listen in the Modern API
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') {
+  window.dsx.module.notify.on('opened', (data) => {
+    // { id, path, url, data, actionId, userText, coldStart }
+    if (data.path) router.navigate(data.path)
+  })
+  window.dsx.module.notify.on('token', ({ kind, token }) => saveTokenOnServer(kind, token))
+}
+```
+
+{/* TODO-VERIFY: whether notify.opened also fires for OneSignal taps (doc 25 follow-up F4). onNotificationEvent is verified for OneSignal taps. */}
+
+## Is push allowed? (`nativePushEnabled`)
+
+On Despia V3 you read the `nativePushEnabled` global after `despia('checknativepushpermissions://', ['nativePushEnabled'])`. On Despia V4 that still works (the Legacy polyfill sets it to `true` when the permission is granted or provisional). The modern call gives you the full state:
+
+```javascript
+const rt = getDespiaRuntime()
+if (rt.kind === 'v4') {
+  const { status, canAsk } = await window.dsx.module.notify.permission.status()
+  // status: undetermined, granted, limited, denied, restricted or unavailable
+  if (status === 'undetermined' && canAsk) await window.dsx.module.notify.permission.request()
+} else if (rt.kind === 'v3') {
+  const { nativePushEnabled } = await despia('checknativepushpermissions://', ['nativePushEnabled'])
+}
+```
+
+`notify.permission.status()` never shows a prompt. `notify.permission.request()` asks, and `notify.permission.openSettings()` opens the app's settings when the user said no before. The `notify.permission` event fires when the answer changes, including when the user comes back from Settings.

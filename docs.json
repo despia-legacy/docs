@@ -20,6 +20,9 @@
               "packages/overview",
               "packages/react",
               "packages/add-a-package",
+              "packages/events",
+              "packages/push-notifications",
+              "packages/migrate-from-v3",
               "packages/legacy-map"
             ]
           },

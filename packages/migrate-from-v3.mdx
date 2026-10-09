@@ -1,0 +1,57 @@
+---
+title: "Migrate from Despia V3"
+description: "What changes when a Despia V3 app moves to Despia V4 (pre-release 0.1.0), what keeps working, and what the conversion warns about."
+icon: "right-left"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Despia V4 is currently a pre-release (0.1.0), stable for web view apps. 0.1.0 is the release that moves apps from Despia V3 to Despia V4.</Info>
+
+<RuntimeCheck />
+
+## What keeps working
+
+- **Your `despia('scheme://...')` calls.** The Legacy polyfill answers the Despia V3 URL schemes and the `despia-native` npm package, so a Despia V3 page runs unchanged. The [Legacy to Modern map](/packages/legacy-map) lists every scheme it answers.
+- **Your Despia V3 callbacks and globals.** The polyfill turns modern events back into the Despia V3 names (`window.focusin()`, `onNotificationEvent`, `updateRewardedStatus`, ...). See [Events](/packages/events).
+- **Push taps.** A tapped push still routes the page to its `path` and calls `onNotificationEvent`. See [Push notifications](/packages/push-notifications).
+
+## What changed
+
+| Change | What to do |
+| :-- | :-- |
+| `inapppurchase://` and `inappsubscription://` are removed. Nothing answers them in Despia V4. | Buy through RevenueCat: `dsx.module.revenuecat.purchase({ product })` (see [RevenueCat](/packages/revenuecat)), or on a Despia V3 page `despia('revenuecat://purchase?external_id=<user>&product=<id>')`. |
+| `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://` are kept. | Nothing. |
+| The local database of `@despia/powersync` is **not supported in Despia V4 0.1.0**. It is planned for 1.0.0. | Keep the app on its Despia V3 build until 1.0.0, or move the data off the local database first (your backend API through `fetch`, or page storage such as IndexedDB). |
+| The local server is HTTPS only. | Nothing for most apps. Do not hard-code `http://` addresses to the local server. |
+| Accessibility uses ARIA. | Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0. |
+
+## What the conversion warns about
+
+When a Despia V3 app is converted to Despia V4, the conversion reads your pages and your Despia V3 settings and reports what will not work, rather than converting it silently:
+
+- **`iap_purchase_verb_removed`**: a page still calls `inapppurchase://` or `inappsubscription://`. The warning names each page and the RevenueCat replacement.
+- **`powersync_not_supported`**: a page uses `@despia/powersync` (or `window.nativeBridgeResponse` / `window.nativeBridgeEvent`), or the Despia V3 settings carry a PowerSync app id. The warning names the pages and the options above.
+
+## Custom paywalls: `revenuecat://offerings`
+
+Despia V3 custom web paywalls set `window.onRevenueCatOfferings`, called `despia('revenuecat://offerings?offering=<id>')`, and read `offeringsData` (or `offeringsError`) in the callback. Despia V4 answers this on iOS and Android with the same entries: `packageId`, `packageType`, `productId`, `title`, `priceString`, `price`, `currency`, `period { unit, value, iso8601 }`, `pricePerUnitString` and `introOffer`.
+
+{/* TODO-VERIFY: revenuecat://offerings support is on framework branch wip/claude/rc-offerings c4585fd6c9 and must land before the 0.1.0 tag. */}
+
+The modern call is `dsx.module.revenuecat.offerings()`:
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') {
+  const offerings = await window.dsx.module.revenuecat.offerings()
+} else if (rt.kind === 'v3') {
+  window.onRevenueCatOfferings = () => render(window.offeringsData, window.offeringsError)
+  despia('revenuecat://offerings')
+}
+```
+
+## Move a call to the Modern API
+
+There is no deadline: the Legacy API keeps working. When you touch a feature, look its scheme up in the [Legacy to Modern map](/packages/legacy-map), call the modern API on Despia V4, and keep the Despia V3 call in the `else` branch as the runtime block shows.

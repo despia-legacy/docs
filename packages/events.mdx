@@ -1,0 +1,95 @@
+---
+title: "Events"
+description: "Listen to Despia V4 package events from your page, and the Despia V3 callback each one replaces."
+icon: "bell"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+<RuntimeCheck />
+
+## Listen to an event
+
+Packages tell your page when something happens that is not the answer to a call: the app went to the background, a push was tapped, a purchase changed the customer. Subscribe on the package:
+
+```javascript
+// one event of one package: the handler gets the event's data
+const off = window.dsx.module.focus.on('change', (data) => {
+  console.log(data.focused ? 'foreground' : 'background')
+})
+
+// every event of one package: the handler gets the whole envelope { event, data, scheme, ... }
+const offAll = window.dsx.on('focus', (envelope) => console.log(envelope.event, envelope.data))
+
+// later
+off()
+offAll()
+```
+
+`dsx.module.<package>.on(handler)` without an event name also receives every event of that package, as the whole envelope.
+
+## Failures are rejections, not events
+
+When a call fails, its promise rejects with a typed error that carries a `code`. There is no separate error event to listen for. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
+
+```javascript
+try {
+  await window.dsx.module.fileviewer.preview({ src: 'https://example.com/report.pdf' })
+} catch (err) {
+  if (err.code === 'download_failed') showRetry()
+}
+```
+
+Despia V3 callbacks that only answered a call (`onBioAuthSuccess`, `onOneSignalLogin`, `despiafileerror`, `offeringsData`) have no modern event: their modern form is the call's result or its rejection. See each package page for the codes.
+
+## Despia V3 pages keep hearing the old names
+
+The Legacy polyfill listens to the modern events and fires the Despia V3 callback with the Despia V3 payload, so an existing page needs no change. For example, `focus.change` with `focused: false` calls `window.focusout()`, `admob.earned` calls `updateRewardedStatus('true')`, and on iOS a `fileviewer.preview` rejection still dispatches the `despiafileerror` event (`{ reason, url, message }`).
+
+## Event names
+
+| Despia V3 (page heard) | Despia V4 (modern) | Payload | When it fires |
+| :-- | :-- | :-- | :-- |
+| `window.focusin()` / `window.focusout()` | `dsx.module.focus.on('change')` | `focused`: boolean | Tells you the app moved to the foreground or the background. It fires at most once per trip each way. |
+| `onNotificationEvent(event)` (push tap) | `dsx.module.notify.on('opened')` | `actionId`: string<br/>`coldStart`: boolean<br/>`data`: object<br/>`id`: string<br/>`path`: string<br/>`url`: string<br/>`userText`: string | The user tapped a notification or one of its action buttons. |
+| `onSilentPush(p)` | `dsx.module.notify.on('received')` | `data`: object<br/>`suppressed`: boolean | A remote push arrived while the app is running. |
+| `nativePushEnabled` | `dsx.module.notify.on('permission')` | `status`: string | The notification permission changed, after an ask or when the app comes back to the foreground. |
+| `firebaseplayerid` / push token | `dsx.module.notify.on('token')` | `kind`: string<br/>`token`: string | A push token arrived or changed, on registration and again on each launch. Upload it to your server each time. |
+| `firebaseplayerid` | `dsx.module.firebase.on('subscription')` | `id`: string<br/>`optedIn`: boolean<br/>`token`: string | Fires when the FCM registration arrives, changes or is deleted, or when you change the opt-in. |
+| `onAppsFlyerDeepLink(p)` | `dsx.module.appsflyer.on('deep_link')` (name freezing) | `af_status`: string<br/>`campaign`: string<br/>`deep_link_sub1`: string<br/>`deep_link_sub2`: string<br/>`deep_link_value`: string<br/>`media_source`: string | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
+| `onSharedDataReceived(v, type)` / `sharedData` | `dsx.module.sharetarget.on('received')` | `count`: int<br/>`first`: object<br/>`id`: string | A new share finished arriving in the inbox. It is a hint to call take, and the shared items themselves come from take. |
+| `onScreenCaptureAttempt()` | `dsx.module.screenshield.on('captureattempt')` (name freezing) | none | Sent when the system reports a screenshot or the start of a screen recording while the app is on screen, so you can blur content or warn the person. |
+| `onSheetEvent(value)` | `dsx.module.actionsheet.on('select')` | `value`: string | The user picked a row or dismissed the sheet. Dismissing sends no value. |
+| `updateRewardedStatus('true')` | `dsx.module.admob.on('earned')` | `amount`: number<br/>`format`: string<br/>`type`: string | The user earned the reward of a rewarded or rewarded interstitial ad. It fires before the ad closes, beside the show result. |
+| `onMotionChange` | `dsx.module.motion.on('change')` | `accelerometer`: object<br/>`attitude`: object<br/>`gravity`: object<br/>`gyroscope`: object<br/>`heading`: object<br/>`magnetometer`: object<br/>`rotationRate`: object<br/>`status`: string<br/>`timestamp`: int<br/>`userAcceleration`: object | Delivers one sample of the sensors you asked for while the app is open. |
+| `onMotionBatch` | `dsx.module.motion.on('batch')` | `count`: int<br/>`dropped`: int<br/>`from`: int<br/>`samples`: object[]<br/>`status`: string<br/>`to`: int | Delivers the samples kept while the app was in the background, as one event when the app comes back or the stream stops. |
+| `onBarometerChange` | `dsx.module.motion.on('pressure')` | `pressure`: number<br/>`relativeAltitude`: number<br/>`status`: string<br/>`timestamp`: int | Delivers one air pressure reading while the barometer stream is on. |
+| `onMotionActivityChange` | `dsx.module.motion.on('activity')` | `automotive`: boolean<br/>`confidence`: number<br/>`cycling`: boolean<br/>`running`: boolean<br/>`stationary`: boolean<br/>`status`: string<br/>`timestamp`: int<br/>`type`: string<br/>`unknown`: boolean<br/>`walking`: boolean | Delivers the activity the device thinks the person is doing, each time it changes. |
+| `onRevenueCatPurchase` / `iapSuccess` | `dsx.module.revenuecat.on('customerInfo')` | `customerInfo`: object | Fires after every purchase, restore, sign-in or SDK update with the person's RevenueCat customer record. |
+| `onRevenueCatCenter` | `dsx.module.revenuecat.on('center')` | `result`: object | Fires when the customer center is closed or the person acts in it. |
+| `onTerraEvent` | `dsx.module.terra.on('ready')` | `available`: boolean<br/>`connected`: boolean<br/>`provider`: string<br/>`sync`: object<br/>`userId`: string | Fires on every page load with the current connection state, so the page needs no setup call. |
+| `onTerraEvent` | `dsx.module.terra.on('connected')` | `alreadyConnected`: boolean<br/>`params`: object<br/>`provider`: string<br/>`referenceId`: string<br/>`resource`: string<br/>`userId`: string<br/>`via`: string | A source was linked; it carries the same values the connect call returns. |
+| `onTerraEvent` | `dsx.module.terra.on('disconnected')` | none | The person was unlinked inside the app. |
+| `onTerraEvent` | `dsx.module.terra.on('sync_started')` (name freezing) | `days`: int<br/>`source`: string | A sync began, whether you asked for it or the app started it. |
+| `onTerraEvent` | `dsx.module.terra.on('synced')` | `days`: int<br/>`durationMs`: int<br/>`failed`: object[]<br/>`source`: string<br/>`succeeded`: string[] | A sync finished, with how it went. |
+| `onWebSocketEvent(e)` | `dsx.module.websocket.on('event')` | `attempt`: int<br/>`clean`: boolean<br/>`code`: int<br/>`count`: int<br/>`dataType`: string<br/>`delay`: number<br/>`error`: string<br/>`id`: string<br/>`message_id`: string<br/>`oid`: string<br/>`payload`: object<br/>`pendingOutbound`: int<br/>`protocol`: string<br/>`reason`: string<br/>`ts`: number<br/>`type`: string<br/>`unacked`: int | Sent for everything that happens on a connection: it connects, opens, receives a message, waits to reconnect, closes, fails or drops messages. Check the type field to tell them apart. |
+| `onSpeechRecognitionEvent` | `dsx.module.speechrecognition.on('start')` | `type`: string | The recognizer has started listening. |
+| `onSpeechRecognitionEvent` | `dsx.module.speechrecognition.on('result')` | `alternatives`: object[]<br/>`confidence`: number<br/>`isFinal`: boolean<br/>`transcript`: string<br/>`type`: string | The recognizer heard something and has a best transcript with its alternatives. |
+| `onVisionEvent` | `dsx.module.vision.on('ocr')` | `error`: object<br/>`id`: string<br/>`lines`: object[]<br/>`status`: string<br/>`text`: string<br/>`type`: string | Reports progress of a read started with ocr: queued, then success with the text, or dismissed, or error. Every event carries the id of the call. |
+| `onWalletEvent({ action, status })` | `dsx.module.wallet.on('presented')` | `action`: string<br/>`status`: string | Fires when the system pass handler is on screen, with the same details as the call result. |
+| `onNearbyEvent` | `dsx.module.nearby.on('peerFound')` | `peer`: object<br/>`status`: string<br/>`timestamp`: int | A nearby device running the same app and service id was found. |
+| `onNearbyEvent` | `dsx.module.nearby.on('peerLost')` | `peer`: object<br/>`status`: string<br/>`timestamp`: int | A device that had been found has stopped advertising or gone out of range. |
+| `onNearbyEvent` | `dsx.module.nearby.on('connecting')` | `auth`: string<br/>`peer`: object<br/>`status`: string<br/>`timestamp`: int | A connection to a device is being set up. |
+| `onNearbyEvent` | `dsx.module.nearby.on('connected')` | `peer`: object<br/>`status`: string<br/>`timestamp`: int | The connection to a device is established and you can send messages. |
+| `onNearbyEvent` | `dsx.module.nearby.on('disconnected')` | `peer`: object<br/>`status`: string<br/>`timestamp`: int | A device disconnected, or a connection attempt ended without connecting on iOS. |
+| `onNearbyEvent` | `dsx.module.nearby.on('payload')` | `bytes`: int<br/>`data`: string<br/>`peer`: object<br/>`status`: string<br/>`timestamp`: int | A message arrived from a connected device. |
+| `onAuthCallbackError(host, code)` | `dsx.module.oauth.on('error')` | `code`: int<br/>`host`: string<br/>`reason`: string | A sign-in could not complete because the callback host is not linked to the app; its fields say which host and which system code. |
+| quick action navigate + injected function | `dsx.module.quickactions.on('tap')` | `value`: string | Fires when the person chooses one of your shortcuts, including when it launched the app. |
+| `healthkitResponse` on a device without health data | `dsx.module.healthkit.on('unavailable')` | `code`: string<br/>`error`: string<br/>`message`: string | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
+
+Despia V3 features that live only in the Legacy polyfill (the V3 audio player, location server posts, the local CDN, Siri shortcuts) keep their Despia V3 callbacks and have no modern event name yet.
+
+{/* TODO-VERIFY: names marked (name freezing) may still be renamed before the 0.1.0 tag (lane EVENT-NAMES-FREEZE). */}

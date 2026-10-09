@@ -662,7 +662,7 @@
     ]
   },
   "banner": {
-    "content": "**Despia version 4 is here.** Call native features with the [Modern API](/packages/overview), no npm package needed. Native UI is coming soon.",
+    "content": "**Despia V4 pre-release (0.1.0) is here**, stable for web view apps. Call native features with the [Modern API](/packages/overview), no npm package needed. Native UI is coming soon.",
     "dismissible": true
   },
   "redirects": [

@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Downloads a pass file from a web address and shows the system sheet to add it to Apple Wallet on iOS. On Android and the web it hands the pass to the system or browser handler. You host the pass file yourself. Only iOS tells you when the sheet closes.
 
@@ -17,7 +17,7 @@ Downloads a pass file from a web address and shows the system sheet to add it to
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `wallet` package is on the global `window.dsx`. `dsx.has('wallet')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `wallet` package is on the global `window.dsx`. `dsx.has('wallet')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('wallet')) {
@@ -47,7 +47,7 @@ Subscribe with `window.dsx.module.wallet.on('<event>', (data) => { ... })`. It r
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Adds the familiar pull-down-to-refresh control to the web page your app shows, with a spinner whose colours you can set for light and dark. It reloads the page, and you can also start a refresh from code. Screens built with DSX use the native refreshable element instead.
 
@@ -15,7 +15,7 @@ Adds the familiar pull-down-to-refresh control to the web page your app shows, w
 
 <RuntimeCheck />
 
-**On v3 and v4:**
+**On Despia V3 and Despia V4:**
 
 ```javascript
 const rt = getDespiaRuntime() // from the block above
@@ -26,10 +26,10 @@ else { /* web fallback */ }
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `pulltorefresh` package is on the global `window.dsx` and is built into every app:
+No npm package is needed. Inside a Despia V4 app, the `pulltorefresh` package is on the global `window.dsx` and is built into every app:
 
 ```javascript
-// built into every Despia v4 app
+// built into every Despia V4 app
 if (window.dsx) {
   // Turns the pull-to-refresh control on or off and sets its spinner and background colours. Anything you leave out stays as it was.
   const setResult = await window.dsx.module.pulltorefresh.set({ enabled: true })
@@ -50,7 +50,7 @@ Calls that return something give you a promise; calls that stream take a handler
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

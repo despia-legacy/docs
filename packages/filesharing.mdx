@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Opens the share sheet with a file attached, so the user can send it to Messages, Mail, AirDrop, Drive, Files or any app that accepts shared files. You can share a file that is already on the device, or give an https address and the package downloads it first. Links that the server marks as attachments are shared automatically. You write the button or link that asks for the share.
 
@@ -17,7 +17,7 @@ Opens the share sheet with a file attached, so the user can send it to Messages,
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `filesharing` package is on the global `window.dsx`. `dsx.has('filesharing')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `filesharing` package is on the global `window.dsx`. `dsx.has('filesharing')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('filesharing')) {
@@ -36,7 +36,7 @@ Calls that return something give you a promise; calls that stream take a handler
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

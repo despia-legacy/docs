@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Lets you set the shortcuts that appear when someone presses and holds your app icon, each with a title, an icon and a value. When one is chosen the app opens and your code is told which value was picked, whether the app was closed or already running. You choose the items and decide what each one does.
 
@@ -17,7 +17,7 @@ Lets you set the shortcuts that appear when someone presses and holds your app i
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `quickactions` package is on the global `window.dsx`. `dsx.has('quickactions')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `quickactions` package is on the global `window.dsx`. `dsx.has('quickactions')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('quickactions')) {

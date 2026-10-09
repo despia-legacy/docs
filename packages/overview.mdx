@@ -1,6 +1,6 @@
 ---
 title: "Modern API"
-description: "Call Despia packages from any web app with the global window.dsx. No npm package needed. Requires Despia version 4 or greater."
+description: "Call Despia packages from any web app with the global window.dsx. No npm package needed. Requires Despia V4 or greater."
 icon: "rocket-launch"
 tag: "V4"
 ---
@@ -10,14 +10,14 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 <RuntimeCheck />
 
 <Info>
-  The Modern API requires **Despia version 4 or greater**. Apps built on earlier versions keep using the [Legacy API](/introduction) (`despia-native` and URL schemes), and Legacy calls keep working on version 4 too.
+  The Modern API requires **Despia V4 or greater**. Despia V4 is currently a **pre-release (0.1.0)**, stable for web view (hybrid) apps. Apps built on earlier versions keep using the [Legacy API](/introduction) (`despia-native` and URL schemes), and Legacy calls keep working on Despia V4 too.
 </Info>
 
 <Note>
   These pages cover **web view (hybrid) apps**: your web app runs inside the Despia app and calls native features from JavaScript. Native UI apps are coming soon.
 </Note>
 
-Every Despia version 4 app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
+Every Despia V4 app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
 
 ```javascript
 await window.dsx.module.haptic.light()
@@ -26,9 +26,9 @@ const purchase = await window.dsx.module.revenuecat.purchase({ product: ["coins_
 
 There is nothing to install. The global is there before your first script runs, so it works the same from plain JavaScript, React, Vue, Svelte, Next.js or any other framework.
 
-## Detect Despia v4
+## Detect Despia V4
 
-`window.dsx` exists only inside a Despia version 4 app. In a normal browser, and in apps on older Despia versions, it is `undefined`. Check for it before you call anything:
+`window.dsx` exists only inside a Despia V4 app. In a normal browser, and in apps on older Despia versions, it is `undefined`. Check for it before you call anything:
 
 ```javascript
 function isDespiaV4() {
@@ -136,7 +136,7 @@ See [Use from React](/packages/react) for a hook and a complete component.
 
 ## Coming from despia-native
 
-Your existing `despia('scheme://...')` calls keep working on version 4: the Legacy polyfill answers them. To move a call to the Modern API, look it up in the [Legacy to Modern map](/packages/legacy-map), which lists every Legacy scheme that is still answered and the modern call behind it.
+Your existing `despia('scheme://...')` calls keep working on Despia V4: the Legacy polyfill answers them. To move a call to the Modern API, look it up in the [Legacy to Modern map](/packages/legacy-map), which lists every Legacy scheme that is still answered and the modern call behind it.
 
 ```javascript
 // Legacy
@@ -151,8 +151,8 @@ window.dsx.module.haptic.light()
   Removed in 0.1.0: `inapppurchase://` and `inappsubscription://`. Use [RevenueCat](/packages/revenuecat) (`dsx.module.revenuecat.purchase`). `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://` are still answered.
 </Warning>
 
-## What changed in version 4
+## What changed in Despia V4
 
-- **0.1.0 is the migration release** from Despia version 3 to version 4. The Legacy polyfill keeps version 3 apps working without code changes.
+- **0.1.0 is the migration release** from Despia V3 to Despia V4. The Legacy polyfill keeps Despia V3 apps working without code changes.
 - **The local server is HTTPS only.** Apps that serve their web build from the device do so over HTTPS.
 - **Accessibility uses ARIA.** Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0.

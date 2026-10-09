@@ -9,7 +9,7 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <RuntimeCheck />
 
-<Info>Modern API. Requires Despia version 4 or greater.</Info>
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
 The Modern API is a global, so React needs nothing installed. Read `window.dsx` after the component mounts (inside `useEffect`), which also keeps server-side rendering (Next.js, Remix) safe.
 
@@ -18,7 +18,7 @@ The Modern API is a global, so React needs nothing installed. Read `window.dsx` 
 ```jsx useDespia.js
 import { useEffect, useState } from 'react'
 
-// window.dsx exists only inside a Despia version 4 app
+// window.dsx exists only inside a Despia V4 app
 export function useDespia() {
   const [dsx, setDsx] = useState(null)
   useEffect(() => {

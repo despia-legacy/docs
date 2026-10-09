@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Opens your provider's sign-in page in the trusted system browser sheet and hands you back every value the provider sent to your redirect address, such as the code or the tokens. It checks the state value for you and can create and redeem a PKCE challenge. You write the authorize address and exchange the code with your own backend or the provider.
 
@@ -17,7 +17,7 @@ Opens your provider's sign-in page in the trusted system browser sheet and hands
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `oauth` package is on the global `window.dsx`. `dsx.has('oauth')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `oauth` package is on the global `window.dsx`. `dsx.has('oauth')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('oauth')) {
@@ -64,7 +64,7 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

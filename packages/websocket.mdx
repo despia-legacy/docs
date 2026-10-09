@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Opens named WebSocket connections, reconnects with a growing delay, and keeps outgoing and incoming messages in a durable queue so nothing is lost across a drop or a relaunch. You get connection state to show in your screens and an acknowledgement call to confirm each message. You write the messages your server expects.
 
@@ -17,10 +17,10 @@ Opens named WebSocket connections, reconnects with a growing delay, and keeps ou
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `websocket` package is on the global `window.dsx` and is built into every app:
+No npm package is needed. Inside a Despia V4 app, the `websocket` package is on the global `window.dsx` and is built into every app:
 
 ```javascript
-// built into every Despia v4 app
+// built into every Despia V4 app
 if (window.dsx) {
   // Opens a named connection to a ws:// or wss:// address, or updates it if it is already open, and reconnects automatically if it drops.
   const connect = await window.dsx.module.websocket.connect({ id: "feed", url: "wss://example.com/socket" })
@@ -56,7 +56,7 @@ Subscribe with `window.dsx.module.websocket.on('<event>', (data) => { ... })`. I
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

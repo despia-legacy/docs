@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 A simple store for things like a theme choice, a language or a last-seen date. Values keep their type: a number comes back a number. Read or write one value or many at once in a single call, list keys by prefix a page at a time, and every change is announced so two screens never disagree. Values stay on the device, with no account or keys needed.
 
@@ -15,7 +15,7 @@ A simple store for things like a theme choice, a language or a last-seen date. V
 
 <RuntimeCheck />
 
-**On v3 and v4:**
+**On Despia V3 and Despia V4:**
 
 ```javascript
 const rt = getDespiaRuntime() // from the block above
@@ -26,7 +26,7 @@ else { /* web fallback */ }
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `storage` package is on the global `window.dsx`. `dsx.has('storage')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `storage` package is on the global `window.dsx`. `dsx.has('storage')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('storage')) {
@@ -67,7 +67,7 @@ Subscribe with `window.dsx.module.storage.on('<event>', (data) => { ... })`. It 
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

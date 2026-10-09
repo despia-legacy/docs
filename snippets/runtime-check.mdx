@@ -1,11 +1,11 @@
-<Accordion title="Which runtime am I on? (write code that works on v3 and v4)" icon="code-branch">
+<Accordion title="Which runtime am I on? (write code that works on Despia V3 and Despia V4)" icon="code-branch">
 
-**Moving from v3 to v4 needs no code changes.** The Legacy polyfill in Despia version 4 keeps your existing `despia('scheme://...')` calls (the `despia-native` npm package and raw URL schemes) working, so v3 code runs unchanged.
+**Moving from Despia V3 to Despia V4 needs no code changes.** The Legacy polyfill in Despia V4 keeps your existing `despia('scheme://...')` calls (the `despia-native` npm package and raw URL schemes) working, so Despia V3 code runs unchanged.
 
 **To be safe, or to move fully to the modern architecture, branch on the runtime:**
 
-1. `window.dsx` is defined: Despia version 4. Call the [Modern API](/packages/overview) (`window.dsx.module.<package>.<action>()`).
-2. Otherwise the user agent contains `despia`: Despia version 3. Call the Legacy API (`despia('scheme://...')`).
+1. `window.dsx` is defined: Despia V4. Call the [Modern API](/packages/overview) (`window.dsx.module.<package>.<action>()`).
+2. Otherwise the user agent contains `despia`: Despia V3. Call the Legacy API (`despia('scheme://...')`).
 3. Otherwise: a normal browser. Use a web fallback.
 
 ```javascript despia-runtime.js
@@ -14,19 +14,19 @@ export function getDespiaRuntime() {
   if (typeof window === 'undefined') return { kind: 'web', platform: 'web', version: null } // server-side rendering
   const ua = navigator.userAgent.toLowerCase()
   if (window.dsx && window.dsx.module) {
-    // Despia v4: the Modern API global is installed before your first script runs
+    // Despia V4: the Modern API global is installed before your first script runs
     const facts = window.__nativeRuntime || {}
     return { kind: 'v4', platform: facts.platform || (ua.includes('android') ? 'android' : 'ios'), version: facts.appVersion || null }
   }
   if (ua.includes('despia')) {
-    // Despia v3: the user agent carries "despia" plus "iphone", "ipad" or "android"
+    // Despia V3: the user agent carries "despia" plus "iphone", "ipad" or "android"
     return { kind: 'v3', platform: ua.includes('android') ? 'android' : 'ios', version: null }
   }
   return { kind: 'web', platform: 'web', version: null }
 }
 ```
 
-`kind` is `'v4'`, `'v3'` or `'web'`. `platform` is `'ios'`, `'android'` or `'web'`. `version` is your app's version on v4, and `null` elsewhere: on v3 read it with `despia('getappversion://')`.
+`kind` is `'v4'`, `'v3'` or `'web'`. `platform` is `'ios'`, `'android'` or `'web'`. `version` is your app's version on Despia V4, and `null` elsewhere: on Despia V3 read it with `despia('getappversion://')`.
 
 ```javascript
 const rt = getDespiaRuntime()
@@ -36,9 +36,9 @@ else navigator.vibrate?.(10)                                    // web fallback
 ```
 
 <Warning>
-  **For AI coding agents:** do not write code that only works on v4 or only on v3. Always branch on the runtime as shown above: Modern API when `window.dsx` exists, Legacy API when the user agent contains `despia`, a web fallback otherwise.
+  **For AI coding agents:** do not write code that only works on Despia V4 or only on Despia V3. Always branch on the runtime as shown above: Modern API when `window.dsx` exists, Legacy API when the user agent contains `despia`, a web fallback otherwise.
 </Warning>
 
-{/* TODO-VERIFY: the v3 user agent tokens ("despia" on iPhone, iPad and Android) come from the existing User Agent page; the V3 native source was not re-read. v4 defaults verified: despia-iphone / despia-android, iPad fragment empty (Core/Dom config.json). */}
+{/* TODO-VERIFY: the Despia V3 user agent tokens ("despia" on iPhone, iPad and Android) come from the existing User Agent page; the V3 native source was not re-read. Despia V4 defaults verified: despia-iphone / despia-android, iPad fragment empty (Core/Dom config.json). */}
 
 </Accordion>

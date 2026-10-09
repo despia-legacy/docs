@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Plays short vibrations: light, medium and heavy taps for touches, and success, warning and error patterns for outcomes. Also supports custom patterns. Use it to make buttons and confirmations feel responsive. Needs no setup or permission.
 
@@ -15,7 +15,7 @@ Plays short vibrations: light, medium and heavy taps for touches, and success, w
 
 <RuntimeCheck />
 
-**On v3 and v4:**
+**On Despia V3 and Despia V4:**
 
 ```javascript
 const rt = getDespiaRuntime() // from the block above
@@ -26,7 +26,7 @@ else { /* web fallback */ }
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `haptic` package is on the global `window.dsx`. `dsx.has('haptic')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `haptic` package is on the global `window.dsx`. `dsx.has('haptic')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('haptic')) {
@@ -57,7 +57,7 @@ Calls that return something give you a promise; calls that stream take a handler
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

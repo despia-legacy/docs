@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Uses Apple's Declared Age Range on iOS and Google's Play Age Signals on Android to learn which age band the user is in, without asking for a birthdate. Both give the same answer shape, with a yes, no or unknown result for each age you test. It asks the system to show its own prompt. You write what your app does for each age group.
 
@@ -15,7 +15,7 @@ Uses Apple's Declared Age Range on iOS and Google's Play Age Signals on Android 
 
 <RuntimeCheck />
 
-**On v3 and v4:**
+**On Despia V3 and Despia V4:**
 
 ```javascript
 const rt = getDespiaRuntime() // from the block above
@@ -26,7 +26,7 @@ else { /* web fallback */ }
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `ageassurance` package is on the global `window.dsx`. `dsx.has('ageassurance')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `ageassurance` package is on the global `window.dsx`. `dsx.has('ageassurance')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('ageassurance')) {
@@ -62,7 +62,7 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

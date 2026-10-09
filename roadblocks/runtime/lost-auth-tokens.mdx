@@ -278,12 +278,12 @@ function App() {
 ### Option B: Storage Vault (native only)
 
 <Warning>
-  **Requires Despia Runtime V3.5+**\
+  **Requires Despia V4 (pre-release) or later**\
   \
-  Storage Vault requires Despia native runtime version 3.5 or higher. For apps on older versions, use localStorage instead.
+  Storage Vault requires Despia V4 (pre-release) or later. For apps on older versions, use localStorage instead.
 </Warning>
 
-**Works for:** Native Despia apps (V3.5+), persistent across uninstall/reinstall
+**Works for:** Despia apps on Despia V4 (pre-release) or later, persistent across uninstall/reinstall
 
 ```javascript
 import despia from 'despia-native';
@@ -375,7 +375,7 @@ function App() {
 **When to use localStorage vs Vault:**
 
 - **localStorage:** Works everywhere, simple, reliable
-- **Vault:** Best for native apps on Despia V3.5+, survives uninstall
+- **Vault:** Best for apps on Despia V4 or later, survives uninstall
 
 ---
 
@@ -405,7 +405,7 @@ async function saveAuth(token, refreshToken) {
   localStorage.setItem('refresh_token', refreshToken);
   localStorage.setItem('auth_expiry', Date.now() + 30 * 24 * 60 * 60 * 1000);
   
-  // 3. Save to vault if available (most reliable, native only, V3.5+)
+  // 3. Save to vault if available (most reliable, Despia V4 or later only)
   if (isVaultAvailable()) {
     try {
       await despia(`setvault://?key=authToken&value=${token}&locked=false`);
@@ -498,7 +498,7 @@ function App() {
 
 - Cookies work best with server validation (when online)
 - localStorage works offline and is universally supported
-- Vault storage survives uninstall (native Despia V3.5+ only)
+- Vault storage survives uninstall (Despia V4 or later only)
 - Redundancy means users rarely get logged out
 
 ---
@@ -651,7 +651,7 @@ function App() {
 ```javascript
 // Core auth check logic (reusable)
 async function checkAuth() {
-  // Check vault (Despia V3.5+ only), then cookie, then localStorage
+  // Check vault (Despia V4 or later only), then cookie, then localStorage
   if (isVaultAvailable()) {
     try {
       const data = await despia('readvault://?key=authToken', ['authToken']);
@@ -715,13 +715,13 @@ Test these scenarios to ensure users stay logged in:
 | :------------ | :---------------------- | :----------------- | :---------------- | :--------------------- |
 | Cookies       | Yes                     | No                 | No (needs server) | No                     |
 | localStorage  | Yes                     | No                 | Yes               | No                     |
-| Storage Vault | Yes                     | **Yes**            | Yes               | Yes (V3.5+)            |
+| Storage Vault | Yes                     | **Yes**            | Yes               | Yes (Despia V4 or later)            |
 
 **Recommendation:**
 
 - **Web app:** Cookies + localStorage
-- **Despia native (V3.5+):** Storage Vault + localStorage + cookies (hybrid)
-- **Despia native (\< V3.5):** localStorage + cookies
+- **Despia V4 (pre-release) or later:** Storage Vault + localStorage + cookies (hybrid)
+- **Despia before Despia V4:** localStorage + cookies
 - **Offline-first:** localStorage or Storage Vault (no cookies)
 
 ---
@@ -951,7 +951,7 @@ Just want to see token status? Add this one line:
 
 1. **Cookies** - Best for server validation when online
 2. **localStorage** - Works offline, survives app restart, universally supported
-3. **Storage Vault** - Most reliable, survives uninstall (Despia native V3.5+ only)
+3. **Storage Vault** - Most reliable, survives uninstall (Despia V4 or later only)
 
 **Always redirect:**
 
@@ -961,11 +961,11 @@ Just want to see token status? Add this one line:
 **Handle offline:**
 
 - Don't require server calls to check auth
-- Use localStorage (or Vault for Despia V3.5+) for offline-compatible auth
+- Use localStorage (or Vault on Despia V4 or later) for offline-compatible auth
 
 **Check runtime version:**
 
-- Storage Vault requires Despia runtime V3.5+
+- Storage Vault requires Despia V4 (pre-release) or later
 - Always check user agent includes 'despia' before using vault
 - Use localStorage as fallback for older versions
 

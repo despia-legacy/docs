@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Gives your app one way to start a payment, manage saved cards, link a bank account and open a customer portal, drawn by the payment package you add, such as Stripe. Add the provider packages you need and nothing more. Needs an account with that provider.
 
@@ -17,7 +17,7 @@ Gives your app one way to start a payment, manage saved cards, link a bank accou
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `payments` package is on the global `window.dsx`. `dsx.has('payments')` is true when the package is in your app's build:
+No npm package is needed. Inside a Despia V4 app, the `payments` package is on the global `window.dsx`. `dsx.has('payments')` is true when the package is in your app's build:
 
 ```javascript
 if (window.dsx && window.dsx.has('payments')) {
@@ -58,7 +58,7 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

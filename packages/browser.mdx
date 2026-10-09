@@ -7,7 +7,7 @@ tag: "V4"
 
 import RuntimeCheck from '/snippets/runtime-check.mdx';
 
-<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Opens a web address in Safari's in-app tab on iOS, a Chrome Custom Tab on Android and a new tab on the web, with the same checks everywhere. Phone, mail and other safe app links are handed to the system. Unsafe addresses such as javascript: are refused.
 
@@ -17,10 +17,10 @@ Opens a web address in Safari's in-app tab on iOS, a Chrome Custom Tab on Androi
 
 ## Call it from JavaScript
 
-No npm package is needed. Inside a Despia v4 app, the `browser` package is on the global `window.dsx` and is built into every app:
+No npm package is needed. Inside a Despia V4 app, the `browser` package is on the global `window.dsx` and is built into every app:
 
 ```javascript
-// built into every Despia v4 app
+// built into every Despia V4 app
 if (window.dsx) {
   // Opens a link outside the app's own screens. Web addresses open in an in-app browser tab, and safe links such as phone or mail are passed to the system.
   const openResult = await window.dsx.module.browser.open({ url: "https://example.com" })
@@ -41,7 +41,7 @@ Calls that return something give you a promise; calls that stream take a handler
 
 ## Coming from the Legacy API
 
-Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
 
 | Legacy (`despia('...')`) | Modern |
 | :-- | :-- |

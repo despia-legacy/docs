@@ -1,6 +1,6 @@
 ---
 title: "Legacy to Modern map"
-description: "Every Legacy URL scheme the v4 Legacy polyfill still answers, and the modern call it runs."
+description: "Every Legacy URL scheme the Despia V4 Legacy polyfill still answers, and the modern call it runs."
 icon: "right-left"
 tag: "V4"
 ---
@@ -9,7 +9,7 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <RuntimeCheck />
 
-Despia version 4 keeps V3 apps working: the Legacy polyfill answers the old `despia('scheme://...')` calls (from the `despia-native` npm package or a raw URL scheme) and runs the modern package call for you. This table is generated from the polyfill's own map, so it lists exactly what is answered.
+Despia V4 (currently a pre-release, 0.1.0) keeps V3 apps working: the Legacy polyfill answers the old `despia('scheme://...')` calls (from the `despia-native` npm package or a raw URL scheme) and runs the modern package call for you. This table is generated from the polyfill's own map, so it lists exactly what is answered.
 
 <Warning>Removed in 0.1.0: `inapppurchase://` and `inappsubscription://` are no longer answered. Use [RevenueCat](/packages/revenuecat) (`dsx.module.revenuecat.purchase`). Still answered: `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://`.</Warning>
 

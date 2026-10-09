@@ -1,0 +1,54 @@
+---
+title: "Codex"
+icon: "code"
+description: "Add the Despia Docs MCP and the Despia toolchain MCP to OpenAI Codex (CLI and IDE extension)."
+---
+
+<Info>
+  Checked 2026-10-09 against the [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli). The Codex CLI, the Codex IDE extension and the ChatGPT desktop app share one configuration, so adding Despia once works in all three. ChatGPT on the web does not read it: see [ChatGPT](/mcp/chatgpt).
+</Info>
+
+## With the CLI
+
+```bash
+# The Despia Docs MCP (remote, no sign-in)
+codex mcp add despia-docs --url https://setup.despia.com/mcp
+
+# The Despia toolchain MCP (local)
+codex mcp add despia -- npx -y -p @despia-native/cli despia mcp
+```
+
+Then sign in to Despia once in a terminal with `npx -y -p @despia-native/cli despia login`. Codex uses that sign-in.
+
+Run `codex mcp list` to check, or `/mcp` inside Codex.
+
+## Or edit `config.toml`
+
+Codex reads `~/.codex/config.toml` (and `.codex/config.toml` in a project you trust):
+
+```toml ~/.codex/config.toml
+[mcp_servers.despia-docs]
+url = "https://setup.despia.com/mcp"
+
+[mcp_servers.despia]
+command = "npx"
+args = ["-y", "-p", "@despia-native/cli", "despia", "mcp"]
+```
+
+Codex starts local servers in the folder you run it in. If you run Codex outside your Despia project, add `"--dir", "/path/to/your/project"` to `args`.
+
+In the IDE extension, the gear menu has **MCP servers** to see and edit the same list.
+
+<Note>
+  `@despia-native/cli` is published as 0.1.0. Until it is on npm, the package installs a placeholder; inside a project made from a Despia template, `npx despia mcp` uses the CLI the project already has.
+</Note>
+
+## Try
+
+- "Use the despia tools to plan a web app for https://app.example.com."
+- "Search the Despia docs and add native biometrics to the login screen."
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

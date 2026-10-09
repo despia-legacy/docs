@@ -12,6 +12,33 @@
     "pages": [
       "introduction",
       "mcp-server",
+      {
+        "group": "MCP",
+        "icon": "plug",
+        "pages": [
+          "mcp/overview",
+          "mcp/build-web-view-app",
+          {
+            "group": "Install guides",
+            "icon": "download",
+            "pages": [
+              "mcp/claude-code",
+              "mcp/claude",
+              "mcp/codex",
+              "mcp/chatgpt",
+              "mcp/cursor",
+              "mcp/vscode",
+              "mcp/windsurf",
+              "mcp/lovable",
+              "mcp/base44",
+              "mcp/replit",
+              "mcp/bolt",
+              "mcp/other-tools"
+            ]
+          },
+          "mcp/troubleshooting"
+        ]
+      },
       "changelog",
       {
         "group": "Deployment",

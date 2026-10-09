@@ -1,0 +1,37 @@
+---
+title: "Replit"
+icon: "play"
+description: "Add the Despia Docs MCP to Replit Agent."
+---
+
+<Info>
+  Checked 2026-10-09 against Replit's [Connect via MCP](https://docs.replit.com/build/connect-via-mcp) and [MCP overview](https://docs.replit.com/replitai/mcp/overview). Replit Agent connects **remote** HTTPS MCP servers, so it uses the Despia Docs MCP. The hosted Despia MCP for your account is [coming soon](/mcp/overview#hosted-despia-mcp-with-oauth-coming-soon).
+</Info>
+
+## Add the Despia Docs MCP
+
+<Steps>
+  <Step title="Open Integrations">
+    Go to [replit.com/integrations](https://replit.com/integrations) and find the **MCP Servers** section.
+  </Step>
+  <Step title="Add the server">
+    Click **+ Add MCP server** and fill in:
+
+    - **Display name:** `Despia Docs`
+    - **MCP Server URL:** `https://setup.despia.com/mcp`
+    - Leave **Advanced settings** (custom headers) empty: the Docs MCP needs no key.
+  </Step>
+  <Step title="Test and save">
+    Click **Test & save**. The server's tools are available in all your Repls.
+  </Step>
+  <Step title="Use it">
+    Name the server in your prompt, for example: "Use Despia Docs to add biometric sign-in with `despia-native`."
+  </Step>
+</Steps>
+
+Replit routes MCP traffic through its own security scanner. For OAuth servers Replit runs the browser sign-in for you; the Docs MCP does not need one.
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

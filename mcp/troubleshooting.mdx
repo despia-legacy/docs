@@ -1,0 +1,61 @@
+---
+title: "Troubleshooting MCP"
+sidebarTitle: "Troubleshooting"
+icon: "wrench"
+description: "Fix common problems connecting AI tools to the Despia MCP servers."
+---
+
+## The Despia Docs MCP
+
+<AccordionGroup>
+  <Accordion title="The tool asks me to sign in or for an API key">
+    The Docs MCP (`https://setup.despia.com/mcp`) is public: choose **None**, **No sign in** or **Not required** for authentication and leave headers empty. If your tool insists on OAuth, it is trying to discover a sign-in page that this server does not have; re-add it with authentication turned off.
+  </Accordion>
+  <Accordion title="Connection failed or 404">
+    Check the URL is exactly `https://setup.despia.com/mcp`, with `https` and `/mcp` and no trailing path. If your tool asks for a transport, choose **HTTP** or **Streamable HTTP**, not SSE.
+  </Accordion>
+  <Accordion title="The tool connects but never uses Despia">
+    Mention it in your prompt ("using the Despia docs", or the name you gave the server), and check the server is switched on for this chat or project. Some tools turn custom servers off per chat.
+  </Accordion>
+  <Accordion title="Old guides use mcp-remote">
+    Older setups started `npx mcp-remote https://setup.despia.com/mcp` as a local bridge. Current Cursor, VS Code, Windsurf and Claude Code versions connect to the URL directly; use the configs in these guides instead.
+  </Accordion>
+</AccordionGroup>
+
+## The Despia toolchain MCP (`despia mcp`)
+
+<AccordionGroup>
+  <Accordion title="Server failed to start, or 'could not determine executable'">
+    Inside a Despia project, use `npx despia mcp`: the project has `@despia-native/cli` as a dev dependency, so run `npm install` first. Outside a project, use `npx -y -p @despia-native/cli despia mcp` (the `-p` is needed because the command is `despia`, not the package name). Despia's CLI needs Node.js 22.18 or newer.
+  </Accordion>
+  <Accordion title="Tools say I am not signed in">
+    Agents cannot sign in by design. Run `npx despia login` yourself in a terminal on the same computer, finish the sign-in in the browser, then retry. On a CI machine, set `DESPIA_TOKEN` to a workspace token instead; never paste a token into a chat.
+  </Accordion>
+  <Accordion title="A tool answers effect_refused">
+    That is the safety boundary, not a failure. Creating an app, starting a cloud build (it spends credits), submitting to a store and signing in change things outside your project, so the agent plans them and you run them. The answer's `details.run` is the exact `despia ...` command; `details.instead` is what the agent can do without you (usually the plan or dry run).
+  </Accordion>
+  <Accordion title="Tools work on the wrong project, or 'no dsx.config.json'">
+    The server uses the folder your tool starts it in. Tools such as Claude Desktop and Windsurf do not start servers inside your project, so add `--dir /path/to/your/project` to the arguments. Cloud tools take a `project` id, or read `.despia/project.json`.
+  </Accordion>
+  <Accordion title="Too many tools">
+    The toolchain MCP serves one tool per `despia` command. If your tool limits the number of tools (Windsurf Cascade allows 100 across all servers), switch off the Despia tools you do not use in your tool's MCP settings.
+  </Accordion>
+</AccordionGroup>
+
+## OAuth (for remote servers that need sign-in)
+
+The Despia Docs MCP needs no sign-in, and the hosted Despia MCP with OAuth is [coming soon](/mcp/overview#hosted-despia-mcp-with-oauth-coming-soon). For other remote MCP servers, these are the usual OAuth problems:
+
+<AccordionGroup>
+  <Accordion title="The sign-in popup does not open or is blocked">
+    Allow pop-ups for your AI tool's site, or use its "sign in" button again after allowing them. In desktop tools, the sign-in opens in your default browser; on a remote or SSH machine there may be no browser, so use the tool's no-browser option (for example `claude mcp login <name> --no-browser`).
+  </Accordion>
+  <Accordion title="Signed in, but tools are denied">
+    The access you approved does not cover what the tool asked for. Remove the connection, add it again, and approve the full access on the consent screen.
+  </Accordion>
+  <Accordion title="It worked yesterday and now asks again">
+    The token expired or was revoked. Reconnect from your tool's MCP or connector settings (in Claude Code, run `/mcp` and choose the server).
+  </Accordion>
+</AccordionGroup>
+
+Still stuck? Email [setup@despia.com](mailto:setup@despia.com) with your tool's name and the error it shows (never a token).

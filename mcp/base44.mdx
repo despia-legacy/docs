@@ -1,0 +1,39 @@
+---
+title: "Base44"
+icon: "cube"
+description: "Add the Despia Docs MCP to Base44 as a custom MCP connection."
+---
+
+<Info>
+  Checked 2026-10-09 against Base44's [Setting up a custom MCP](https://docs.base44.com/documentation/account-and-billing/setting-up-a-custom-mcp) guide. Base44 connects **remote** MCP servers by URL, so it uses the Despia Docs MCP. The hosted Despia MCP for your account is [coming soon](/mcp/overview#hosted-despia-mcp-with-oauth-coming-soon).
+</Info>
+
+<Note>
+  Custom MCP connections need a Base44 **Builder** plan or higher, and an account can hold up to 20 of them.
+</Note>
+
+## Add the Despia Docs MCP
+
+<Steps>
+  <Step title="Open your account preferences">
+    Click your workspace name at the bottom left, then **Account preferences**.
+  </Step>
+  <Step title="Go to MCP Connections">
+    Under **Builder**, open **MCP Connections** and click **Add custom MCP**.
+  </Step>
+  <Step title="Fill in the connection">
+    - **Name:** `Despia Docs`
+    - **URL:** `https://setup.despia.com/mcp`
+    - **Authentication:** **Not required**. Leave custom headers empty.
+  </Step>
+  <Step title="Test and add">
+    Click **Test**, then **Test & add**. The connection is available to the AI chat in all your Base44 apps, and you can switch it off at any time.
+  </Step>
+</Steps>
+
+Try: "Search the Despia docs and add a native share sheet to the invite screen with `despia-native`."
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

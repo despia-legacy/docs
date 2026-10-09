@@ -1,0 +1,49 @@
+---
+title: "VS Code"
+icon: "code-compare"
+description: "Add the Despia Docs MCP and the Despia toolchain MCP to GitHub Copilot in VS Code."
+---
+
+<Info>
+  Checked 2026-10-09 against [Use MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) and the [MCP configuration reference](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration). Despia tools appear in Copilot Chat under **Configure Tools**.
+</Info>
+
+## Add both servers
+
+Create `.vscode/mcp.json` in your Despia project. Note that VS Code uses a top-level `servers` key:
+
+```json .vscode/mcp.json
+{
+  "servers": {
+    "despia-docs": {
+      "type": "http",
+      "url": "https://setup.despia.com/mcp"
+    },
+    "despia": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["despia", "mcp"]
+    }
+  }
+}
+```
+
+Or run **MCP: Add Server** from the Command Palette and enter the same values.
+
+- `despia-docs` is the remote [Docs MCP](/mcp/overview#despia-docs-mcp-live): no sign-in.
+- `despia` is the local [toolchain MCP](/mcp/overview#despia-toolchain-mcp-despia-mcp), the CLI installed in your project. Sign in to Despia once in the terminal: `npx despia login`.
+- VS Code asks you to trust a workspace's servers before it starts them; in restricted mode it does not start them.
+
+Check with **MCP: List Servers**.
+
+## Try
+
+In Copilot Chat (agent mode):
+
+- "Use the despia tools to show which features this app ships."
+- "Search the Despia docs for push notifications with OneSignal."
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

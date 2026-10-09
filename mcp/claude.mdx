@@ -1,0 +1,81 @@
+---
+title: "Claude"
+icon: "message-bot"
+description: "Add the Despia Docs MCP to claude.ai and Claude Desktop as a custom connector, and the toolchain MCP to Claude Desktop as a local server."
+---
+
+<Info>
+  Checked 2026-10-09 against Claude Help Center: [custom connectors](https://support.claude.com/en/articles/11175166) and [local MCP servers on Claude Desktop](https://modelcontextprotocol.io/docs/develop/connect-local-servers). Custom connectors are in beta and are available on Free (one custom connector), Pro, Max, Team and Enterprise.
+</Info>
+
+## Add the Despia Docs MCP (claude.ai and Claude Desktop)
+
+A custom connector added on claude.ai also appears in Claude Desktop and the Claude mobile apps.
+
+<Tabs>
+  <Tab title="Pro and Max">
+    <Steps>
+      <Step title="Open Connectors">
+        Go to **Customize**, then **Connectors**.
+      </Step>
+      <Step title="Add a custom connector">
+        Click **+ Add**, then **Add custom connector**.
+      </Step>
+      <Step title="Enter the server">
+        - **Name:** `Despia Docs`
+        - **URL:** `https://setup.despia.com/mcp`
+        - **Sign in:** choose **No sign in**. The Docs MCP is public.
+      </Step>
+      <Step title="Turn it on in a chat">
+        In a chat, open the tools menu and make sure **Despia Docs** is enabled.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Team and Enterprise">
+    An Owner adds the connector once for the organisation under **Organization settings**, **Connectors**, with the same name and URL. Each member then goes to **Customize**, **Connectors** and clicks **Connect** on it.
+  </Tab>
+</Tabs>
+
+Claude connects to custom connectors from Anthropic's cloud, not from your computer, which is why only remote servers work here.
+
+## Claude Desktop: local servers
+
+Claude Desktop can also start the Despia toolchain MCP on your computer. claude.ai on the web cannot.
+
+<Steps>
+  <Step title="Sign in to Despia">
+    In a terminal: `npx -y -p @despia-native/cli despia login`.
+  </Step>
+  <Step title="Open the config file">
+    In Claude Desktop: **Settings**, **Developer**, **Edit Config**. This opens `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`).
+  </Step>
+  <Step title="Add the server">
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "despia": {
+          "command": "npx",
+          "args": ["-y", "-p", "@despia-native/cli", "despia", "mcp", "--dir", "/path/to/your/project"]
+        }
+      }
+    }
+    ```
+    Replace `/path/to/your/project` with your project's folder: Claude Desktop does not start servers inside a project, so `--dir` tells Despia which one to use.
+  </Step>
+  <Step title="Restart">
+    Quit Claude Desktop completely and open it again. The Despia tools appear in the tools menu.
+  </Step>
+</Steps>
+
+<Note>
+  `@despia-native/cli` is published as 0.1.0. Until it is on npm, the package installs a placeholder.
+</Note>
+
+## Coming soon: your Despia account as a connector
+
+When the [hosted Despia MCP](/mcp/overview#hosted-despia-mcp-with-oauth-coming-soon) ships, you will add it the same way as the Docs MCP, choose **Sign in now**, and approve access on Despia's sign-in page. That brings projects and builds to claude.ai without installing anything.
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

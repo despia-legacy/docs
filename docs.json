@@ -18,12 +18,23 @@
             "group": "Get started",
             "pages": [
               "packages/overview",
-              "packages/react",
               "packages/add-a-package",
               "packages/events",
               "packages/push-notifications",
               "packages/migrate-from-v3",
               "packages/legacy-map"
+            ]
+          },
+          {
+            "group": "Frameworks",
+            "pages": [
+              "packages/frameworks/overview",
+              "packages/frameworks/react",
+              "packages/frameworks/vue",
+              "packages/frameworks/svelte",
+              "packages/frameworks/angular",
+              "packages/frameworks/solid",
+              "packages/frameworks/html"
             ]
           },
           {
@@ -704,6 +715,10 @@
     {
       "source": "/troubleshooting/no-ota-updates",
       "destination": "/roadblocks/runtime/no-ota-updates"
+    },
+    {
+      "source": "/packages/react",
+      "destination": "/packages/frameworks/react"
     }
   ],
   "logo": {

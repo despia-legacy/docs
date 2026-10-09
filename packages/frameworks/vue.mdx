@@ -1,0 +1,116 @@
+---
+title: "Vue and Nuxt"
+description: "Call Despia V4 packages from Vue 3 and Nuxt through the global window.dsx, with composables, loading and error state, events with cleanup, SSR and TypeScript."
+icon: "vuejs"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+There is no Despia Vue package. The Modern API is the global `window.dsx`, so you need nothing installed: copy these composables into your project.
+
+## The composables
+
+Save the runtime helper from the block above as `despia-runtime.js`, then add:
+
+```javascript useDespia.js
+import { onMounted, onUnmounted, ref } from 'vue'
+import { getDespiaRuntime } from './despia-runtime'
+
+// window.dsx exists only inside a Despia V4 app
+function getDsx() {
+  return typeof window !== 'undefined' ? window.dsx : undefined
+}
+
+// 'v4', 'v3' or 'web'; filled in on mount, so server and client render the same first
+export function useDespiaRuntime() {
+  const runtime = ref({ kind: 'web', platform: 'web', version: null, ready: false })
+  onMounted(() => {
+    runtime.value = { ...getDespiaRuntime(), ready: true }
+  })
+  return runtime
+}
+
+// Call one package action with loading and error state
+export function useDsxCall(pkg, action) {
+  const data = ref(null)
+  const error = ref(null)
+  const loading = ref(false)
+  async function call(args) {
+    const dsx = getDsx()
+    if (!dsx) {
+      error.value = { code: 'no_dsx', message: 'Not running in Despia V4' } // our own code
+      throw error.value
+    }
+    loading.value = true
+    error.value = null
+    try {
+      const fn = action.split('.').reduce((member, key) => member[key], dsx.module[pkg])
+      data.value = await fn(args)
+      return data.value
+    } catch (e) {
+      error.value = e // e.code, e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+  return { call, data, error, loading }
+}
+
+// Subscribe to one package event; unsubscribes when the component unmounts
+export function useDsxEvent(pkg, event, handler) {
+  let off = null
+  onMounted(() => {
+    const dsx = getDsx()
+    if (dsx) off = dsx.module[pkg].on(event, handler)
+  })
+  onUnmounted(() => {
+    if (off) off()
+  })
+}
+```
+
+## Call a package and listen to events
+
+```vue BuyButton.vue
+<script setup>
+import { useDespiaRuntime, useDsxCall, useDsxEvent } from './useDespia'
+
+const props = defineProps({ userId: String })
+const runtime = useDespiaRuntime()
+const { call, loading, error } = useDsxCall('revenuecat', 'purchase')
+
+useDsxEvent('revenuecat', 'customerInfo', ({ customerInfo }) => {
+  console.log('entitlements changed', customerInfo)
+})
+
+function buy() {
+  call({ external_id: props.userId, product: ['coins_100'] }).catch(() => {})
+}
+</script>
+
+<template>
+  <button v-if="runtime.kind === 'v4'" :disabled="loading" @click="buy">
+    {{ loading ? 'Buying…' : 'Buy 100 coins' }}
+    <small v-if="error"> ({{ error.code }})</small>
+  </button>
+</template>
+```
+
+A failed call rejects with an object that has a `code`. The codes of each action are on its package page.
+
+## Nuxt and server rendering
+
+- `onMounted` runs only in the browser, so the composables are safe in Nuxt pages and components.
+- Never read `window.dsx` in `setup()` directly or in a server plugin. A bare `dsx` throws a `ReferenceError` on the server and in a normal browser.
+- For a part of the page that only makes sense in the app, wrap it in `<ClientOnly>`.
+
+## TypeScript
+
+<DsxTypes />

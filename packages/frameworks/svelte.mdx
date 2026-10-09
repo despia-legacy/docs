@@ -1,0 +1,100 @@
+---
+title: "Svelte and SvelteKit"
+description: "Call Despia V4 packages from Svelte and SvelteKit through the global window.dsx, with onMount, loading and error state, events with cleanup, SSR and TypeScript."
+icon: "s"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+There is no Despia Svelte package. The Modern API is the global `window.dsx`, so you need nothing installed: copy this helper into your project.
+
+## The helper
+
+Save the runtime helper from the block above as `despia-runtime.js`, then add:
+
+```javascript despia.js
+import { onMount } from 'svelte'
+import { writable } from 'svelte/store'
+import { getDespiaRuntime } from './despia-runtime'
+
+// window.dsx exists only inside a Despia V4 app
+export function getDsx() {
+  return typeof window !== 'undefined' ? window.dsx : undefined
+}
+
+// 'v4', 'v3' or 'web'; filled in on mount, so server and client render the same first
+export const runtime = writable({ kind: 'web', platform: 'web', version: null, ready: false })
+export function detectRuntime() {
+  onMount(() => runtime.set({ ...getDespiaRuntime(), ready: true }))
+}
+
+// Call one package action: returns the result or throws { code, message }
+export async function dsxCall(pkg, action, args) {
+  const dsx = getDsx()
+  if (!dsx) throw { code: 'no_dsx', message: 'Not running in Despia V4' } // our own code
+  const fn = action.split('.').reduce((member, key) => member[key], dsx.module[pkg])
+  return fn(args)
+}
+
+// Subscribe to one package event for the life of the component
+export function onDsxEvent(pkg, event, handler) {
+  onMount(() => {
+    const dsx = getDsx()
+    return dsx ? dsx.module[pkg].on(event, handler) : undefined // returned function runs on destroy
+  })
+}
+```
+
+## Call a package and listen to events
+
+```svelte BuyButton.svelte
+<script>
+  import { detectRuntime, dsxCall, onDsxEvent, runtime } from './despia'
+
+  export let userId
+  let loading = false
+  let error = null
+
+  detectRuntime()
+  onDsxEvent('focus', 'change', ({ focused }) => {
+    if (!focused) console.log('app went to the background')
+  })
+
+  async function buy() {
+    loading = true
+    error = null
+    try {
+      await dsxCall('revenuecat', 'purchase', { external_id: userId, product: ['coins_100'] })
+    } catch (e) {
+      error = e // e.code, e.message
+    } finally {
+      loading = false
+    }
+  }
+</script>
+
+{#if $runtime.kind === 'v4'}
+  <button disabled={loading} on:click={buy}>
+    {loading ? 'Buying…' : 'Buy 100 coins'}
+    {#if error}<small> ({error.code})</small>{/if}
+  </button>
+{/if}
+```
+
+This uses the Svelte 4 syntax, which Svelte 5 still accepts. With runes, keep the helper as it is and hold `loading` and `error` in `$state`.
+
+## SvelteKit and server rendering
+
+- `onMount` runs only in the browser, so the helper is safe in SvelteKit pages and layouts.
+- Never read `window.dsx` at the top level of a component script or in `load` functions: they also run on the server. A bare `dsx` throws a `ReferenceError` there and in a normal browser.
+- Outside components, guard with `browser` from `$app/environment` as well.
+
+## TypeScript
+
+<DsxTypes />

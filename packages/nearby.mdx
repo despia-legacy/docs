@@ -29,18 +29,19 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `nearby` package is on the global `window.dsx`. `dsx.has('nearby')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('nearby')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('nearby')) {
   // Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events.
-  const startResultSub = window.dsx.module.nearby.start({ mode: "both", name: "Alice", strategy: "star" }, (event) => {
+  const startResultSub = dsx.module.nearby.start({ mode: "both", name: "Alice", strategy: "star" }, (event) => {
     console.log(event.event, event.data)
   })
   // later: startResultSub.stop()
 
   // Asks a discovered device to connect. Connections are accepted automatically, so any device running the same app and service id can join.
-  const connect = await window.dsx.module.nearby.connect({ peer: "4a2f" })
+  const connect = await dsx.module.nearby.connect({ peer: "4a2f" })
 
   // Closes the connection to one device, or to every connected device when no peer is given.
-  const disconnect = await window.dsx.module.nearby.disconnect({ peer: "4a2f" })
+  const disconnect = await dsx.module.nearby.disconnect({ peer: "4a2f" })
 }
 ```
 

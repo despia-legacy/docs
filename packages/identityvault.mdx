@@ -20,15 +20,16 @@ Writes and reads small pieces of text, such as an anonymous user id or a token, 
 No npm package is needed. Inside a Despia V4 app, the `identityvault` package is on the global `window.dsx`. `dsx.has('identityvault')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('identityvault')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('identityvault')) {
   // Saves a value under a key. With locked set to true, the value is tied to the user's biometrics and can only be read after they authenticate.
-  const writeResult = await window.dsx.module.identityvault.write({ key: "token", locked: false, value: "abc123" })
+  const writeResult = await dsx.module.identityvault.write({ key: "token", locked: false, value: "abc123" })
 
   // Reads the value stored under a key. A locked record shows the biometric prompt first, and a successful read also sets the value on the page under the key name for older pages.
-  const readResult = await window.dsx.module.identityvault.read({ key: "token" })
+  const readResult = await dsx.module.identityvault.read({ key: "token" })
 
   // Reports how long stored records will last and how far they reach, for example whether they follow the user to a new phone. It never fails and says none when nothing can be stored.
-  const durability = await window.dsx.module.identityvault.durability()
+  const durability = await dsx.module.identityvault.durability()
 }
 ```
 

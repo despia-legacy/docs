@@ -20,15 +20,16 @@ Reads steps, heart rate, sleep and workouts, saves measurements, and can send ne
 No npm package is needed. Inside a Despia V4 app, the `healthkit` package is on the global `window.dsx`. `dsx.has('healthkit')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('healthkit')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('healthkit')) {
   // Reads health data for the types you list, as daily totals or as individual samples.
-  const readResult = await window.dsx.module.healthkit.read({ days: 2, types: ["HKQuantityTypeIdentifierStepCount"] })
+  const readResult = await dsx.module.healthkit.read({ days: 2, types: ["HKQuantityTypeIdentifierStepCount"] })
 
   // Saves one health value, such as a weight, to Apple Health or Health Connect.
-  const writeResult = await window.dsx.module.healthkit.write({ type: "HKQuantityTypeIdentifierBodyMass", value: 75.5 })
+  const writeResult = await dsx.module.healthkit.write({ type: "HKQuantityTypeIdentifierBodyMass", value: 75.5 })
 
   // Reports whether health data exists on this device and which types are allowed.
-  const statusResult = await window.dsx.module.healthkit.status({ types: ["HKQuantityTypeIdentifierStepCount"] })
+  const statusResult = await dsx.module.healthkit.status({ types: ["HKQuantityTypeIdentifierStepCount"] })
 }
 ```
 

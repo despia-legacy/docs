@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `camera` package is on the global `window.dsx`. `dsx.has('camera')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('camera')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('camera')) {
   // Deletes every photo file that earlier bursts wrote.
-  const clear = await window.dsx.module.camera.clear()
+  const clear = await dsx.module.camera.clear()
 
   // Takes a number of photos in a row as fast as the hardware allows, with no preview, and returns them as files.
-  const burst = await window.dsx.module.camera.burst({ count: 3, interval: 0, quality: 0.8 })
+  const burst = await dsx.module.camera.burst({ count: 3, interval: 0, quality: 0.8 })
 
   // Reports the limits of burst capture on this device.
-  const capabilities = await window.dsx.module.camera.capabilities()
+  const capabilities = await dsx.module.camera.capabilities()
 }
 ```
 

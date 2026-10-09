@@ -29,9 +29,10 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `scanner` package is on the global `window.dsx`. `dsx.has('scanner')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('scanner')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('scanner')) {
   // Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled.
-  const scan = await window.dsx.module.scanner.scan({ for: "code", formats: ["qr"] })
+  const scan = await dsx.module.scanner.scan({ for: "code", formats: ["qr"] })
 }
 ```
 

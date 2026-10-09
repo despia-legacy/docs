@@ -20,15 +20,16 @@ Lets you set the shortcuts that appear when someone presses and holds your app i
 No npm package is needed. Inside a Despia V4 app, the `quickactions` package is on the global `window.dsx`. `dsx.has('quickactions')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('quickactions')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('quickactions')) {
   // Removes all the shortcuts from the app icon's menu.
-  const clear = await window.dsx.module.quickactions.clear()
+  const clear = await dsx.module.quickactions.clear()
 
   // Reads the shortcuts that are currently set, including the ones kept from an earlier launch.
-  const getResult = await window.dsx.module.quickactions.get()
+  const getResult = await dsx.module.quickactions.get()
 
   // Sets the shortcuts shown when the app icon is long pressed, replacing the ones set before.
-  const setResult = await window.dsx.module.quickactions.set({ items: [{"symbol": "magnifyingglass", "title": "Search", "value": "search"}] })
+  const setResult = await dsx.module.quickactions.set({ items: [{"symbol": "magnifyingglass", "title": "Search", "value": "search"}] })
 }
 ```
 

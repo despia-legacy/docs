@@ -20,12 +20,13 @@ Opens a file in the phone's own preview screen, which handles PDFs, images, Offi
 No npm package is needed. Inside a Despia V4 app, the `fileviewer` package is on the global `window.dsx`. `dsx.has('fileviewer')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('fileviewer')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('fileviewer')) {
   // Opens one or more files in a full screen preview, downloading https addresses first.
-  const preview = await window.dsx.module.fileviewer.preview({ src: "https://files.app/invoice.pdf" })
+  const preview = await dsx.module.fileviewer.preview({ src: "https://files.app/invoice.pdf" })
 
   // Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer.
-  const thumbnail = await window.dsx.module.fileviewer.thumbnail({ src: "documents:invoice.pdf", width: 256 })
+  const thumbnail = await dsx.module.fileviewer.thumbnail({ src: "documents:invoice.pdf", width: 256 })
 }
 ```
 

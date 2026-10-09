@@ -1,0 +1,51 @@
+No types ship with Despia V4 yet, so declare the global once. This block describes exactly what `window.dsx` has in a Despia V4 web view:
+
+```typescript despia-dsx.d.ts
+// The window.dsx surface of Despia V4 (pre-release 0.1.0)
+export interface DsxEnvelope {
+  event?: string          // the event name, or 'error'
+  data?: unknown          // the event's payload
+  scheme?: string         // the package that sent it
+  final?: boolean
+  code?: string           // set on errors
+  message?: string
+  recoverable?: boolean
+}
+
+export interface DsxSurface {
+  // dsx.module.<package>.<action>(args) returns a promise; with a handler as the
+  // second argument it streams and returns { id, stop() }.
+  // dsx.module.<package>.on('<event>', (data) => {}) returns an unsubscribe function.
+  module: any
+  has(nameOrScheme: string): boolean
+  version(nameOrScheme: string): string | null
+  wasExcluded(nameOrScheme: string): boolean
+  packages: Array<{ name: string; version?: string; scheme?: string }>
+  on(scheme: string, handler: (envelope: DsxEnvelope) => void): () => void
+}
+
+declare global {
+  interface Window {
+    dsx?: DsxSurface
+    __nativeRuntime?: { platform?: string; appVersion?: string }
+  }
+}
+```
+
+`module` is typed `any` on purpose: every package adds its own actions. To type a call, write its arguments and result from the package page. For example, from [RevenueCat](/packages/revenuecat) `purchase`:
+
+```typescript
+interface PurchaseArgs { product: string[]; external_id?: string }
+interface PurchaseResult {
+  status: string
+  product_id: string
+  plan_id?: string
+  active_entitlements: string[]
+  customer_info: Record<string, unknown>
+  transaction: Record<string, unknown>
+}
+
+async function purchase(args: PurchaseArgs): Promise<PurchaseResult> {
+  return window.dsx!.module.revenuecat.purchase(args)
+}
+```

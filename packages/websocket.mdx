@@ -21,15 +21,16 @@ No npm package is needed. Inside a Despia V4 app, the `websocket` package is on 
 
 ```javascript
 // built into every Despia V4 app
-if (window.dsx) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx) {
   // Opens a named connection to a ws:// or wss:// address, or updates it if it is already open, and reconnects automatically if it drops.
-  const connect = await window.dsx.module.websocket.connect({ id: "feed", url: "wss://example.com/socket" })
+  const connect = await dsx.module.websocket.connect({ id: "feed", url: "wss://example.com/socket" })
 
   // Adds a text message to the outgoing queue. Messages survive a drop and a relaunch and are sent in order once the connection is open.
-  const send = await window.dsx.module.websocket.send({ id: "feed", payload: "{\"op\":\"ping\"}" })
+  const send = await dsx.module.websocket.send({ id: "feed", payload: "{\"op\":\"ping\"}" })
 
   // Stores one message that is sent first on every connect and reconnect, for example a login or channel-join frame. An empty frame clears it.
-  const subscribe = await window.dsx.module.websocket.subscribe({ frame: "{\"op\":\"subscribe\",\"channel\":\"orders\"}", id: "feed" })
+  const subscribe = await dsx.module.websocket.subscribe({ frame: "{\"op\":\"subscribe\",\"channel\":\"orders\"}", id: "feed" })
 }
 ```
 

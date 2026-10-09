@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `revenuecat` package is on the global `window.dsx`. `dsx.has('revenuecat')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('revenuecat')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('revenuecat')) {
   // Buys a product through the store's payment sheet and tells you what the person owns afterwards. It tries the products you list in order and stops at the first one the store returns.
-  const purchase = await window.dsx.module.revenuecat.purchase({ external_id: "user_123", product: ["coins_100:monthly"] })
+  const purchase = await dsx.module.revenuecat.purchase({ external_id: "user_123", product: ["coins_100:monthly"] })
 
   // Shows a RevenueCat paywall sheet for an offering so the person can pick and buy.
-  const paywall = await window.dsx.module.revenuecat.paywall({ external_id: "user_123" })
+  const paywall = await dsx.module.revenuecat.paywall({ external_id: "user_123" })
 
   // Returns the person's entitlements, subscriptions and management link in one shared envelope, and also broadcasts it as customer.
-  const customer = await window.dsx.module.revenuecat.customer()
+  const customer = await dsx.module.revenuecat.customer()
 }
 ```
 

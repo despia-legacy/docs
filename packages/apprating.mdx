@@ -29,9 +29,10 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `apprating` package is on the global `window.dsx`. `dsx.has('apprating')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('apprating')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('apprating')) {
   // Asks the system to show its rating sheet. It reports that the system was asked, not that the sheet appeared, because the system decides.
-  const request = await window.dsx.module.apprating.request()
+  const request = await dsx.module.apprating.request()
 }
 ```
 

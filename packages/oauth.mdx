@@ -20,15 +20,16 @@ Opens your provider's sign-in page in the trusted system browser sheet and hands
 No npm package is needed. Inside a Despia V4 app, the `oauth` package is on the global `window.dsx`. `dsx.has('oauth')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('oauth')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('oauth')) {
   // Opens the provider's authorize address in the system sign-in sheet and waits for the user to finish. You get back the redirect address and every parameter it carried, or a clear refusal such as cancelled.
-  const startResult = await window.dsx.module.oauth.start({ url: "https://idp.example/authorize?client_id=app&state=s1" })
+  const startResult = await dsx.module.oauth.start({ url: "https://idp.example/authorize?client_id=app&state=s1" })
 
   // Tells you whether this device can return a sign-in through your own https host and through the custom URL scheme right now.
-  const capabilities = await window.dsx.module.oauth.capabilities()
+  const capabilities = await dsx.module.oauth.capabilities()
 
   // Swaps an authorization code for tokens at your token endpoint, using the PKCE verifier created by a start or session call with pkce set. The verifier is only ever sent to an address you listed in the token endpoints setting.
-  const exchange = await window.dsx.module.oauth.exchange()
+  const exchange = await dsx.module.oauth.exchange()
 }
 ```
 

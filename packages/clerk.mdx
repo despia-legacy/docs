@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `clerk` package is on the global `window.dsx`. `dsx.has('clerk')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('clerk')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('clerk')) {
   // Reads who is signed in, working offline from what the device already holds.
-  const statusResult = await window.dsx.module.clerk.status()
+  const statusResult = await dsx.module.clerk.status()
 
   // Gives Clerk your publishable key so sign-in can start.
-  const configure = await window.dsx.module.clerk.configure({ key: "pk_test_abc123" })
+  const configure = await dsx.module.clerk.configure({ key: "pk_test_abc123" })
 
   // Shows Clerk's prebuilt sign-in and sign-up sheet and waits until it closes.
-  const authview = await window.dsx.module.clerk.authview({ mode: "signup" })
+  const authview = await dsx.module.clerk.authview({ mode: "signup" })
 }
 ```
 

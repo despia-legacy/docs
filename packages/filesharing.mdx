@@ -20,9 +20,10 @@ Opens the share sheet with a file attached, so the user can send it to Messages,
 No npm package is needed. Inside a Despia V4 app, the `filesharing` package is on the global `window.dsx`. `dsx.has('filesharing')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('filesharing')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('filesharing')) {
   // Opens the system share sheet with a file, taken from a device path or downloaded first from an https address.
-  const shareResult = await window.dsx.module.filesharing.share({ url: "https://files.example.com/report.pdf" })
+  const shareResult = await dsx.module.filesharing.share({ url: "https://files.example.com/report.pdf" })
 }
 ```
 

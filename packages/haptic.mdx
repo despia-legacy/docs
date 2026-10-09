@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `haptic` package is on the global `window.dsx`. `dsx.has('haptic')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('haptic')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('haptic')) {
   // Plays a light single tap.
-  const light = await window.dsx.module.haptic.light()
+  const light = await dsx.module.haptic.light()
 
   // Plays a medium-firm single tap.
-  const medium = await window.dsx.module.haptic.medium()
+  const medium = await dsx.module.haptic.medium()
 
   // Plays a firm single tap.
-  const heavy = await window.dsx.module.haptic.heavy()
+  const heavy = await dsx.module.haptic.heavy()
 }
 ```
 

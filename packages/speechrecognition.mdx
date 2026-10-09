@@ -29,18 +29,19 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `speechrecognition` package is on the global `window.dsx`. `dsx.has('speechrecognition')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('speechrecognition')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('speechrecognition')) {
   // Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed.
-  const startResultSub = window.dsx.module.speechrecognition.start({ continuous: false, interim: true, language: "en-US", max: 1 }, (event) => {
+  const startResultSub = dsx.module.speechrecognition.start({ continuous: false, interim: true, language: "en-US", max: 1 }, (event) => {
     console.log(event.event, event.data)
   })
   // later: startResultSub.stop()
 
   // Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running.
-  const stopResult = await window.dsx.module.speechrecognition.stop()
+  const stopResult = await dsx.module.speechrecognition.stop()
 
   // Stops listening and throws away what was heard; it is safe to call when nothing is running.
-  const abort = await window.dsx.module.speechrecognition.abort()
+  const abort = await dsx.module.speechrecognition.abort()
 }
 ```
 

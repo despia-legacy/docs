@@ -1,0 +1,127 @@
+---
+title: "Angular"
+description: "Call Despia V4 packages from Angular through the global window.dsx, with a service, zone handling, loading and error state, events with cleanup, SSR and TypeScript."
+icon: "angular"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+There is no Despia Angular package. The Modern API is the global `window.dsx`, so you need nothing installed: copy this service into your project.
+
+## The service
+
+Answers and events from the app arrive from native code, outside Angular's zone. The service re-enters the zone with `NgZone.run`, so change detection sees the result.
+
+```typescript despia.service.ts
+import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
+import { getDespiaRuntime } from './despia-runtime'
+
+@Injectable({ providedIn: 'root' })
+export class DespiaService {
+  private zone = inject(NgZone)
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID))
+
+  // window.dsx exists only inside a Despia V4 app, and never on the server
+  private get dsx(): any {
+    return this.isBrowser ? (window as any).dsx : undefined
+  }
+
+  runtime() {
+    return this.isBrowser ? getDespiaRuntime() : { kind: 'web', platform: 'web', version: null }
+  }
+
+  has(pkg: string): boolean {
+    return !!this.dsx && this.dsx.has(pkg)
+  }
+
+  // Call one package action: resolves with the result, rejects with { code, message }
+  call<T = unknown>(pkg: string, action: string, args: object = {}): Promise<T> {
+    const dsx = this.dsx
+    if (!dsx) return Promise.reject({ code: 'no_dsx', message: 'Not running in Despia V4' }) // our own code
+    const fn = action.split('.').reduce((member: any, key) => member[key], dsx.module[pkg])
+    return new Promise<T>((resolve, reject) => {
+      fn(args).then(
+        (value: T) => this.zone.run(() => resolve(value)),
+        (error: unknown) => this.zone.run(() => reject(error)),
+      )
+    })
+  }
+
+  // Subscribe to one package event; returns the unsubscribe function
+  on(pkg: string, event: string, handler: (data: any) => void): () => void {
+    const dsx = this.dsx
+    if (!dsx) return () => {}
+    return dsx.module[pkg].on(event, (data: any) => this.zone.run(() => handler(data)))
+  }
+}
+```
+
+`despia-runtime.ts` is the runtime helper from the block above.
+
+{/* TODO-VERIFY: the Angular service and component were type-checked (tsc, Angular 18.2) but not run in an Angular app; the zone claim (native answers arrive outside NgZone) is not measured on device. */}
+
+## Call a package and listen to events
+
+```typescript buy-button.component.ts
+import { Component, Input, OnDestroy, OnInit, inject } from '@angular/core'
+import { DespiaService } from './despia.service'
+
+@Component({
+  selector: 'app-buy-button',
+  standalone: true,
+  template: `
+    @if (isV4) {
+      <button [disabled]="loading" (click)="buy()">
+        {{ loading ? 'Buying…' : 'Buy 100 coins' }}
+        @if (error) { <small> ({{ error.code }})</small> }
+      </button>
+    }
+  `,
+})
+export class BuyButtonComponent implements OnInit, OnDestroy {
+  @Input() userId = ''
+  private despia = inject(DespiaService)
+  private off: () => void = () => {}
+  isV4 = false
+  loading = false
+  error: { code: string } | null = null
+
+  ngOnInit() {
+    this.isV4 = this.despia.runtime().kind === 'v4' && this.despia.has('revenuecat')
+    this.off = this.despia.on('focus', 'change', ({ focused }) => {
+      if (!focused) console.log('app went to the background')
+    })
+  }
+
+  ngOnDestroy() {
+    this.off()
+  }
+
+  async buy() {
+    this.loading = true
+    this.error = null
+    try {
+      await this.despia.call('revenuecat', 'purchase', { external_id: this.userId, product: ['coins_100'] })
+    } catch (e: any) {
+      this.error = e
+    } finally {
+      this.loading = false
+    }
+  }
+}
+```
+
+## Server rendering (Angular SSR)
+
+The service checks `isPlatformBrowser`, so on the server it reports `kind: 'web'` and every call rejects with `no_dsx` instead of touching `window`. A bare `dsx` would throw a `ReferenceError` there and in a normal browser.
+
+## TypeScript
+
+<DsxTypes />

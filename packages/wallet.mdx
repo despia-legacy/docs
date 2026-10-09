@@ -20,9 +20,10 @@ Downloads a pass file from a web address and shows the system sheet to add it to
 No npm package is needed. Inside a Despia V4 app, the `wallet` package is on the global `window.dsx`. `dsx.has('wallet')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('wallet')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('wallet')) {
   // Gets a .pkpass file from a web address and hands it to the system so the person can add it to Wallet. On iOS the Apple add-pass sheet is shown.
-  const pkpassSub = window.dsx.module.wallet.pkpass({ url: "https://example.com/boarding.pkpass" }, (event) => {
+  const pkpassSub = dsx.module.wallet.pkpass({ url: "https://example.com/boarding.pkpass" }, (event) => {
     console.log(event.event, event.data)
   })
   // later: pkpassSub.stop()

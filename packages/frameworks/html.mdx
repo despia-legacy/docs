@@ -1,0 +1,106 @@
+---
+title: "Plain HTML, vanilla JS and Astro"
+description: "Call Despia V4 packages from a script tag, plain JavaScript or an Astro site through the global window.dsx, with loading and error state, events and TypeScript."
+icon: "html5"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+No package and no build step: inside a Despia V4 app, `window.dsx` is installed before the first script on the page runs.
+
+## Call a package from a script tag
+
+```html index.html
+<button id="buy" hidden>Buy 100 coins</button>
+<small id="buy-error"></small>
+
+<script type="module">
+  // safe in a normal browser, in Despia V3 and in Despia V4
+  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  const button = document.getElementById('buy')
+  const errorText = document.getElementById('buy-error')
+
+  if (dsx && dsx.has('revenuecat')) {
+    button.hidden = false
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      button.textContent = 'Buying…'
+      errorText.textContent = ''
+      try {
+        const result = await dsx.module.revenuecat.purchase({ product: ['coins_100'] })
+        console.log('active entitlements', result.active_entitlements)
+      } catch (err) {
+        errorText.textContent = err.code // for example user_cancelled
+      } finally {
+        button.disabled = false
+        button.textContent = 'Buy 100 coins'
+      }
+    })
+  }
+</script>
+```
+
+## Listen to events
+
+```html
+<script type="module">
+  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  if (dsx) {
+    const off = dsx.module.focus.on('change', ({ focused }) => {
+      document.body.classList.toggle('in-background', !focused)
+    })
+    // call off() when you no longer need it
+  }
+</script>
+```
+
+`type="module"` gives each script its own scope, so two scripts can both declare `const dsx`.
+
+## `window.dsx` or `dsx`?
+
+`window.dsx` is a property of `window`, so in a browser script you can also write `dsx` once you know it exists. Before that check, a bare `dsx` throws a `ReferenceError` in a normal browser, in Despia V3 and during server rendering. The safe forms are:
+
+```javascript
+// recommended: safe everywhere, including server rendering
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx) dsx.module.haptic.light()
+
+// also safe, in browser code with no local variable called dsx:
+// if (typeof dsx !== 'undefined') dsx.module.haptic.light()
+```
+
+Use the first form everywhere. Every example on these pages does.
+
+## Astro
+
+The frontmatter of an `.astro` file and its components run on the server, where `window` does not exist. Put Despia calls in a `<script>` tag, which Astro runs in the browser:
+
+```astro BuyButton.astro
+---
+// server side: no window.dsx here
+---
+<button id="buy" hidden>Buy 100 coins</button>
+
+<script>
+  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  const button = document.getElementById('buy')
+  if (dsx && dsx.has('revenuecat') && button) {
+    button.hidden = false
+    button.addEventListener('click', () => {
+      dsx.module.revenuecat.purchase({ product: ['coins_100'] }).catch((err) => console.warn(err.code))
+    })
+  }
+</script>
+```
+
+In an island that uses React, Vue, Svelte or Solid, follow that framework's page and hydrate it with `client:load` or `client:only`.
+
+## TypeScript
+
+<DsxTypes />

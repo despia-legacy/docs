@@ -29,9 +29,10 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `uuid` package is on the global `window.dsx`. `dsx.has('uuid')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('uuid')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('uuid')) {
   // Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again.
-  const getResult = await window.dsx.module.uuid.get()
+  const getResult = await dsx.module.uuid.get()
 }
 ```
 

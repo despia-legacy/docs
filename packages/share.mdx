@@ -20,9 +20,10 @@ Opens the native share sheet so users can send to Messages, Mail, WhatsApp, AirD
 No npm package is needed. Inside a Despia V4 app, the `share` package is on the global `window.dsx`. `dsx.has('share')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('share')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('share')) {
   // Opens the system share sheet with a message, a link and files, and resolves when the user shares or closes it.
-  const url = await window.dsx.module.share.url({ message: "Check out this listing", url: "https://example.com/listings/cozy-loft" })
+  const url = await dsx.module.share.url({ message: "Check out this listing", url: "https://example.com/listings/cozy-loft" })
 }
 ```
 

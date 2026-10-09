@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `contacts` package is on the global `window.dsx`. `dsx.has('contacts')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('contacts')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('contacts')) {
   // Returns the whole address book at once as names mapped to phone numbers, asking for access first.
-  const readResult = await window.dsx.module.contacts.read()
+  const readResult = await dsx.module.contacts.read()
 
   // Asks for the address book with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it.
-  const permissionRequest = await window.dsx.module.contacts.permission.request({ level: "read" })
+  const permissionRequest = await dsx.module.contacts.permission.request({ level: "read" })
 
   // Saves a new contact in the address book; it needs the user's write permission.
-  const add = await window.dsx.module.contacts.add({ contact: {"emails": [{"label": "work", "value": "ada@example.com"}], "familyName": "Lovelace", "givenName": "Ada"} })
+  const add = await dsx.module.contacts.add({ contact: {"emails": [{"label": "work", "value": "ada@example.com"}], "familyName": "Lovelace", "givenName": "Ada"} })
 }
 ```
 

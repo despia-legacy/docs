@@ -20,9 +20,10 @@ Presents a list of choices in the platform's native action sheet or bottom sheet
 No npm package is needed. Inside a Despia V4 app, the `actionsheet` package is on the global `window.dsx`. `dsx.has('actionsheet')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('actionsheet')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('actionsheet')) {
   // Shows the action sheet and waits. You get the value of the chosen row, or nothing when the user dismissed it.
-  const showResult = await window.dsx.module.actionsheet.show({ items: [{"label": "Edit", "value": "edit"}, {"label": "Delete", "role": "destructive", "value": "delete"}], title: "Choose an action" })
+  const showResult = await dsx.module.actionsheet.show({ items: [{"label": "Edit", "value": "edit"}, {"label": "Delete", "role": "destructive", "value": "delete"}], title: "Choose an action" })
 }
 ```
 

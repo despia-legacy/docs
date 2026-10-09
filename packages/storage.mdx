@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `storage` package is on the global `window.dsx`. `dsx.has('storage')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('storage')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('storage')) {
   // Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type.
-  const setResult = await window.dsx.module.storage.set({ key: "theme", value: "dark" })
+  const setResult = await dsx.module.storage.set({ key: "theme", value: "dark" })
 
   // Reads one saved value by its key, with its original type, and says whether the key was found.
-  const getResult = await window.dsx.module.storage.get({ key: "theme" })
+  const getResult = await dsx.module.storage.get({ key: "theme" })
 
   // Deletes every key in this app's store and says how many were removed.
-  const clear = await window.dsx.module.storage.clear()
+  const clear = await dsx.module.storage.clear()
 }
 ```
 

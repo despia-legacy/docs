@@ -29,18 +29,19 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `motion` package is on the global `window.dsx`. `dsx.has('motion')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('motion')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('motion')) {
   // Starts one motion stream with the sensors and sampling rate you choose, and sends each sample as a single object.
-  const startResultSub = window.dsx.module.motion.start({ hz: 60, sensors: ["accelerometer", "gyroscope"] }, (event) => {
+  const startResultSub = dsx.module.motion.start({ hz: 60, sensors: ["accelerometer", "gyroscope"] }, (event) => {
     console.log(event.event, event.data)
   })
   // later: startResultSub.stop()
 
   // Stops the motion stream and releases the sensors.
-  const stopResult = await window.dsx.module.motion.stop()
+  const stopResult = await dsx.module.motion.stop()
 
   // Reports which motion sensors this device has and the highest sampling rate it allows.
-  const capabilities = await window.dsx.module.motion.capabilities()
+  const capabilities = await dsx.module.motion.capabilities()
 }
 ```
 

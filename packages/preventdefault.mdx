@@ -20,9 +20,10 @@ Turns off the built-in iOS keyboard autoscroll on the main web view, and can han
 No npm package is needed. Inside a Despia V4 app, the `preventdefault` package is on the global `window.dsx`. `dsx.has('preventdefault')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('preventdefault')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('preventdefault')) {
   // Turns the native iOS keyboard autoscroll off, or back on. Called with no value it prevents autoscroll. The default at launch is autoscroll restored.
-  const autoscroll = await window.dsx.module.preventdefault.autoscroll({ enabled: true })
+  const autoscroll = await dsx.module.preventdefault.autoscroll({ enabled: true })
 }
 ```
 

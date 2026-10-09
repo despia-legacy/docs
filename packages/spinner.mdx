@@ -29,12 +29,13 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `spinner` package is on the global `window.dsx`. `dsx.has('spinner')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('spinner')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('spinner')) {
   // Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide.
-  const showResult = await window.dsx.module.spinner.show()
+  const showResult = await dsx.module.spinner.show()
 
   // Hides the activity indicator again.
-  const hideResult = await window.dsx.module.spinner.hide()
+  const hideResult = await dsx.module.spinner.hide()
 }
 ```
 

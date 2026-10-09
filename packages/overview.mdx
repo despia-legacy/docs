@@ -20,36 +20,40 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 Every Despia V4 app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
 
 ```javascript
-await window.dsx.module.haptic.light()
-const purchase = await window.dsx.module.revenuecat.purchase({ product: ["coins_100"] })
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx) {
+  await dsx.module.haptic.light()
+  const purchase = await dsx.module.revenuecat.purchase({ product: ["coins_100"] })
+}
 ```
 
 There is nothing to install. The global is there before your first script runs, so it works the same from plain JavaScript, React, Vue, Svelte, Next.js or any other framework.
 
 ## Detect Despia V4
 
-`window.dsx` exists only inside a Despia V4 app. In a normal browser, and in apps on older Despia versions, it is `undefined`. Check for it before you call anything:
+`window.dsx` exists only inside a Despia V4 app. In a normal browser, in Despia V3 and on the server (SSR) it is `undefined`. The runtime defines it as a property of `window`, so `dsx` on its own also works in the browser, but only once it exists: a bare `dsx` throws a `ReferenceError` everywhere else.
+
+**The rule:** read it once, like this, and use the result:
 
 ```javascript
-function isDespiaV4() {
-  return typeof window !== 'undefined' && !!window.dsx && !!window.dsx.module
-}
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
 
-if (isDespiaV4()) {
-  await window.dsx.module.haptic.success()
+if (dsx) {
+  await dsx.module.haptic.success()
 } else {
-  // normal browser, or an app on an older Despia version
+  // normal browser, Despia V3, or server rendering
 }
 ```
 
-The `typeof window` check keeps the same code safe during server-side rendering.
+The `typeof window` check keeps the same code safe during server-side rendering. In frameworks that render on the server, do this after mount (see [Frameworks](/packages/frameworks/overview)). To tell Despia V3 from a normal browser as well, use `getDespiaRuntime()` from the block above.
 
 ### Check that a package is in the app
 
 An app only contains the packages you added to it (see [Add a package](/packages/add-a-package)). Ask before calling an optional package:
 
 ```javascript
-if (window.dsx && window.dsx.has('revenuecat')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('revenuecat')) {
   // RevenueCat is in this build
 }
 ```
@@ -63,27 +67,27 @@ if (window.dsx && window.dsx.has('revenuecat')) {
 | `dsx.wasExcluded('revenuecat')` | `true` when the app excluded the package on purpose. |
 
 <Warning>
-  Do not test `if (window.dsx.module.revenuecat)`. Any name under `dsx.module` gives back a callable value, so that check is always true. Use `dsx.has()` or `.available`.
+  Do not test `if (dsx.module.revenuecat)`. Any name under `dsx.module` gives back a callable value, so that check is always true. Use `dsx.has()` or `.available`.
 </Warning>
 
 ## Calling convention
 
-Every call has the shape `dsx.module.<package>.<action>(args)`. `args` is one plain object. Actions with a dot in their name are written as a chain, for example `dsx.module.notify.permission.request()`.
+In the examples below, `dsx` is the value read with the rule above. Every call has the shape `dsx.module.<package>.<action>(args)`. `args` is one plain object. Actions with a dot in their name are written as a chain, for example `dsx.module.notify.permission.request()`.
 
 There are three kinds of call:
 
 <CodeGroup>
 
 ```javascript Fire and forget
-window.dsx.module.haptic.light()
+dsx.module.haptic.light()
 ```
 
 ```javascript Resolve once
-const info = await window.dsx.module.device.info()
+const info = await dsx.module.device.info()
 ```
 
 ```javascript Stream
-const sub = window.dsx.module.speechrecognition.start({ interim: true }, (event) => {
+const sub = dsx.module.speechrecognition.start({ interim: true }, (event) => {
   console.log(event.event, event.data)
 })
 // later
@@ -104,7 +108,7 @@ A failed call rejects its promise with an error object. Branch on its `code`:
 
 ```javascript
 try {
-  await window.dsx.module.revenuecat.purchase({ product: ["coins_100"] })
+  await dsx.module.revenuecat.purchase({ product: ["coins_100"] })
 } catch (err) {
   if (err.code === 'not_ready') {
     // RevenueCat is still starting up: try again in a moment
@@ -121,7 +125,7 @@ The codes each action can return are listed in the package's own reference. A ca
 Packages also send events that are not the answer to a call, for example when a purchase changes the customer's entitlements. Subscribe on the package:
 
 ```javascript
-const off = window.dsx.module.revenuecat.on('customerInfo', (data) => {
+const off = dsx.module.revenuecat.on('customerInfo', (data) => {
   console.log('entitlements changed', data)
 })
 // later
@@ -130,9 +134,9 @@ off()
 
 `dsx.module.<package>.on(handler)` without an event name receives every event of that package. `dsx.on('<package>', handler)` does the same with the full event object.
 
-## Use it from React
+## Frameworks
 
-See [Use from React](/packages/react) for a hook and a complete component.
+There is no Despia package for any framework. See [Which approach for my stack](/packages/frameworks/overview) for React and Next.js, Vue and Nuxt, Svelte and SvelteKit, Angular, SolidJS, and plain HTML or Astro: each guide has a few lines to copy.
 
 ## Coming from despia-native
 
@@ -144,7 +148,8 @@ import despia from 'despia-native'
 despia('lighthaptic://')
 
 // Modern, no import
-window.dsx.module.haptic.light()
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx) dsx.module.haptic.light()
 ```
 
 <Warning>

@@ -1,0 +1,47 @@
+---
+title: "Which approach for my stack"
+description: "Pick the Despia V4 guide for your framework. Every stack uses the same global window.dsx, with no package to install."
+icon: "layer-group"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+Every framework talks to Despia V4 the same way: through the global `window.dsx`, which the app installs before your first script runs. There is no Despia package for any framework, no React hook and no Vue plugin to install. Each guide gives you a few lines to copy instead.
+
+## One rule for every stack
+
+```javascript
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+```
+
+- `window.dsx` exists only inside a Despia V4 app. In a normal browser, in Despia V3 and on the server it is `undefined`.
+- A bare `dsx` throws a `ReferenceError` wherever it does not exist, so always read it through the line above.
+- In frameworks that render on the server, read it only after mount (in an effect, `onMount` or an event handler), never during render.
+
+## Pick your guide
+
+| Your stack | Guide | You copy |
+| :-- | :-- | :-- |
+| React, Next.js, Remix | [React and Next.js](/packages/frameworks/react) | `useDespiaRuntime`, `useDsxCall`, `useDsxEvent` hooks |
+| Vue 3, Nuxt | [Vue and Nuxt](/packages/frameworks/vue) | `useDespiaRuntime`, `useDsxCall`, `useDsxEvent` composables |
+| Svelte, SvelteKit | [Svelte and SvelteKit](/packages/frameworks/svelte) | a `runtime` store, `dsxCall`, `onDsxEvent` |
+| Angular | [Angular](/packages/frameworks/angular) | a `DespiaService` with zone handling |
+| SolidJS, SolidStart | [SolidJS](/packages/frameworks/solid) | `createDespiaRuntime`, `createDsxCall`, `onDsxEvent` |
+| Plain HTML, vanilla JS, Astro, jQuery, anything else | [Plain HTML, vanilla JS and Astro](/packages/frameworks/html) | nothing: call `window.dsx` from a script |
+
+Lovable and Base44 generate React apps, so use the React guide.
+
+## What every guide covers
+
+- **Runtime detection**: the `getDespiaRuntime()` helper from the block above, to branch between Despia V4, Despia V3 and a normal browser.
+- **Calling a package** with loading and error state. A failed call rejects with an object that has a `code`.
+- **Events** with cleanup when the component goes away.
+- **Server rendering**: where it is safe to read `window.dsx`.
+- **TypeScript**: a declaration of `window.dsx` that matches the runtime.
+
+The calls themselves are the same everywhere and are listed on each [package page](/packages/overview).

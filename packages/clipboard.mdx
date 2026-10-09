@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `clipboard` package is on the global `window.dsx`. `dsx.has('clipboard')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('clipboard')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('clipboard')) {
   // Reads the current clipboard as text, a link, rich text, an image or files.
-  const readResult = await window.dsx.module.clipboard.read({ type: "image" })
+  const readResult = await dsx.module.clipboard.read({ type: "image" })
 
   // Checks what kinds of content are on the clipboard without reading it, so no paste alert appears.
-  const inspect = await window.dsx.module.clipboard.inspect()
+  const inspect = await dsx.module.clipboard.inspect()
 
   // Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings.
-  const writeResult = await window.dsx.module.clipboard.write({ text: "Copied value" })
+  const writeResult = await dsx.module.clipboard.write({ text: "Copied value" })
 }
 ```
 

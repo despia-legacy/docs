@@ -20,18 +20,19 @@ Lists the voices installed on the device, speaks text with a chosen voice, speed
 No npm package is needed. Inside a Despia V4 app, the `speechsynthesis` package is on the global `window.dsx`. `dsx.has('speechsynthesis')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('speechsynthesis')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('speechsynthesis')) {
   // Speaks one piece of text, or saves the speech to a file. Progress arrives as events while it speaks.
-  const startResultSub = window.dsx.module.speechsynthesis.start({ speed: 1, text: "Hello there" }, (event) => {
+  const startResultSub = dsx.module.speechsynthesis.start({ speed: 1, text: "Hello there" }, (event) => {
     console.log(event.event, event.data)
   })
   // later: startResultSub.stop()
 
   // Stops a speech session, or the one currently playing if you give no id. Stopping one that already ended is fine.
-  const stopResult = await window.dsx.module.speechsynthesis.stop({ id: "utterance-1" })
+  const stopResult = await dsx.module.speechsynthesis.stop({ id: "utterance-1" })
 
   // Turns text into audio files that your app owns and does not play aloud. Each finished piece arrives as a chunk event, and the result gives the final file.
-  const renderSub = window.dsx.module.speechsynthesis.render({ text: "Hello there", to: "documents:take.wav" }, (event) => {
+  const renderSub = dsx.module.speechsynthesis.render({ text: "Hello there", to: "documents:take.wav" }, (event) => {
     console.log(event.event, event.data)
   })
   // later: renderSub.stop()

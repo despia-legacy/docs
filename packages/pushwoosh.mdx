@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `pushwoosh` package is on the global `window.dsx`. `dsx.has('pushwoosh')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('pushwoosh')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('pushwoosh')) {
   // Returns this device's Pushwoosh id, its push token and whether it is registered with Pushwoosh.
-  const subscriptionGet = await window.dsx.module.pushwoosh.subscription.get()
+  const subscriptionGet = await dsx.module.pushwoosh.subscription.get()
 
   // Sets the language Pushwoosh uses to pick localized messages for this device; the device language is used by default.
-  const languageSet = await window.dsx.module.pushwoosh.language.set({ language: "fr" })
+  const languageSet = await dsx.module.pushwoosh.language.set({ language: "fr" })
 
   // Links this device to your own user id so you can send to the person rather than to one device.
-  const login = await window.dsx.module.pushwoosh.login({ externalId: "u_12345" })
+  const login = await dsx.module.pushwoosh.login({ externalId: "u_12345" })
 }
 ```
 

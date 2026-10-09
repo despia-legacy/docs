@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `store` package is on the global `window.dsx`. `dsx.has('store')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('store')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('store')) {
   // Reads which country's store the person is using, as a country code.
-  const storefront = await window.dsx.module.store.storefront()
+  const storefront = await dsx.module.store.storefront()
 
   // Opens the store's own screen for managing subscriptions, where the person can cancel or change plan.
-  const manage = await window.dsx.module.store.manage()
+  const manage = await dsx.module.store.manage()
 
   // Shows Google Play's own in-app message about a billing problem, such as a declined card during a grace period, so the person can fix it without leaving the app.
-  const billingMessages = await window.dsx.module.store.billingMessages()
+  const billingMessages = await dsx.module.store.billingMessages()
 }
 ```
 

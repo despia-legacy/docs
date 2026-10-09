@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `notify` package is on the global `window.dsx`. `dsx.has('notify')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('notify')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('notify')) {
   // Asks the user to allow notifications and tells you where that leaves you. With provisional set on iOS, notifications are allowed quietly without showing a prompt.
-  const permissionRequest = await window.dsx.module.notify.permission.request({ provisional: true })
+  const permissionRequest = await dsx.module.notify.permission.request({ provisional: true })
 
   // Reads the current notification permission without ever showing a prompt. Use it on a settings screen to show whether notifications are on.
-  const permissionStatus = await window.dsx.module.notify.permission.status()
+  const permissionStatus = await dsx.module.notify.permission.status()
 
   // Reads the number currently shown on the app icon. Where the system cannot report it, the package returns the last number it set.
-  const badgeGet = await window.dsx.module.notify.badge.get()
+  const badgeGet = await dsx.module.notify.badge.get()
 }
 ```
 

@@ -20,9 +20,10 @@ Presents the system print sheet for a file in your app or for a web address it d
 No npm package is needed. Inside a Despia V4 app, the `print` package is on the global `window.dsx`. `dsx.has('print')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('print')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('print')) {
   // Shows the system print sheet for a document, which is a file in your app or one downloaded from a web address.
-  const document = await window.dsx.module.print.document()
+  const document = await dsx.module.print.document()
 }
 ```
 

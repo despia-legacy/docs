@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `appsflyer` package is on the global `window.dsx`. `dsx.has('appsflyer')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('appsflyer')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('appsflyer')) {
   // Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user.
-  const logEvent = await window.dsx.module.appsflyer.logEvent({ event_name: "purchase", event_values: {"value": 9.99} })
+  const logEvent = await dsx.module.appsflyer.logEvent({ event_name: "purchase", event_values: {"value": 9.99} })
 
   // Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices.
-  const setUserId = await window.dsx.module.appsflyer.setUserId({ customer_user_id: "u_12345" })
+  const setUserId = await dsx.module.appsflyer.setUserId({ customer_user_id: "u_12345" })
 
   // Returns the AppsFlyer id of this install, which you can send to your server to match it with AppsFlyer reports.
-  const getUid = await window.dsx.module.appsflyer.get_uid()
+  const getUid = await dsx.module.appsflyer.get_uid()
 }
 ```
 

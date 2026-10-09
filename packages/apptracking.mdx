@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `apptracking` package is on the global `window.dsx`. `dsx.has('apptracking')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('apptracking')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('apptracking')) {
   // Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off.
-  const permissionStatus = await window.dsx.module.apptracking.permission.status()
+  const permissionStatus = await dsx.module.apptracking.permission.status()
 
   // Shows Apple's tracking dialog while it can still appear and resolves with the user's answer. Later calls resolve at once with the standing answer, and on Android it resolves the current state.
-  const permissionRequest = await window.dsx.module.apptracking.permission.request()
+  const permissionRequest = await dsx.module.apptracking.permission.request()
 
   // Opens the app's page in the device Settings so the user can change the tracking choice. It needs the App Settings package.
-  const permissionOpenSettings = await window.dsx.module.apptracking.permission.openSettings()
+  const permissionOpenSettings = await dsx.module.apptracking.permission.openSettings()
 }
 ```
 

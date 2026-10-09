@@ -20,15 +20,16 @@ Gives your app one way to start a payment, manage saved cards, link a bank accou
 No npm package is needed. Inside a Despia V4 app, the `payments` package is on the global `window.dsx`. `dsx.has('payments')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('payments')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('payments')) {
   // Shows the provider's payment sheet so the user can pick a method and pay, and returns when they finish or cancel.
-  const payment = await window.dsx.module.payments.payment({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
+  const payment = await dsx.module.payments.payment({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
 
   // Shows the sheet where the user manages their saved payment methods, adding or removing cards.
-  const manage = await window.dsx.module.payments.manage({ customer_id: "cus_123", ephemeral_key_secret: "ek_123", publishable_key: "pk_test_123" })
+  const manage = await dsx.module.payments.manage({ customer_id: "cus_123", ephemeral_key_secret: "ek_123", publishable_key: "pk_test_123" })
 
   // Opens the bank-linking flow so the user can connect a bank account for later debits.
-  const connectBank = await window.dsx.module.payments.connectBank({ financial_connections_session_client_secret: "fcsess_secret_abc", publishable_key: "pk_test_123" })
+  const connectBank = await dsx.module.payments.connectBank({ financial_connections_session_client_secret: "fcsess_secret_abc", publishable_key: "pk_test_123" })
 }
 ```
 

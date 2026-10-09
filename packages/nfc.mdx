@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `nfc` package is on the global `window.dsx`. `dsx.has('nfc')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('nfc')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('nfc')) {
   // Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records.
-  const readResult = await window.dsx.module.nfc.read({ message: "Hold a tag near the phone." })
+  const readResult = await dsx.module.nfc.read({ message: "Hold a tag near the phone." })
 
   // Opens the system scan sheet and writes one text record onto a writable NDEF tag the user holds to the phone.
-  const writeResult = await window.dsx.module.nfc.write({ lang: "en", message: "Hold a writable tag near the phone.", text: "hello" })
+  const writeResult = await dsx.module.nfc.write({ lang: "en", message: "Hold a writable tag near the phone.", text: "hello" })
 
   // Lets the user change a limited NFC selection where the system offers one; otherwise it reports the current state with changed set to false.
-  const permissionManage = await window.dsx.module.nfc.permission.manage()
+  const permissionManage = await dsx.module.nfc.permission.manage()
 }
 ```
 

@@ -29,9 +29,10 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `flashlight` package is on the global `window.dsx`. `dsx.has('flashlight')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('flashlight')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('flashlight')) {
   // Turns the torch on or off.
-  const setResult = await window.dsx.module.flashlight.set({ on: true })
+  const setResult = await dsx.module.flashlight.set({ on: true })
 }
 ```
 

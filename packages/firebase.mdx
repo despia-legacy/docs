@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `firebase` package is on the global `window.dsx`. `dsx.has('firebase')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('firebase')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('firebase')) {
   // Returns this install's push subscription: its Firebase installation id, the FCM address your server sends to, and whether it is opted in.
-  const subscriptionGet = await window.dsx.module.firebase.subscription.get()
+  const subscriptionGet = await dsx.module.firebase.subscription.get()
 
   // Starts the shared Firebase app once and reports its identity. Other Firebase packages call it so initialisation happens in one place.
-  const app = await window.dsx.module.firebase.app()
+  const app = await dsx.module.firebase.app()
 
   // Opts this install in or out of Firebase push. Opting out deletes the FCM registration so Firebase stops addressing the device.
-  const subscriptionSet = await window.dsx.module.firebase.subscription.set({ optedIn: false })
+  const subscriptionSet = await dsx.module.firebase.subscription.set({ optedIn: false })
 }
 ```
 

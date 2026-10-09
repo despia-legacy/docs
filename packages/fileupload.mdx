@@ -21,12 +21,13 @@ No npm package is needed. Inside a Despia V4 app, the `fileupload` package is on
 
 ```javascript
 // built into every Despia V4 app
-if (window.dsx) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx) {
   // Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead.
-  const nativeOverwrite = await window.dsx.module.fileupload.nativeOverwrite({ native_overwrite: false })
+  const nativeOverwrite = await dsx.module.fileupload.nativeOverwrite({ native_overwrite: false })
 
   // Passes the accept and capture settings of the file input that was tapped, so the next pick opens the matching source.
-  const captureInfo = await window.dsx.module.fileupload.captureInfo({ accept: "image/*", capture: "environment" })
+  const captureInfo = await dsx.module.fileupload.captureInfo({ accept: "image/*", capture: "environment" })
 }
 ```
 

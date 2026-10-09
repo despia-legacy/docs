@@ -20,15 +20,16 @@ A complete video player for your app: the picture, touch controls that hide them
 No npm package is needed. Inside a Despia V4 app, the `player` package is on the global `window.dsx`. `dsx.has('player')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('player')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('player')) {
   // Opens the player full screen over the app and plays a video file or HLS playlist.
-  const play = await window.dsx.module.player.play({ url: "https://cdn.example.com/clip.m3u8" })
+  const play = await dsx.module.player.play({ url: "https://cdn.example.com/clip.m3u8" })
 
   // Stops a download that is running and forgets it.
-  const cancelDownload = await window.dsx.module.player.cancelDownload({ id: "a" })
+  const cancelDownload = await dsx.module.player.cancelDownload({ id: "a" })
 
   // Closes the full screen player if it is open; it is safe to call when nothing is playing.
-  const closeResult = await window.dsx.module.player.close()
+  const closeResult = await dsx.module.player.close()
 }
 ```
 

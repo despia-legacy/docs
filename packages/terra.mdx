@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `terra` package is on the global `window.dsx`. `dsx.has('terra')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('terra')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('terra')) {
   // Links Apple Health or a wearable provider to Terra for this person and starts the first sync.
-  const connect = await window.dsx.module.terra.connect({ session: "https://widget.tryterra.co/session/abc", user_id: "ref_123" })
+  const connect = await dsx.module.terra.connect({ session: "https://widget.tryterra.co/session/abc", user_id: "ref_123" })
 
   // Sends the latest health data to your Terra destination now, without asking the person again.
-  const sync = await window.dsx.module.terra.sync({ backfill_days: 7 })
+  const sync = await dsx.module.terra.sync({ backfill_days: 7 })
 
   // Shows the system health data permission dialog when it can still be shown, and returns the resulting state.
-  const permissionRequest = await window.dsx.module.terra.permission.request()
+  const permissionRequest = await dsx.module.terra.permission.request()
 }
 ```
 

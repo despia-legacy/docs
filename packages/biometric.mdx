@@ -29,9 +29,10 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `biometric` package is on the global `window.dsx`. `dsx.has('biometric')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('biometric')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('biometric')) {
   // Shows the system Face ID, Touch ID or fingerprint prompt, falling back to the device passcode, and tells you whether the person confirmed.
-  const authenticate = await window.dsx.module.biometric.authenticate({ reason: "Unlock your records" })
+  const authenticate = await dsx.module.biometric.authenticate({ reason: "Unlock your records" })
 }
 ```
 

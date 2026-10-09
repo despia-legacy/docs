@@ -29,15 +29,16 @@ else { /* web fallback */ }
 No npm package is needed. Inside a Despia V4 app, the `settings` package is on the global `window.dsx`. `dsx.has('settings')` is true when the package is in your app's build:
 
 ```javascript
-if (window.dsx && window.dsx.has('settings')) {
+const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+if (dsx && dsx.has('settings')) {
   // Opens this app's notification settings page, which needs iOS 15.4 or later on iPhone.
-  const notifications = await window.dsx.module.settings.notifications()
+  const notifications = await dsx.module.settings.notifications()
 
   // Opens this app's own page in the system Settings, where the user can change its permissions.
-  const app = await window.dsx.module.settings.app()
+  const app = await dsx.module.settings.app()
 
   // On Android, asks the system to let the app ignore battery optimization; on iOS it fails with unsupported_platform.
-  const battery = await window.dsx.module.settings.battery()
+  const battery = await dsx.module.settings.battery()
 }
 ```
 

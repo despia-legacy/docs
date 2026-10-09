@@ -1,0 +1,52 @@
+---
+title: "DeviceUUID"
+description: "Gives your app a stable anonymous id for each install, with no permission prompt."
+icon: "fingerprint"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Returns one identifier that stays the same across launches. It uses the vendor id on iOS, and a generated id kept safely on Android, desktop and the web. It is not an advertising id and cannot be used to fingerprint the device.
+
+**When to use it.** Use it to recognise the same install across launches, for example to attach anonymous settings or sessions to a device. Do not use it as an advertising id or for tracking across other companies' apps.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.uuid.get()
+else if (rt.kind === 'v3') despia('get-uuid://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `uuid` package is on the global `window.dsx`. `dsx.has('uuid')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('uuid')) {
+  // Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again.
+  const getResult = await window.dsx.module.uuid.get()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.uuid.get()` | none | `uuid` | iOS, Android | Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `get-uuid://` | `dsx.module.uuid.get()` |

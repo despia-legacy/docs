@@ -1,0 +1,107 @@
+---
+title: "Notify"
+description: "Receive and show push and local notifications in your app without a third-party push SDK."
+icon: "bell"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Handles the notification permission, the device token, Android channels, action buttons, badges, images, scheduled notifications and what happens when a user taps one. Use it when you want notifications built in rather than through OneSignal, Pushwoosh or Firebase. You send pushes from your own server with your own Apple push key.
+
+**When to use it.** Reach for it when your app needs to remind, alert or message people outside the app, from your own server or from the device itself. If you already use a push vendor, keep it and use this package only for the local side.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.notify.permission.request()
+else if (rt.kind === 'v3') despia('registerpush://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `notify` package is on the global `window.dsx`. `dsx.has('notify')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('notify')) {
+  // Asks the user to allow notifications and tells you where that leaves you. With provisional set on iOS, notifications are allowed quietly without showing a prompt.
+  const permissionRequest = await window.dsx.module.notify.permission.request({ provisional: true })
+
+  // Reads the current notification permission without ever showing a prompt. Use it on a settings screen to show whether notifications are on.
+  const permissionStatus = await window.dsx.module.notify.permission.status()
+
+  // Reads the number currently shown on the app icon. Where the system cannot report it, the package returns the last number it set.
+  const badgeGet = await window.dsx.module.notify.badge.get()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.notify.badge.get()` | none | `count` | iOS | Reads the number currently shown on the app icon. Where the system cannot report it, the package returns the last number it set. |
+| `dsx.module.notify.badge.set()` | `count`: number | `count` | iOS | Sets the number shown on the app icon, where 0 clears it. Android has no app-icon badge, so the call is refused there. |
+| `dsx.module.notify.cancel()` | `all`?: boolean<br/>`id`?: string | `cancelled` | iOS, Android | Cancels notifications that are scheduled but have not fired yet. It does not remove ones already shown, which is what dismiss is for. |
+| `dsx.module.notify.categories.set()` | `actions`: object[]<br/>`id`: string | `actions`<br/>`id` | iOS, Android | Defines a set of action buttons, such as reply, approve or decline, that you attach to notifications by category id. A button can be a text field, and the typed reply comes back on the opened event. |
+| `dsx.module.notify.channels.list()` | none | `channels` | Android | Lists every notification channel the app has declared, with the user's current choices. A settings screen can show which channels are blocked. |
+| `dsx.module.notify.channels.remove()` | `id`: string | `removed` | Android | Deletes a notification channel. Android remembers the user's settings for that id, so to start clean you must use a new id. |
+| `dsx.module.notify.channels.set()` | `badge`?: boolean<br/>`description`?: string<br/>`group`?: string<br/>`id`: string<br/>`importance`?: string<br/>`lights`?: boolean<br/>`name`?: string<br/>`sound`?: string<br/>`vibration`?: boolean | `blocked`<br/>`changed`<br/>`created`<br/>`id`<br/>`importance`<br/>`lockedByUser` | Android | Creates or updates an Android notification channel, which controls the importance, sound and vibration of a kind of notification. Android lets you lower a channel but ignores raising it, so the result tells you what the channel will really be. |
+| `dsx.module.notify.delivered()` | none | `items` | iOS, Android | Lists the notifications currently sitting in the notification centre, which have already fired. |
+| `dsx.module.notify.dismiss()` | `all`?: boolean<br/>`id`?: string | `dismissed` | iOS, Android | Removes notifications that were already delivered from the notification centre. It does not stop ones that are still scheduled; cancel does that. |
+| `dsx.module.notify.keys.remove()` | `kid`: string | `kid` | iOS, Android | Forgets a decryption key. Pushes sealed with it then show only their outer text, and removing an unknown key is not an error. |
+| `dsx.module.notify.keys.set()` | `key`: string<br/>`kid`: string | `kid` | iOS, Android | Stores a decryption key on the device so that end-to-end encrypted pushes can be read. The key stays on the device in the system key store. |
+| `dsx.module.notify.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Notifications have no limited selection to manage, so this resolves the current permission state and reports that nothing changed. |
+| `dsx.module.notify.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's notification settings page in the system settings, so a user who said no can turn notifications on. |
+| `dsx.module.notify.permission.request()` | `alert`?: boolean<br/>`announcement`?: boolean<br/>`badge`?: boolean<br/>`carPlay`?: boolean<br/>`critical`?: boolean<br/>`provisional`?: boolean<br/>`sound`?: boolean | `canAsk`<br/>`dropped`<br/>`level`<br/>`options`<br/>`prompted`<br/>`status` | iOS, Android | Asks the user to allow notifications and tells you where that leaves you. With provisional set on iOS, notifications are allowed quietly without showing a prompt. |
+| `dsx.module.notify.permission.status()` | none | `canAsk`<br/>`channelsBlocked`<br/>`level`<br/>`options`<br/>`status` | iOS, Android | Reads the current notification permission without ever showing a prompt. Use it on a settings screen to show whether notifications are on. |
+| `dsx.module.notify.present()` | `attachments`?: string[]<br/>`badge`?: number<br/>`body`?: string<br/>`category`?: string<br/>`channel`?: string<br/>`chip`?: string<br/>`data`?: object<br/>`id`?: string<br/>`interruption`?: string<br/>`ongoing`?: boolean<br/>`progress`?: number<br/>`promote`?: boolean<br/>`prompt`?: boolean<br/>`sound`?: string<br/>`subtitle`?: string<br/>`thread`?: string<br/>`title`: string<br/>`views`?: object | `id`<br/>`presented` | iOS, Android | Shows a notification on this device right now, without a server. It can carry a title, body, image, action buttons and a channel. |
+| `dsx.module.notify.presentation()` | `foreground`: string[] | `degraded`<br/>`dropped`<br/>`foreground` | iOS, Android | Chooses what happens when a notification arrives while your app is open: show a banner, add it to the list, play a sound or update the badge. Without this the user usually sees nothing. |
+| `dsx.module.notify.schedule()` | `at`?: string<br/>`attachments`?: string[]<br/>`badge`?: number<br/>`body`?: string<br/>`category`?: string<br/>`channel`?: string<br/>`cron`?: string<br/>`data`?: object<br/>`id`?: string<br/>`in`?: number<br/>`interruption`?: string<br/>`prompt`?: boolean<br/>`repeats`?: string<br/>`sound`?: string<br/>`subtitle`?: string<br/>`thread`?: string<br/>`timezone`?: string<br/>`title`: string | `id`<br/>`nextFire`<br/>`repeating` | iOS, Android | Plans a notification for later, at a time, after a delay or on a cron pattern, optionally repeating. It returns when it will next fire. |
+| `dsx.module.notify.scheduled()` | none | `items` | iOS, Android | Lists the notifications that are still waiting to fire, so a screen can show the user's own reminders. |
+| `dsx.module.notify.token()` | `kind`?: string | `kind`<br/>`token` | iOS, Android | Gets the device token your own server needs to send this device a push. The token can change and arrives again on each launch, so your upload should be safe to repeat. |
+
+## Events
+
+Subscribe with `window.dsx.module.notify.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `dismissed` | The user dismissed a notification without opening it. |
+| `opened` | The user tapped a notification or one of its action buttons. |
+| `permission` | The notification permission changed, after an ask or when the app comes back to the foreground. |
+| `received` | A remote push arrived while the app is running. |
+| `reply` | A reply typed into a rich notification was sent to the reply endpoint. |
+| `token` | A push token arrived or changed, on registration and again on each launch. Upload it to your server each time. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Communication notifications (sender name and avatar) (`communication_notifications`) | Show pushes that carry a sender as communication notifications, with the sender's name and avatar. Turn on only when the app sends messages from people and the Communication Notifications capability is enabled on its App ID. |
+| Default channel description (`default_channel_description`) | The sentence under the channel name in Android's notification settings. |
+| Default Android channel id (`default_channel_id`) | The channel a notification lands in when the caller names none. Android 8 and above require every notification to have one. |
+| Default channel importance (`default_channel_importance`) | How loud the default channel is: none, min, low, default, high or max. |
+| Default channel name (`default_channel_name`) | What the user sees for the default channel in Android's notification settings. Write the category, not the app name. |
+| Use exact alarms on Android (`exact_alarms`) | Ask AlarmManager for exact delivery when the user has granted the exact-alarm permission. Off means scheduled notifications may be delivered a few minutes late while the device is idle. |
+| Foreground presentation (`foreground_presentation`) | What a notification does when it lands while the app is already open: any of alert, sound, badge and list, comma separated. Empty means nothing is shown. |
+| Notification sounds (`sounds`) | The package resources a notification may play, as &lt;package&gt;/&lt;path&gt;, e.g. app/sounds/chime.wav. |
+| Push transport (`token_kind`) | Which remote-push transport the token action asks for: auto, apns or fcm. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `registerpush://` | `dsx.module.notify.permission.request()` |
+| `checknativepushpermissions://` | `dsx.module.notify.permission.status()` |

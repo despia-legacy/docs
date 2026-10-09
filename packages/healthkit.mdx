@@ -1,0 +1,73 @@
+---
+title: "HealthKit"
+description: "Read and write Apple Health and Android Health Connect data."
+icon: "heart-pulse"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Reads steps, heart rate, sleep and workouts, saves measurements, and can send new samples to your server in the background. The same type names work on iOS and Android, and the first read of a type asks the person for permission. Needs a health usage description for iOS; iPads and some Android phones have no health store.
+
+**When to use it.** Add it when your app shows or records health and fitness data on the device, or forwards it to your backend. If you want data from wearable brands through a cloud service, look at the Terra package instead.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `healthkit` package is on the global `window.dsx`. `dsx.has('healthkit')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('healthkit')) {
+  // Reads health data for the types you list, as daily totals or as individual samples.
+  const readResult = await window.dsx.module.healthkit.read({ days: 2, types: ["HKQuantityTypeIdentifierStepCount"] })
+
+  // Saves one health value, such as a weight, to Apple Health or Health Connect.
+  const writeResult = await window.dsx.module.healthkit.write({ type: "HKQuantityTypeIdentifierBodyMass", value: 75.5 })
+
+  // Reports whether health data exists on this device and which types are allowed.
+  const statusResult = await window.dsx.module.healthkit.status({ types: ["HKQuantityTypeIdentifierStepCount"] })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.healthkit.observe()` | `frequency`?: string<br/>`server`?: string<br/>`types`: array<br/>`userId`?: string | nothing | iOS, Android | Watches health types in the background and sends new samples to your server over HTTPS. |
+| `dsx.module.healthkit.permission.manage()` | `types`?: array | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the person change a limited selection where the system has one; otherwise returns the current state unchanged. |
+| `dsx.module.healthkit.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the person can change the health data permission. |
+| `dsx.module.healthkit.permission.request()` | `types`?: array | `canAsk`<br/>`level`<br/>`requested`<br/>`status` | iOS, Android | Shows the system health data permission dialog when it can still be shown, and returns the resulting state. |
+| `dsx.module.healthkit.permission.status()` | `types`?: array | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the health data permission without ever showing a dialog. |
+| `dsx.module.healthkit.read()` | `days`?: number<br/>`raw`?: boolean<br/>`types`?: array | object | iOS, Android | Reads health data for the types you list, as daily totals or as individual samples. |
+| `dsx.module.healthkit.status()` | `types`?: array | `available`<br/>`reason`<br/>`requested`<br/>`types` | iOS, Android | Reports whether health data exists on this device and which types are allowed. |
+| `dsx.module.healthkit.unobserve()` | `types`?: array | nothing | iOS, Android | Stops watching health types for background delivery. |
+| `dsx.module.healthkit.workouts()` | `days`?: number<br/>`included`?: array | array | iOS, Android | Lists the person's workouts for the last days, with the totals you ask for. |
+| `dsx.module.healthkit.write()` | `type`: string<br/>`unit`?: string<br/>`value`: number | `type`<br/>`value`<br/>`written` | iOS, Android | Saves one health value, such as a weight, to Apple Health or Health Connect. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Health read prompt (`usage_share_description`) | The message shown when iOS asks permission to read Health data. |
+| Health write prompt (`usage_update_description`) | The message shown when iOS asks permission to save data to Health. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `readhealthkit://` | `dsx.module.healthkit.read()` |
+| `writehealthkit://` | `dsx.module.healthkit.write()` |
+| `healthkit://state` | `dsx.module.healthkit.status()` |
+| `healthkit://observe` | `dsx.module.healthkit.observe()` |
+| `healthkit://unobserve` | `dsx.module.healthkit.unobserve()` |
+| `healthkit://workouts` | `dsx.module.healthkit.workouts()` |
+| `healthkit://read` | `dsx.module.healthkit.read()` |

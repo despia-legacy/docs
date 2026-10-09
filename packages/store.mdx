@@ -1,0 +1,91 @@
+---
+title: "Store"
+description: "Sell subscriptions and purchases with a native paywall and one simple way to check what a user owns."
+icon: "store"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Shows a paywall you design in JSON, runs checkout, restores purchases and tells you which entitlements a user has, in the same shape on every platform. It works through Apple StoreKit 2 or RevenueCat. Use it for subscriptions, one-time purchases and paid features. Needs products set up in the App Store or Google Play, or a RevenueCat account.
+
+**When to use it.** Reach for it when your app sells subscriptions or one-off purchases and you want one set of calls for paywall, checkout, restore and what a person owns, on both iOS and Android. If you already run everything in RevenueCat you can pick that as the provider and keep the same calls.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.store.storefront()
+else if (rt.kind === 'v3') despia('getstorelocation://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `store` package is on the global `window.dsx`. `dsx.has('store')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('store')) {
+  // Reads which country's store the person is using, as a country code.
+  const storefront = await window.dsx.module.store.storefront()
+
+  // Opens the store's own screen for managing subscriptions, where the person can cancel or change plan.
+  const manage = await window.dsx.module.store.manage()
+
+  // Shows Google Play's own in-app message about a billing problem, such as a declined card during a grace period, so the person can fix it without leaving the app.
+  const billingMessages = await window.dsx.module.store.billingMessages()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.store.billingMessages()` | none | `outcome`<br/>`purchaseToken` | Android | Shows Google Play's own in-app message about a billing problem, such as a declined card during a grace period, so the person can fix it without leaving the app. |
+| `dsx.module.store.catalog()` | `product`?: string[]<br/>`provider`?: string | `products`<br/>`provider` | iOS, Android | Reads store products with their titles and prices for a list of ids, so you can show prices in your own screens. |
+| `dsx.module.store.checkout()` | `appAccountToken`?: string<br/>`coins`?: boolean<br/>`externalId`?: string<br/>`kind`?: string<br/>`offer`?: string<br/>`offerSignature`?: object<br/>`product`: string<br/>`provider`?: string | `entitlements`<br/>`kind`<br/>`outcome`<br/>`platform`<br/>`product`<br/>`provider`<br/>`raw`<br/>`transaction` | iOS, Android | Starts the store payment sheet for one product and resolves with the outcome and the transaction. |
+| `dsx.module.store.dismiss()` | `outcome`?: string | `dismissed` | iOS, Android | Closes the open paywall and resolves it with the outcome you name. |
+| `dsx.module.store.entitlements()` | `provider`?: string | `entitlements`<br/>`provider` | iOS, Android | Lists what the person owns right now, as entitlement ids from RevenueCat or product ids from the store. |
+| `dsx.module.store.manage()` | `product`?: string<br/>`provider`?: string | `presented` | iOS, Android | Opens the store's own screen for managing subscriptions, where the person can cancel or change plan. |
+| `dsx.module.store.offers()` | `product`: string | `eligibleForIntro`<br/>`offers`<br/>`product` | iOS, Android | Lists every offer a product carries, such as free trials and promotional prices, in one shape for both stores. |
+| `dsx.module.store.paywall()` | `accent`?: string<br/>`actions`?: string[]<br/>`appAccountToken`?: string<br/>`balance`?: number<br/>`coins`?: object[]<br/>`countdown`?: number<br/>`cta`?: string<br/>`data`?: object<br/>`display`?: string<br/>`entitlement`?: string<br/>`externalId`?: string<br/>`features`?: string[]<br/>`footer`?: object<br/>`header`?: object<br/>`mode`?: string<br/>`products`?: object[]<br/>`provider`?: string<br/>`restore`?: boolean<br/>`subtitle`?: string<br/>`template`?: string<br/>`theme`?: object<br/>`title`?: string<br/>`token`?: string | stream (events: `impression`) | iOS, Android | Builds and shows a native paywall from a JSON description of products, features and coins, and resolves when the person buys, restores or closes it. |
+| `dsx.module.store.product()` | `product`: string<br/>`provider`?: string | `description`<br/>`id`<br/>`introductory_offer`<br/>`price`<br/>`store`<br/>`subscription`<br/>`title`<br/>`type` | iOS, Android | Reads one product from the store with its title, description, price and subscription details. |
+| `dsx.module.store.receipts()` | `provider`?: string | `provider`<br/>`transactions` | iOS, Android | Lists the person's transactions the store knows about, for example to send to your server for checking. |
+| `dsx.module.store.redeemCode()` | `code`?: string | `presented` | iOS, Android | Takes the person to the store's own screen for redeeming an offer code. |
+| `dsx.module.store.refund()` | `product`?: string<br/>`transaction`?: string | `outcome` | iOS | Shows Apple's refund request sheet for a purchase the person already made. |
+| `dsx.module.store.restore()` | `provider`?: string<br/>`sync`?: boolean | `restored` | iOS, Android | Asks the store to bring back purchases the person made before, for example on a new phone. |
+| `dsx.module.store.select()` | `productId`: string | `selectedProduct` | iOS, Android | Marks a product as chosen, as plain state, so a plan picker drawn in any markup can drive the paywall. It works on every platform including the web. |
+| `dsx.module.store.storefront()` | none | `alpha3`<br/>`countryCode`<br/>`id` | iOS, Android | Reads which country's store the person is using, as a country code. |
+| `dsx.module.store.subscription()` | `group`?: string<br/>`product`?: string<br/>`provider`?: string | `billingIssue`<br/>`gracePeriodEndsAt`<br/>`provider`<br/>`renewsAt`<br/>`state`<br/>`subscriptions`<br/>`willRenew` | iOS, Android | Reads the renewal state of the person's active subscription, including grace period and billing problems, which entitlements alone cannot tell you. |
+| `dsx.module.store.update()` | `data`?: object | `updated` | iOS, Android | Changes what a paywall that is already open shows, by name, without closing it. |
+
+## Events
+
+Subscribe with `window.dsx.module.store.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `impression` | Fires when the paywall has been built and shown. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Purchase provider (`provider`) | Optional: which provider runs purchases and answers what a person owns (store, revenuecat or commerce). Empty means the one provider package this app includes, or the App Store and Google Play directly. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getstorelocation://` | `dsx.module.store.storefront()` |
+| `cancelinapppurchase://` | `dsx.module.store.manage()` |

@@ -1,0 +1,93 @@
+---
+title: "AppsFlyer"
+description: "Attribute installs and purchases to ad campaigns with AppsFlyer."
+icon: "chart-pie-simple"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Starts the AppsFlyer SDK at launch, logs in-app events and ad revenue, reports where an install came from and resolves OneLink deep links into your app. Does nothing until a dev key is set. Needs an AppsFlyer account, your dev key and, on iOS, your Apple app ID.
+
+**When to use it.** Use it when you buy ads and need to know which campaign produced an install or a purchase. It does nothing until you set your AppsFlyer dev key.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.appsflyer.get_uid()
+else if (rt.kind === 'v3') despia('appsflyer://get_uid')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `appsflyer` package is on the global `window.dsx`. `dsx.has('appsflyer')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('appsflyer')) {
+  // Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user.
+  const logEvent = await window.dsx.module.appsflyer.logEvent({ event_name: "purchase", event_values: {"value": 9.99} })
+
+  // Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices.
+  const setUserId = await window.dsx.module.appsflyer.setUserId({ customer_user_id: "u_12345" })
+
+  // Returns the AppsFlyer id of this install, which you can send to your server to match it with AppsFlyer reports.
+  const getUid = await window.dsx.module.appsflyer.get_uid()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.appsflyer.get_attribution()` | none | `attribution` | iOS, Android | Returns where this install came from: the ad network, campaign, ad and deep link details AppsFlyer recorded. |
+| `dsx.module.appsflyer.get_uid()` | none | `uid` | iOS, Android | Returns the AppsFlyer id of this install, which you can send to your server to match it with AppsFlyer reports. |
+| `dsx.module.appsflyer.install()` | `token`?: string | `adGroup`<br/>`campaign`<br/>`creative`<br/>`method`<br/>`referrer`<br/>`source` | iOS, Android | Gives the growth package this install's attribution as a normalised record, or nothing for organic installs. |
+| `dsx.module.appsflyer.logAdRevenue()` | `ad_platform`: string<br/>`ad_type`?: string<br/>`ad_unit_id`?: string<br/>`currency`?: string<br/>`revenue`: number | `ok` | iOS, Android | Reports the money earned from showing one ad, so AppsFlyer can include ad revenue in your campaign return. |
+| `dsx.module.appsflyer.logEvent()` | `event_name`: string<br/>`event_values`?: object | `ok` | iOS, Android | Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user. |
+| `dsx.module.appsflyer.logout()` | none | `ok` | iOS, Android | Clears your user id from AppsFlyer when the person signs out. |
+| `dsx.module.appsflyer.setConsent()` | `ads_personalization`?: boolean<br/>`has_consent`?: boolean<br/>`is_gdpr`?: boolean | `ok` | iOS, Android | Records the person's privacy consent with AppsFlyer, and makes sure it is applied before the install is reported. |
+| `dsx.module.appsflyer.setEmail()` | `email`: string | `ok` | iOS, Android | Gives AppsFlyer the person's email address, hashed, to improve matching of their activity. |
+| `dsx.module.appsflyer.setPhone()` | `phone`: string | `ok` | iOS, Android | Gives AppsFlyer the person's phone number, hashed, to improve matching of their activity. |
+| `dsx.module.appsflyer.setUserId()` | `customer_user_id`: string | `ok` | iOS, Android | Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices. |
+
+## Events
+
+Subscribe with `window.dsx.module.appsflyer.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `deep_link` | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Apple app ID (`apple_app_id`) | The app's numeric App Store ID used by AppsFlyer. |
+| Debug mode (`debug_mode`) | Verbose AppsFlyer SDK logging for integration testing. |
+| Dev key (`dev_key`) | Your AppsFlyer developer key from the AppsFlyer dashboard. |
+| OneLink domains (`onelink_domains`) | Your OneLink domains, so those links go to AppsFlyer instead of opening in the app. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `appsflyer://log_event` | `dsx.module.appsflyer.logEvent()` |
+| `appsflyer://set_user_id` | `dsx.module.appsflyer.setUserId()` |
+| `appsflyer://get_uid` | `dsx.module.appsflyer.get_uid()` |
+| `appsflyer://set_email` | `dsx.module.appsflyer.setEmail()` |
+| `appsflyer://set_phone` | `dsx.module.appsflyer.setPhone()` |
+| `appsflyer://log_ad_revenue` | `dsx.module.appsflyer.logAdRevenue()` |
+| `appsflyer://get_attribution` | `dsx.module.appsflyer.get_attribution()` |
+| `appsflyer://set_consent` | `dsx.module.appsflyer.setConsent()` |

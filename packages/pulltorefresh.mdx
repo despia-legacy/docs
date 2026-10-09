@@ -1,0 +1,58 @@
+---
+title: "PullToRefresh"
+description: "Let people pull down on a web page in your app to reload it."
+icon: "arrows-rotate"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Adds the familiar pull-down-to-refresh control to the web page your app shows, with a spinner whose colours you can set for light and dark. It reloads the page, and you can also start a refresh from code. Screens built with DSX use the native refreshable element instead.
+
+**When to use it.** Reach for it when your app shows a web page and people expect to pull down to refresh it. For native DSX screens use the refreshable element instead.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.pulltorefresh.set({ enabled: true })
+else if (rt.kind === 'v3') despia('enablepulltorefresh://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `pulltorefresh` package is on the global `window.dsx` and is built into every app:
+
+```javascript
+// built into every Despia v4 app
+if (window.dsx) {
+  // Turns the pull-to-refresh control on or off and sets its spinner and background colours. Anything you leave out stays as it was.
+  const setResult = await window.dsx.module.pulltorefresh.set({ enabled: true })
+
+  // Starts a refresh from code, as if the person had pulled down. It shows the spinner, reloads the page and finishes when the reloaded page is ready or after 10 seconds.
+  const refresh = await window.dsx.module.pulltorefresh.refresh()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.pulltorefresh.refresh()` | none | `refreshed` | iOS, Android | Starts a refresh from code, as if the person had pulled down. It shows the spinner, reloads the page and finishes when the reloaded page is ready or after 10 seconds. |
+| `dsx.module.pulltorefresh.set()` | `background`?: string<br/>`enabled`?: boolean<br/>`tint`?: string | `enabled` | iOS, Android | Turns the pull-to-refresh control on or off and sets its spinner and background colours. Anything you leave out stays as it was. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `enablepulltorefresh://` | `dsx.module.pulltorefresh.set()` |
+| `disablepulltorefresh://` | `dsx.module.pulltorefresh.set()` |

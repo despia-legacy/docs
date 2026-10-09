@@ -1,0 +1,44 @@
+---
+title: "FileSharing"
+description: "Send a file to other apps through the system share sheet."
+icon: "share-from-square"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Opens the share sheet with a file attached, so the user can send it to Messages, Mail, AirDrop, Drive, Files or any app that accepts shared files. You can share a file that is already on the device, or give an https address and the package downloads it first. Links that the server marks as attachments are shared automatically. You write the button or link that asks for the share.
+
+**When to use it.** Use it when the user should send, save or open a file in another app, such as a report, a ticket or an exported image. If you only want to show a link or a short text, a normal web share is enough.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `filesharing` package is on the global `window.dsx`. `dsx.has('filesharing')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('filesharing')) {
+  // Opens the system share sheet with a file, taken from a device path or downloaded first from an https address.
+  const shareResult = await window.dsx.module.filesharing.share({ url: "https://files.example.com/report.pdf" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.filesharing.share()` | `filename`?: string<br/>`path`?: string<br/>`url`?: string | `cancelled`<br/>`delivery`<br/>`path`<br/>`shared` | iOS, Android | Opens the system share sheet with a file, taken from a device path or downloaded first from an https address. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `sharefile://` | `dsx.module.filesharing.share()` |
+| `download://` | `dsx.module.filesharing.share()` |

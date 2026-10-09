@@ -1,0 +1,110 @@
+---
+title: "Use from React"
+description: "Call Despia packages from a React app through the global window.dsx, with no npm package."
+icon: "react"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
+<Info>Modern API. Requires Despia version 4 or greater.</Info>
+
+The Modern API is a global, so React needs nothing installed. Read `window.dsx` after the component mounts (inside `useEffect`), which also keeps server-side rendering (Next.js, Remix) safe.
+
+## A small hook
+
+```jsx useDespia.js
+import { useEffect, useState } from 'react'
+
+// window.dsx exists only inside a Despia version 4 app
+export function useDespia() {
+  const [dsx, setDsx] = useState(null)
+  useEffect(() => {
+    if (window.dsx && window.dsx.module) setDsx(window.dsx)
+  }, [])
+  return dsx // null in a normal browser or on an older Despia version
+}
+```
+
+## A buy button
+
+```jsx BuyButton.jsx
+import { useEffect, useState } from 'react'
+import { useDespia } from './useDespia'
+
+export function BuyButton({ userId }) {
+  const dsx = useDespia()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  // keep the UI in sync when entitlements change
+  useEffect(() => {
+    if (!dsx || !dsx.has('revenuecat')) return
+    return dsx.module.revenuecat.on('customerInfo', (data) => {
+      console.log('customer changed', data)
+    }) // on() returns the unsubscribe function, so React cleans it up
+  }, [dsx])
+
+  if (!dsx || !dsx.has('revenuecat')) return null // web fallback goes here
+
+  async function buy() {
+    setBusy(true)
+    setError(null)
+    try {
+      await dsx.module.haptic.light()
+      const result = await dsx.module.revenuecat.purchase({
+        external_id: userId,
+        product: ['coins_100'],
+      })
+      console.log('active entitlements', result.active_entitlements)
+    } catch (err) {
+      setError(err.code) // for example 'not_ready'
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button onClick={buy} disabled={busy}>
+      {busy ? 'Buying…' : 'Buy 100 coins'}
+      {error && <small> ({error})</small>}
+    </button>
+  )
+}
+```
+
+## TypeScript
+
+`window.dsx` is not typed for you yet. Declare it once:
+
+```typescript global.d.ts
+declare global {
+  interface Window {
+    dsx?: {
+      module: any
+      has(nameOrScheme: string): boolean
+      version(nameOrScheme: string): string | null
+      on(scheme: string, handler: (event: any) => void): () => void
+    }
+  }
+}
+export {}
+```
+
+## Streams in React
+
+Stop a stream when the component unmounts:
+
+```jsx
+useEffect(() => {
+  if (!window.dsx || !window.dsx.has('speechrecognition')) return
+  const sub = window.dsx.module.speechrecognition.start({ interim: true }, (event) => {
+    if (event.event === 'result') console.log(event.data)
+  })
+  return () => sub.stop()
+}, [])
+```
+
+See the [Modern API overview](/packages/overview) for the calling convention and errors, and each package page for its actions.

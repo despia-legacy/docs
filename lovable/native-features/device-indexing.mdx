@@ -4,6 +4,10 @@ icon: "eye"
 description: "Access the unique device identifier of native mobile devices in your Lovable application."
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 <Danger>
   **Despia uses Apple’s IDFV for device indexing, which resets when all apps from the same developer are uninstalled. Persistent identity across installs is coming soon through Despia’s new Identity Vault and requires integration with Despia’s ATT Manager for Apple compliance.**
 </Danger>

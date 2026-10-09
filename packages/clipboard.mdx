@@ -1,0 +1,68 @@
+---
+title: "Clipboard"
+description: "Read from and write to the system clipboard, with a way to peek without triggering the paste alert."
+icon: "clipboard"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Gives you one call to read text, links, rich text, images and files from the clipboard, one to write them with options such as expiry and sensitive content, and one to check what is there without reading it. A change notification tells you when the clipboard changes. You write the buttons and screens that use it.
+
+**When to use it.** Reach for it for copy buttons, paste buttons and share-to-clipboard features. For plain copy of a short string on a web page the browser clipboard may be enough, but this also handles images and expiry.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.clipboard.read()
+else if (rt.kind === 'v3') despia('getclipboard://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `clipboard` package is on the global `window.dsx`. `dsx.has('clipboard')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('clipboard')) {
+  // Reads the current clipboard as text, a link, rich text, an image or files.
+  const readResult = await window.dsx.module.clipboard.read({ type: "image" })
+
+  // Checks what kinds of content are on the clipboard without reading it, so no paste alert appears.
+  const inspect = await window.dsx.module.clipboard.inspect()
+
+  // Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings.
+  const writeResult = await window.dsx.module.clipboard.write({ text: "Copied value" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.clipboard.inspect()` | `patterns`?: string[] | `changeCount`<br/>`hasFiles`<br/>`hasHTML`<br/>`hasImage`<br/>`hasText`<br/>`hasURL`<br/>`patterns`<br/>`pendingPatterns`<br/>`unsupportedPatterns` | iOS, Android | Checks what kinds of content are on the clipboard without reading it, so no paste alert appears. |
+| `dsx.module.clipboard.read()` | `type`?: "text" \\| "url" \\| "html" \\| "image" \\| "files" | `files`<br/>`html`<br/>`image`<br/>`text`<br/>`url` | iOS, Android | Reads the current clipboard as text, a link, rich text, an image or files. |
+| `dsx.module.clipboard.write()` | `expiresIn`?: number<br/>`files`?: string[]<br/>`html`?: string<br/>`image`?: string<br/>`localOnly`?: boolean<br/>`sensitive`?: boolean<br/>`text`?: string<br/>`url`?: string | `expiry`<br/>`ignored`<br/>`ok` | iOS, Android | Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings. |
+
+## Events
+
+Subscribe with `window.dsx.module.clipboard.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `change` | The system clipboard changed. It starts after the first inspect call. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getclipboard://` | `dsx.module.clipboard.read()` |

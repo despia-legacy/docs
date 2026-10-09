@@ -1,0 +1,72 @@
+---
+title: "Device"
+description: "Read the device, the app's own identity, the screen, locale, battery and display capabilities."
+icon: "mobile"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Gives you plain answers about the phone or tablet the app runs on: hardware and OS, the app's version and first-launch state, screen size with real safe-area insets, language and region, battery and thermal state, and which hardware features exist. It needs no permission and never polls. You decide how your screens adapt to the answers.
+
+**When to use it.** Reach for it when a screen must adapt to the device: safe-area padding, a first-launch welcome, a what's-new sheet, lighter effects on old or hot hardware, or locale-aware formatting. It does not tell you whether the user granted a permission; use the package that owns that feature.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.device.app()
+else if (rt.kind === 'v3') despia('getappversion://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `device` package is on the global `window.dsx`. `dsx.has('device')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('device')) {
+  // Returns the app's own identity, such as its name, version and bundle id, plus whether this is the first launch and which version was installed before.
+  const app = await window.dsx.module.device.app()
+
+  // Returns yes-or-no facts about hardware and display features, such as cellular, Apple Pencil support, haptics and HDR.
+  const capabilities = await window.dsx.module.device.capabilities()
+
+  // Returns facts about the hardware and operating system, such as the brand, model, OS version and memory.
+  const info = await window.dsx.module.device.info()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.device.app()` | none | `buildNumber`<br/>`bundleId`<br/>`installReferrer`<br/>`installSource`<br/>`installTime`<br/>`installationId`<br/>`isFirstLaunch`<br/>`lastUpdateTime`<br/>`name`<br/>`previousVersion`<br/>`version` | iOS, Android | Returns the app's own identity, such as its name, version and bundle id, plus whether this is the first launch and which version was installed before. |
+| `dsx.module.device.capabilities()` | none | `alwaysOnDisplay`<br/>`cellular`<br/>`haptics`<br/>`hdr`<br/>`pencil`<br/>`telephony`<br/>`wideColor` | iOS, Android | Returns yes-or-no facts about hardware and display features, such as cellular, Apple Pencil support, haptics and HDR. |
+| `dsx.module.device.info()` | none | `brand`<br/>`designName`<br/>`deviceType`<br/>`deviceYearClass`<br/>`isDevice`<br/>`isRooted`<br/>`manufacturer`<br/>`model`<br/>`modelId`<br/>`osBuild`<br/>`osName`<br/>`osVersion`<br/>`supportedCpuArchitectures`<br/>`totalMemory` | iOS, Android | Returns facts about the hardware and operating system, such as the brand, model, OS version and memory. |
+| `dsx.module.device.locale()` | none | `calendar`<br/>`currency`<br/>`hour12`<br/>`isRTL`<br/>`locales`<br/>`measurementSystem`<br/>`region`<br/>`temperatureUnit`<br/>`timezone` | iOS, Android | Returns the user's language preferences, region, time zone, currency, measurement system and text direction. |
+| `dsx.module.device.power()` | none | `level`<br/>`lowPowerMode`<br/>`state`<br/>`thermalState` | iOS, Android | Returns the battery level and charging state, whether low power mode is on, and how hot the device is. |
+| `dsx.module.device.screen()` | none | `cornerRadius`<br/>`fontScale`<br/>`hasDynamicIsland`<br/>`hasNotch`<br/>`height`<br/>`insets`<br/>`refreshRate`<br/>`scale`<br/>`width` | iOS, Android | Returns the screen size, pixel scale, text scale, refresh rate, safe-area insets and corner radius. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Installation id (`generate_installation_id`) | Mint a random per-install UUID that survives across launches. |
+| Track battery (`track_battery`) | Keep the battery level and charging state live, so markup can react to them. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getappversion://` | `dsx.module.device.app()` |

@@ -1,0 +1,69 @@
+---
+title: "Haptics"
+description: "Add vibration feedback to taps and results."
+icon: "waveform"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Plays short vibrations: light, medium and heavy taps for touches, and success, warning and error patterns for outcomes. Also supports custom patterns. Use it to make buttons and confirmations feel responsive. Needs no setup or permission.
+
+**When to use it.** Use it for a small physical confirmation of a touch or an outcome, such as a toggle, a saved item or a failed payment. Do not buzz on every scroll frame or for things the person cannot connect to an action.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.haptic.light()
+else if (rt.kind === 'v3') despia('lighthaptic://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `haptic` package is on the global `window.dsx`. `dsx.has('haptic')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('haptic')) {
+  // Plays a light single tap.
+  const light = await window.dsx.module.haptic.light()
+
+  // Plays a medium-firm single tap.
+  const medium = await window.dsx.module.haptic.medium()
+
+  // Plays a firm single tap.
+  const heavy = await window.dsx.module.haptic.heavy()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.haptic.error()` | none | `ok` | iOS, Android | Plays a sharp triple tap that signals that an action failed. |
+| `dsx.module.haptic.heavy()` | none | `ok` | iOS, Android | Plays a firm single tap. |
+| `dsx.module.haptic.light()` | none | `ok` | iOS, Android | Plays a light single tap. |
+| `dsx.module.haptic.medium()` | none | `ok` | iOS, Android | Plays a medium-firm single tap. |
+| `dsx.module.haptic.pattern()` | `events`: object[] | `fallback`<br/>`ok` | iOS, Android | Plays a custom sequence of vibrations that you describe event by event. |
+| `dsx.module.haptic.success()` | none | `ok` | iOS, Android | Plays an upbeat double tap that signals something finished cleanly. |
+| `dsx.module.haptic.warning()` | none | `ok` | iOS, Android | Plays two heavy taps that signal a problem the person can recover from. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `lighthaptic://` | `dsx.module.haptic.light()` |
+| `mediumhaptic://` | `dsx.module.haptic.medium()` |
+| `heavyhaptic://` | `dsx.module.haptic.heavy()` |
+| `successhaptic://` | `dsx.module.haptic.success()` |
+| `warninghaptic://` | `dsx.module.haptic.warning()` |
+| `errorhaptic://` | `dsx.module.haptic.error()` |

@@ -4,6 +4,10 @@ description: "Detect when your app enters the foreground or background using glo
 icon: "eye"
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 Despia fires global `window.focusin()` and `window.focusout()` callbacks whenever the app moves between foreground and background. Define these functions in your web code to react to lifecycle changes such as resuming sessions, refreshing data, or pausing media.
 
 ---

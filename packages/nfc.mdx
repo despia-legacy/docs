@@ -1,0 +1,74 @@
+---
+title: "NFC"
+description: "Read and write NFC tags from your app."
+icon: "wifi"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Reads NDEF tags and writes a text record to them. Needs the NFC Tag Reading capability enabled on your Apple App ID and a phone that supports NFC. It is off by default and you turn it on when you want it.
+
+**When to use it.** Reach for it when your app should read an NFC tag the user holds to the phone, or write a short text onto one, for example for check-ins, product tags or pairing. It reads and writes text tags only, and needs a phone with NFC.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.nfc.read()
+else if (rt.kind === 'v3') despia('readnfc://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `nfc` package is on the global `window.dsx`. `dsx.has('nfc')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('nfc')) {
+  // Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records.
+  const readResult = await window.dsx.module.nfc.read({ message: "Hold a tag near the phone." })
+
+  // Opens the system scan sheet and writes one text record onto a writable NDEF tag the user holds to the phone.
+  const writeResult = await window.dsx.module.nfc.write({ lang: "en", message: "Hold a writable tag near the phone.", text: "hello" })
+
+  // Lets the user change a limited NFC selection where the system offers one; otherwise it reports the current state with changed set to false.
+  const permissionManage = await window.dsx.module.nfc.permission.manage()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.nfc.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the user change a limited NFC selection where the system offers one; otherwise it reports the current state with changed set to false. |
+| `dsx.module.nfc.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the user can change the NFC permission. |
+| `dsx.module.nfc.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Shows the system NFC permission dialog when the OS can still ask, and reports the resulting state. |
+| `dsx.module.nfc.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current NFC permission without ever showing a dialog, so a settings screen can call it every time it appears. |
+| `dsx.module.nfc.read()` | `message`?: string | `records`<br/>`tagId` | iOS, Android | Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records. |
+| `dsx.module.nfc.write()` | `lang`?: string<br/>`message`?: string<br/>`text`: string | `ok` | iOS, Android | Opens the system scan sheet and writes one text record onto a writable NDEF tag the user holds to the phone. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Permission prompt (`usage_description`) | The message shown when iOS asks the user for NFC tag scanning. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `readnfc://` | `dsx.module.nfc.read()` |
+| `writenfc://` | `dsx.module.nfc.write()` |
+| `nfc://read` | `dsx.module.nfc.read()` |
+| `nfc://write` | `dsx.module.nfc.write()` |

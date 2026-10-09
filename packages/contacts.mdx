@@ -1,0 +1,81 @@
+---
+title: "Contacts"
+description: "Let users share a contact, or read and edit the address book."
+icon: "address-book"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+The default is the system contact picker, which needs no permission and only returns the contact the user chooses. For features that need more, it can list, search, add, update and remove contacts and groups after asking permission, with text you set.
+
+**When to use it.** Use pick when the user needs to choose one or a few people for a feature such as an invite. Only use the list, add and remove actions when the feature really needs the address book, because App Review rejects apps that ask for more than they use.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.contacts.read()
+else if (rt.kind === 'v3') despia('contacts://read')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `contacts` package is on the global `window.dsx`. `dsx.has('contacts')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('contacts')) {
+  // Returns the whole address book at once as names mapped to phone numbers, asking for access first.
+  const readResult = await window.dsx.module.contacts.read()
+
+  // Asks for the address book with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it.
+  const permissionRequest = await window.dsx.module.contacts.permission.request({ level: "read" })
+
+  // Saves a new contact in the address book; it needs the user's write permission.
+  const add = await window.dsx.module.contacts.add({ contact: {"emails": [{"label": "work", "value": "ada@example.com"}], "familyName": "Lovelace", "givenName": "Ada"} })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.contacts.add()` | `contact`: object<br/>`prompt`?: boolean | `id` | iOS, Android | Saves a new contact in the address book; it needs the user's write permission. |
+| `dsx.module.contacts.get()` | `fields`?: string[]<br/>`id`: string<br/>`prompt`?: boolean | `contact` | iOS, Android | Returns one contact with all its fields, found by the id that pick or list gave you. |
+| `dsx.module.contacts.groups()` | `prompt`?: boolean | `groups` | iOS, Android | Lists the contact groups in the address book; groups can be read but not edited. |
+| `dsx.module.contacts.list()` | `after`?: string<br/>`fields`?: string[]<br/>`limit`?: int<br/>`prompt`?: boolean<br/>`query`?: string | `access`<br/>`contacts`<br/>`endCursor`<br/>`hasNextPage` | iOS, Android | Returns one page of contacts from the address book, optionally filtered by name and limited to the fields you ask for. |
+| `dsx.module.contacts.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the user change which items this app can see when the address book is limited, without leaving the app; elsewhere it only reports the current state. |
+| `dsx.module.contacts.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the user can change a denied permission. |
+| `dsx.module.contacts.permission.request()` | `level`?: string | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks for the address book with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it. |
+| `dsx.module.contacts.permission.status()` | `level`?: string | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current state of the address book without ever showing a dialog, so a settings screen can call it every time it appears. |
+| `dsx.module.contacts.pick()` | `fields`?: string[]<br/>`multiple`?: boolean | `cancelled`<br/>`contacts`<br/>`multiple` | iOS, Android | Opens the system contact picker and returns only the contacts the user chooses, without asking for any permission. |
+| `dsx.module.contacts.read()` | `groupBy`?: "contact" \\| "name"<br/>`prompt`?: boolean | object | iOS, Android | Returns the whole address book at once as names mapped to phone numbers, asking for access first. |
+| `dsx.module.contacts.remove()` | `id`: string<br/>`prompt`?: boolean | `removed` | iOS, Android | Deletes one contact from the address book, which the app cannot undo. |
+| `dsx.module.contacts.update()` | `contact`: object<br/>`id`: string<br/>`prompt`?: boolean | `id` | iOS, Android | Changes fields on an existing contact and leaves every field you do not send as it was; an empty list clears that field. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Contacts page size (`page_size`) | How many contacts one dsx.module.contacts.list() page returns when the caller does not pass a limit. |
+| Contacts permission prompt (`usage_description`) | The message iOS shows when the app asks to read the user's contacts. Say what the app does with them, in one concrete sentence. |
+| Contacts write permission prompt (`write_usage_description`) | The message iOS shows when the app asks to add or change contacts without reading the rest of the address book. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `readcontacts://` | `dsx.module.contacts.read()` |
+| `contacts://read` | `dsx.module.contacts.read()` |
+| `requestcontactpermission://` | `dsx.module.contacts.permission.request()` |

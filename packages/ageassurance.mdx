@@ -1,0 +1,72 @@
+---
+title: "AgeAssurance"
+description: "Ask the phone's operating system for the user's age range."
+icon: "id-card"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Uses Apple's Declared Age Range on iOS and Google's Play Age Signals on Android to learn which age band the user is in, without asking for a birthdate. Both give the same answer shape, with a yes, no or unknown result for each age you test. It asks the system to show its own prompt. You write what your app does for each age group.
+
+**When to use it.** Use it when you must treat under-age users differently, for example to show or hide adult content. Check for yes with a strict true test, because unknown is not the same as no. If the system cannot answer, ask for a birthdate yourself.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.ageassurance.last()
+else if (rt.kind === 'v3') despia('ageassurance://last')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `ageassurance` package is on the global `window.dsx`. `dsx.has('ageassurance')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('ageassurance')) {
+  // Asks the system for the user's age band and tells whether the user is at least each age you list; the system may show a prompt.
+  const check = await window.dsx.module.ageassurance.check({ gates: [13, 15, 17] })
+
+  // On Android, starts Google's verification step for the user and then returns a fresh answer; on iOS it reports that it is not supported.
+  const resolve = await window.dsx.module.ageassurance.resolve({ gates: [18] })
+
+  // Returns the most recent age answer without asking again, or an unavailable answer if nothing has been asked yet.
+  const last = await window.dsx.module.ageassurance.last()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.ageassurance.check()` | `gates`?: int[] | `ageLower`<br/>`ageUpper`<br/>`assurance`<br/>`bridge`<br/>`error`<br/>`gates`<br/>`ok`<br/>`platform`<br/>`platformExtras`<br/>`provider`<br/>`runtime`<br/>`status` | iOS, Android | Asks the system for the user's age band and tells whether the user is at least each age you list; the system may show a prompt. |
+| `dsx.module.ageassurance.forget()` | none | `cleared` | iOS, Android | Drops the saved age answer so the next account on the device does not inherit it. |
+| `dsx.module.ageassurance.last()` | none | `ageLower`<br/>`ageUpper`<br/>`assurance`<br/>`bridge`<br/>`error`<br/>`gates`<br/>`ok`<br/>`platform`<br/>`platformExtras`<br/>`provider`<br/>`runtime`<br/>`status` | iOS, Android | Returns the most recent age answer without asking again, or an unavailable answer if nothing has been asked yet. |
+| `dsx.module.ageassurance.resolve()` | `gates`?: int[] | `ageLower`<br/>`ageUpper`<br/>`assurance`<br/>`bridge`<br/>`error`<br/>`gates`<br/>`ok`<br/>`platform`<br/>`platformExtras`<br/>`provider`<br/>`runtime`<br/>`status` | iOS, Android | On Android, starts Google's verification step for the user and then returns a fresh answer; on iOS it reports that it is not supported. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Default age gates (`default_gates`) | The ages this app asks about when a call passes none. At most three, whole years. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `ageassurance://check` | `dsx.module.ageassurance.check()` |
+| `ageassurance://resolve` | `dsx.module.ageassurance.resolve()` |
+| `ageassurance://last` | `dsx.module.ageassurance.last()` |
+| `ageassurance://forget` | `dsx.module.ageassurance.forget()` |

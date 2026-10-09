@@ -1,0 +1,57 @@
+---
+title: "Spinner"
+description: "Show or hide the page-load activity indicator."
+icon: "spinner"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Puts a centered activity indicator over the web surface and lets you show or hide it from your code. It only draws the spinner and does not decide when to spin: the app shell keeps the loading rules for splash and first load. It follows the live web view across page loads. You decide when to call show and hide.
+
+**When to use it.** Use it when you want to show a loading spinner over the web surface yourself, for example during your own long task. You do not need it for normal page loads, which the app shell handles.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.spinner.show()
+else if (rt.kind === 'v3') despia('spinneron://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `spinner` package is on the global `window.dsx`. `dsx.has('spinner')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('spinner')) {
+  // Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide.
+  const showResult = await window.dsx.module.spinner.show()
+
+  // Hides the activity indicator again.
+  const hideResult = await window.dsx.module.spinner.hide()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.spinner.hide()` | none | `ok` | iOS, Android | Hides the activity indicator again. |
+| `dsx.module.spinner.show()` | none | `ok` | iOS, Android | Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `spinneron://` | `dsx.module.spinner.show()` |
+| `spinneroff://` | `dsx.module.spinner.hide()` |

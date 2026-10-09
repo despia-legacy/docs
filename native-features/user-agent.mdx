@@ -4,6 +4,10 @@ icon: "lightbulb"
 description: "Detect whether your app is running in the Despia native runtime and identify the platform to conditionally render features like in-app purchases or native modules."
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 When your web application runs inside the Despia native runtime, the user agent string includes "despia" along with platform identifiers like "iphone", "ipad", or "android". Check `navigator.userAgent` to detect this and conditionally render platform-specific features.
 
 ---

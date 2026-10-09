@@ -1,0 +1,35 @@
+---
+title: "PostHog"
+description: "Send your app's analytics events to PostHog."
+icon: "chart-column"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Works with the Product analytics package: it takes the events it collects and delivers them to your PostHog project. PostHog accepts events without confirming it kept them, so check its activity view when you first connect. Needs a PostHog account and your project key.
+
+**When to use it.** Use it when you analyse your product in PostHog. It sends the events your app already records to your PostHog project; you do not call it yourself.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `posthog` package is on the global `window.dsx`. `dsx.has('posthog')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('posthog')) {
+  // Sends a batch of recorded events to your PostHog project in one request. The product analytics package calls it for you.
+  const send = await window.dsx.module.posthog.send({ events: [{"anonymousId": "a-1", "at": 1758801600000, "event": "checkout.started", "eventId": "e-1", "platform": "ios", "properties": {}, "sessionId": "s-1", "source": "app"}], token: "phc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.posthog.send()` | `endpoint`?: string<br/>`events`: object[]<br/>`token`: string | `confirmed`<br/>`sent` | iOS, Android | Sends a batch of recorded events to your PostHog project in one request. The product analytics package calls it for you. |

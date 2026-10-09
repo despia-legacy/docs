@@ -1,0 +1,56 @@
+---
+title: "FileUpload"
+description: "Make file inputs in your web pages open the camera, photo library, scanner or file picker."
+icon: "upload"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+When a person taps a file input, the app shows the native source sheet and hands the chosen files back to your page as a normal file selection. Your existing upload code keeps working unchanged. The accept and capture attributes choose which source opens first.
+
+**When to use it.** It works by itself: write an ordinary file input and uploads just work. You rarely call its actions; read its state if you want to show a spinner while a picker is open.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `fileupload` package is on the global `window.dsx` and is built into every app:
+
+```javascript
+// built into every Despia v4 app
+if (window.dsx) {
+  // Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead.
+  const nativeOverwrite = await window.dsx.module.fileupload.nativeOverwrite({ native_overwrite: false })
+
+  // Passes the accept and capture settings of the file input that was tapped, so the next pick opens the matching source.
+  const captureInfo = await window.dsx.module.fileupload.captureInfo({ accept: "image/*", capture: "environment" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.fileupload.captureInfo()` | `accept`?: string<br/>`capture`?: string |  | iOS, Android | Passes the accept and capture settings of the file input that was tapped, so the next pick opens the matching source. |
+| `dsx.module.fileupload.nativeOverwrite()` | `native_overwrite`?: boolean | `native_overwrite` | iOS, Android | Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Camera permission description (`camera_usage_description`) | Turns on the camera in file uploads and says why the app asks for it, for example: Use the camera to capture a photo you choose to upload. Empty (the default): file inputs offer the photo library and files only, and the app declares no camera permission. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `filepicker://` | `dsx.module.fileupload.nativeOverwrite()` |

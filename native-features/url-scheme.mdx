@@ -4,6 +4,10 @@ description: "Set the custom protocol your app registers with iOS and Android so
 icon: "link"
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 Every Despia app registers a private protocol with the operating system at build time. Native social login runs in an isolated browser session that cannot reach your WebView, and this protocol is the only way back: the session fires a link using it, the runtime closes the session and navigates your app to the path it carries. The value is generated from your app name on the first build, and you can override it with any compliant string from the Despia Editor.
 
 <Info>

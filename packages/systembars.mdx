@@ -1,0 +1,69 @@
+---
+title: "SystemBars"
+description: "Control the status bar, the navigation bar and fullscreen mode from your screens."
+icon: "bars"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Sets the colour, icon style and visibility of the status bar and the navigation bar, and switches fullscreen modes for video or immersive content. Unstated fields keep their value, so each screen changes only what it needs. You write the colours and when each screen applies them.
+
+**When to use it.** Use it when a screen needs its own bar colours, hidden bars or a fullscreen video mode. Leave it alone if the default bar look already suits the app.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `systembars` package is on the global `window.dsx`. `dsx.has('systembars')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('systembars')) {
+  // Changes the status bar, the navigation bar or the fullscreen mode. Anything you leave out keeps its current value.
+  const setResult = await window.dsx.module.systembars.set({ status: {"background": "#1A1A2E"} })
+
+  // Reports the page's top colour and background change so the bar can follow the page. The package calls it for you, not your code.
+  const body = await window.dsx.module.systembars.body({ color: "#FFFFFF", duration: 300, easing: "ease-in-out", style: "solid" })
+
+  // Reports whether the page can read the safe-area values on its own. The package calls it for you, not your code.
+  const env = await window.dsx.module.systembars.env({ native: true })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.systembars.body()` | `color`?: string<br/>`duration`?: number<br/>`easing`?: string<br/>`style`?: string | `applied`<br/>`ok`<br/>`transparent` | iOS, Android | Reports the page's top colour and background change so the bar can follow the page. The package calls it for you, not your code. |
+| `dsx.module.systembars.env()` | `native`: boolean | `native`<br/>`ok` | iOS, Android | Reports whether the page can read the safe-area values on its own. The package calls it for you, not your code. |
+| `dsx.module.systembars.immersive()` | `mode`: string | `behavior`<br/>`diagnostics`<br/>`hidesHomeIndicator`<br/>`immersive`<br/>`navigation`<br/>`status` | iOS, Android | Goes fullscreen or back, the same as setting the immersive field. Use it for video players and other full-screen content. |
+| `dsx.module.systembars.set()` | `behavior`?: string<br/>`immersive`?: string<br/>`navigation`?: object<br/>`status`?: object | `behavior`<br/>`diagnostics`<br/>`hidesHomeIndicator`<br/>`immersive`<br/>`navigation`<br/>`status` | iOS, Android | Changes the status bar, the navigation bar or the fullscreen mode. Anything you leave out keeps its current value. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Bottombar (`bottombar`) | Show the home-bar safe-area filler (home-indicator devices, no home button). |
+| Bottom bar background (`bottombar_background_color`) | Bottom bar background color in light mode (#RRGGBB or #RRGGBBAA). |
+| Bottom bar background (dark) (`dark_mode_bottombar_background_color`) | Bottom bar background color in dark mode (#RRGGBB or #RRGGBBAA). |
+| Status bar background (dark) (`dark_mode_status_bar_background_color`) | Status bar background color in dark mode (#RRGGBB or #RRGGBBAA). |
+| Status bar background (`status_bar_background_color`) | Status bar background color in light mode (#RRGGBB or #RRGGBBAA). |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `statusbarbackgroundcolor://` | `dsx.module.systembars.set()` |
+| `statusbartextcolor://` | `dsx.module.systembars.set()` |
+| `statusbarcolor://` | `dsx.module.systembars.set()` |
+| `navbartextcolor://` | `dsx.module.systembars.set()` |
+| `hidebars://` | `dsx.module.systembars.set()` |
+| `bottombarcolor://` | `dsx.module.systembars.set()` |

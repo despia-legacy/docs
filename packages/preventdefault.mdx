@@ -1,0 +1,43 @@
+---
+title: "PreventDefault"
+description: "Stop iOS from scrolling the page when the keyboard opens."
+icon: "hand"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Turns off the built-in iOS keyboard autoscroll on the main web view, and can hand it back. Use it when your page manages its own message composer or sticky bar and the system scroll fights it. One call is enough, and the setting lasts for the session. You write the layout that reacts to the keyboard.
+
+**When to use it.** Use it when your web page has a composer or sticky bar and iOS pushes the page around when the keyboard opens. Leave it alone if the default keyboard scrolling already works for your screens.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `preventdefault` package is on the global `window.dsx`. `dsx.has('preventdefault')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('preventdefault')) {
+  // Turns the native iOS keyboard autoscroll off, or back on. Called with no value it prevents autoscroll. The default at launch is autoscroll restored.
+  const autoscroll = await window.dsx.module.preventdefault.autoscroll({ enabled: true })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.preventdefault.autoscroll()` | `enabled`?: boolean | `prevented` | iOS, Android | Turns the native iOS keyboard autoscroll off, or back on. Called with no value it prevents autoscroll. The default at launch is autoscroll restored. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `preventdefault://autoscroll` | `dsx.module.preventdefault.autoscroll()` |

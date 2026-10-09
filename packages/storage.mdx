@@ -1,0 +1,75 @@
+---
+title: "ValueStore"
+description: "Save small settings and values on the device so they are still there next time the app opens."
+icon: "database"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+A simple store for things like a theme choice, a language or a last-seen date. Values keep their type: a number comes back a number. Read or write one value or many at once in a single call, list keys by prefix a page at a time, and every change is announced so two screens never disagree. Values stay on the device, with no account or keys needed.
+
+**When to use it.** Reach for it to remember small things between launches, such as a theme, a language or the last screen. It is not meant for large files or secrets; use files for big data and a secure store for credentials.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.storage.get({ key: "appSettings" })
+else if (rt.kind === 'v3') despia('readvalue://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `storage` package is on the global `window.dsx`. `dsx.has('storage')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('storage')) {
+  // Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type.
+  const setResult = await window.dsx.module.storage.set({ key: "theme", value: "dark" })
+
+  // Reads one saved value by its key, with its original type, and says whether the key was found.
+  const getResult = await window.dsx.module.storage.get({ key: "theme" })
+
+  // Deletes every key in this app's store and says how many were removed.
+  const clear = await window.dsx.module.storage.clear()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.storage.clear()` | none | `ok`<br/>`removed` | iOS, Android | Deletes every key in this app's store and says how many were removed. |
+| `dsx.module.storage.get()` | `key`: string | `found`<br/>`value` | iOS, Android | Reads one saved value by its key, with its original type, and says whether the key was found. |
+| `dsx.module.storage.list()` | `after`?: string<br/>`end`?: string<br/>`limit`?: number<br/>`prefix`?: string<br/>`reverse`?: boolean<br/>`start`?: string<br/>`values`?: boolean | `cursor`<br/>`items`<br/>`more` | iOS, Android | Returns one page of saved keys, optionally filtered by prefix or range and optionally with their values. |
+| `dsx.module.storage.multiGet()` | `keys`: string[] | `found`<br/>`values` | iOS, Android | Reads several keys in one call. Keys that are not saved are left out of the answer. |
+| `dsx.module.storage.multiRemove()` | `keys`: string[] | `ok`<br/>`removed` | iOS, Android | Deletes several keys in one call, written together. Keys that are not there are ignored. |
+| `dsx.module.storage.multiSet()` | `values`: object | `ok`<br/>`written` | iOS, Android | Saves several values in one call, written together. |
+| `dsx.module.storage.open()` | none | `from`<br/>`migrated`<br/>`version` | iOS, Android | Brings the store up to the version your app declares by running your declared upgrade steps, and refuses a store written by a newer app. |
+| `dsx.module.storage.remove()` | `key`: string | `ok` | iOS, Android | Deletes one saved key. Removing a key that is not there does nothing. |
+| `dsx.module.storage.set()` | `key`: string<br/>`value`: any | `ok` | iOS, Android | Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type. |
+
+## Events
+
+Subscribe with `window.dsx.module.storage.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `change` | Sent after any write to the store: set, remove, clear, their multi versions, and an open that upgraded the store. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `writevalue://` | `dsx.module.storage.set()` |
+| `readvalue://` | `dsx.module.storage.get()` |

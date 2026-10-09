@@ -1,0 +1,61 @@
+---
+title: "IdentityVault"
+description: "Stores small secrets on the device in the system keychain, with an optional Face ID or fingerprint lock."
+icon: "vault"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Writes and reads small pieces of text, such as an anonymous user id or a token, in the secure store of the device. Records can be locked so they release only after Face ID, Touch ID or the passcode, and can follow the user to a new phone through iCloud Keychain or Google Block Store. It also reports honestly how long a record will last.
+
+**When to use it.** Use it for small secrets that must survive reinstalls or follow the user, such as an anonymous identity behind a purchase. Do not use it for large data or ordinary settings.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `identityvault` package is on the global `window.dsx`. `dsx.has('identityvault')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('identityvault')) {
+  // Saves a value under a key. With locked set to true, the value is tied to the user's biometrics and can only be read after they authenticate.
+  const writeResult = await window.dsx.module.identityvault.write({ key: "token", locked: false, value: "abc123" })
+
+  // Reads the value stored under a key. A locked record shows the biometric prompt first, and a successful read also sets the value on the page under the key name for older pages.
+  const readResult = await window.dsx.module.identityvault.read({ key: "token" })
+
+  // Reports how long stored records will last and how far they reach, for example whether they follow the user to a new phone. It never fails and says none when nothing can be stored.
+  const durability = await window.dsx.module.identityvault.durability()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.identityvault.durability()` | none | `durability`<br/>`evictable`<br/>`plane`<br/>`proven`<br/>`reason`<br/>`restorable` | iOS, Android | Reports how long stored records will last and how far they reach, for example whether they follow the user to a new phone. It never fails and says none when nothing can be stored. |
+| `dsx.module.identityvault.read()` | `key`: string<br/>`reason`?: string | `key`<br/>`locked`<br/>`value` | iOS, Android | Reads the value stored under a key. A locked record shows the biometric prompt first, and a successful read also sets the value on the page under the key name for older pages. |
+| `dsx.module.identityvault.write()` | `allowPasscode`?: boolean<br/>`key`: string<br/>`locked`?: boolean<br/>`reason`?: string<br/>`value`?: string | `key`<br/>`locked`<br/>`protection` | iOS, Android | Saves a value under a key. With locked set to true, the value is tied to the user's biometrics and can only be read after they authenticate. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| When the vault can be read (`accessibility`) | "whenUnlocked" (default) allows reads only while the device is unlocked. "afterFirstUnlock" also allows reads while it is locked, once the user has unlocked it after a restart. |
+| Let vault records reach the user's other devices (`cloud_sync`) | On by default. Records are also kept in the platform's own cross-device credential store: iCloud Keychain on iOS, Google Play Block Store on Android: so a person who buys a new phone keeps the identity they paid with. Turn it off only for a record that must stay on one device. A browser has no equivalent; the web reports that rather than pretending. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `setvault://` | `dsx.module.identityvault.write()` |
+| `readvault://` | `dsx.module.identityvault.read()` |

@@ -4,6 +4,10 @@ description: "Your Despia build is blocked at submission over NSUserTrackingUsag
 icon: "user-shield"
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 ## The Error
 
 You submitted your app and App Store Connect stopped the version with a message about NSUserTrackingUsageDescription. You do not run ads, you never touch the IDFA, and you never asked to track anyone, but the key is in the build anyway and Apple wants you to declare tracking you are not doing.

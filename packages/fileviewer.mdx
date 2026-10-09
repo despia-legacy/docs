@@ -1,0 +1,47 @@
+---
+title: "FileViewer"
+description: "Preview PDFs, images and documents in a native viewer."
+icon: "file"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Opens a file in the phone's own preview screen, which handles PDFs, images, Office documents and more, or draws the same preview inside your layout. It can fetch files from an https address, including links that need the user's sign-in, and can show several files as pages to swipe through. It can also make a small thumbnail image of a file for lists. You write the screen that decides which file to show.
+
+**When to use it.** Use it when the user should look at a document, invoice or image without leaving the app. If you only need to send the file to another app, use the file sharing package instead.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `fileviewer` package is on the global `window.dsx`. `dsx.has('fileviewer')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('fileviewer')) {
+  // Opens one or more files in a full screen preview, downloading https addresses first.
+  const preview = await window.dsx.module.fileviewer.preview({ src: "https://files.app/invoice.pdf" })
+
+  // Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer.
+  const thumbnail = await window.dsx.module.fileviewer.thumbnail({ src: "documents:invoice.pdf", width: 256 })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.fileviewer.preview()` | `src`: any<br/>`theme`?: "dark" \\| "light" | `file`<br/>`files`<br/>`status` | iOS, Android | Opens one or more files in a full screen preview, downloading https addresses first. |
+| `dsx.module.fileviewer.thumbnail()` | `height`?: number<br/>`src`: string<br/>`width`?: number | `height`<br/>`path`<br/>`src`<br/>`width` | iOS, Android | Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `fileviewer://` | `dsx.module.fileviewer.preview()` |

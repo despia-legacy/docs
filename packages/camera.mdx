@@ -1,0 +1,80 @@
+---
+title: "Camera"
+description: "Capture photos from the camera in code, with no preview screen."
+icon: "camera"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Takes a set number of photos as fast as the hardware allows and returns them as files, with no preview or shutter button. Use it when your app captures frames alongside a sensor reading or other event. Asks for camera permission the first time it runs. Phones only.
+
+**When to use it.** Reach for it when your app needs the camera in code: a burst of photos matched to a sensor reading, a held-open session with controls and recording, or a live preview you draw yourself. For a picker where the person chooses a photo, use the platform file picker instead.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.camera.clear()
+else if (rt.kind === 'v3') despia('camera://clear')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `camera` package is on the global `window.dsx`. `dsx.has('camera')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('camera')) {
+  // Deletes every photo file that earlier bursts wrote.
+  const clear = await window.dsx.module.camera.clear()
+
+  // Takes a number of photos in a row as fast as the hardware allows, with no preview, and returns them as files.
+  const burst = await window.dsx.module.camera.burst({ count: 3, interval: 0, quality: 0.8 })
+
+  // Reports the limits of burst capture on this device.
+  const capabilities = await window.dsx.module.camera.capabilities()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.camera.burst()` | `camera`?: "back" \\| "front"<br/>`count`?: number<br/>`interval`?: number<br/>`prompt`?: boolean<br/>`quality`?: number | `count`<br/>`durationMs`<br/>`photos` | iOS, Android | Takes a number of photos in a row as fast as the hardware allows, with no preview, and returns them as files. |
+| `dsx.module.camera.capabilities()` | none | `maxBurst` | iOS, Android | Reports the limits of burst capture on this device. |
+| `dsx.module.camera.clear()` | none | `deleted` | iOS, Android | Deletes every photo file that earlier bursts wrote. |
+| `dsx.module.camera.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the person change a limited selection where the system offers one; otherwise returns the current state unchanged. |
+| `dsx.module.camera.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the person can change the camera permission. |
+| `dsx.module.camera.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Shows the system camera permission dialog when it can still be shown, and returns the resulting state. |
+| `dsx.module.camera.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the camera permission without ever showing a dialog. |
+| `dsx.module.camera.photo()` | `count`?: number<br/>`interval`?: number<br/>`prompt`?: boolean<br/>`to`?: string | `photos` | iOS, Android | Takes one or more photos, opening the camera by itself if no session is running. |
+| `dsx.module.camera.record.start()` | `maxBytes`?: number<br/>`maxDuration`?: number<br/>`prompt`?: boolean<br/>`to`?: string | `started`<br/>`to` | iOS, Android | Starts recording a video take from the running session. |
+| `dsx.module.camera.record.stop()` | none | `bytes`<br/>`codec`<br/>`duration`<br/>`ended`<br/>`fellBack`<br/>`fps`<br/>`hdr`<br/>`height`<br/>`interrupted`<br/>`path`<br/>`width` | iOS, Android | Stops the recording and returns the finished take. |
+| `dsx.module.camera.start()` | `analyze`?: object[]<br/>`audio`?: object<br/>`controls`?: object<br/>`devices`?: object[]<br/>`effects`?: object[]<br/>`mirror`?: string<br/>`mode`?: string<br/>`orientation`?: string<br/>`photo`?: object<br/>`video`?: object | `devices`<br/>`effective`<br/>`refusals` | iOS, Android | Opens a camera session from one description of what you want and keeps it open for photos, recording and a preview. |
+| `dsx.module.camera.stop()` | none | `stopped` | iOS, Android | Closes the camera session and releases the camera. |
+| `dsx.module.camera.update()` | `analyze`?: object[]<br/>`audio`?: object<br/>`controls`?: object<br/>`devices`?: object[]<br/>`effects`?: object[]<br/>`mirror`?: string<br/>`mode`?: string<br/>`orientation`?: string<br/>`photo`?: object<br/>`video`?: object | `effective`<br/>`refusals` | iOS, Android | Changes a running session by merging your changes into the current description. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Maximum burst length (`max_burst`) | Upper bound on how many frames one burst may request. |
+| Camera prompt (`usage_camera`) | The message shown when iOS asks for camera access. |
+| Microphone prompt (`usage_microphone`) | The message shown when iOS asks for microphone access. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `camera://clear` | `dsx.module.camera.clear()` |

@@ -4,6 +4,10 @@ icon: "robot"
 description: "AI coding tools often generate outdated Despia setups. This guide covers the two most common mistakes: legacy environment detection and targeting the internal window.despia object."
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 ## Why this happens
 
 AI coding tools that do not reference the current docs at [setup.despia.com](https://setup.despia.com) or the Despia MCP server tend to build on older runtime patterns. The two below are by far the most common. Both produce code that either never detects the runtime or calls something that was never meant to be public.

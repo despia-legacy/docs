@@ -1,0 +1,95 @@
+---
+title: "Clerk"
+description: "Add sign-in, sign-up and account screens to your app with Clerk."
+icon: "user-lock"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Uses Clerk's native sign-in and sign-up views, email codes and social logins, and returns a session token for your own API calls. Use it if your users already live in Clerk. Needs a Clerk account and your publishable key.
+
+**When to use it.** Add it when your people already have Clerk accounts or you want Clerk's sign-in, social logins, passkeys, organizations and prebuilt screens. If you do not use Clerk, use the Auth package instead.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.clerk.status()
+else if (rt.kind === 'v3') despia('clerk://state')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `clerk` package is on the global `window.dsx`. `dsx.has('clerk')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('clerk')) {
+  // Reads who is signed in, working offline from what the device already holds.
+  const statusResult = await window.dsx.module.clerk.status()
+
+  // Gives Clerk your publishable key so sign-in can start.
+  const configure = await window.dsx.module.clerk.configure({ key: "pk_test_abc123" })
+
+  // Shows Clerk's prebuilt sign-in and sign-up sheet and waits until it closes.
+  const authview = await window.dsx.module.clerk.authview({ mode: "signup" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.clerk.attach()` | `view`?: string | `attached`<br/>`status` | iOS, Android | Connects a view to the open sign-in attempt so it hears the result. |
+| `dsx.module.clerk.attribution()` | `enabled`?: boolean | `event`<br/>`ok`<br/>`status` | iOS, Android | Turns on or off sharing the signed-in person's id with OneSignal and AppsFlyer. |
+| `dsx.module.clerk.authview()` | `dismissable`?: boolean<br/>`mode`?: string | `event`<br/>`ok`<br/>`status` | iOS, Android | Shows Clerk's prebuilt sign-in and sign-up sheet and waits until it closes. |
+| `dsx.module.clerk.close()` | none | `status` | iOS, Android | Abandons the sign-in attempt; to sign in again you open a new one. |
+| `dsx.module.clerk.configure()` | `key`: string | `event`<br/>`ok`<br/>`status` | iOS, Android | Gives Clerk your publishable key so sign-in can start. |
+| `dsx.module.clerk.createOrganization()` | `name`: string<br/>`slug`?: string | `organization` | iOS, Android | Creates an organization with the signed-in person as its administrator. |
+| `dsx.module.clerk.detach()` | `view`?: string | `attached`<br/>`status` | iOS, Android | Disconnects a view from the sign-in attempt without cancelling the attempt. |
+| `dsx.module.clerk.invitations()` | `accept`?: string<br/>`limit`?: number | `accepted`<br/>`invitations` | iOS, Android | Lists pending organization invitations, and accepts one when you give its id. |
+| `dsx.module.clerk.leaveOrganization()` | `organization`?: string | `organization` | iOS, Android | Removes the signed-in person from an organization; with no id it leaves the active one. |
+| `dsx.module.clerk.manual()` | `action`?: string<br/>`code`?: string<br/>`emailAddress`?: string<br/>`firstName`?: string<br/>`identifier`?: string<br/>`lastName`?: string<br/>`method`: string<br/>`newPassword`?: string<br/>`password`?: string<br/>`phoneNumber`?: string<br/>`provider`?: string<br/>`ticket`?: string<br/>`type`?: string<br/>`username`?: string | `emailAddress`<br/>`event`<br/>`ok`<br/>`status`<br/>`userId` | iOS, Android | Runs a sign-in or sign-up flow step by step so you can build your own screens. |
+| `dsx.module.clerk.organizations()` | `limit`?: number<br/>`offset`?: number | `activeId`<br/>`memberships`<br/>`total` | iOS, Android | Lists the organizations the signed-in person belongs to. |
+| `dsx.module.clerk.session()` | `mode`?: string | `session`<br/>`status` | iOS, Android | Opens the sign-in attempt that the inline Clerk views use and publishes it. |
+| `dsx.module.clerk.sessions()` | `revoke`?: string | `activeId`<br/>`revoked`<br/>`sessions` | iOS, Android | Lists the sessions on this device, or ends one of them when you give its id. |
+| `dsx.module.clerk.setOrganization()` | `organization`?: string | `orgId`<br/>`orgSlug` | iOS, Android | Switches the active organization, or back to the personal account when you pass an empty id. |
+| `dsx.module.clerk.signout()` | none | `event`<br/>`ok`<br/>`status` | iOS, Android | Ends the session and clears the stored identity and cookies. |
+| `dsx.module.clerk.ssr()` | `domains`?: string<br/>`enabled`?: boolean<br/>`header`?: string | `domains`<br/>`event`<br/>`header`<br/>`ok`<br/>`status` | iOS, Android | Makes the native session readable by your own web server by writing session cookies. |
+| `dsx.module.clerk.status()` | none | `emailAddress`<br/>`event`<br/>`firstName`<br/>`imageUrl`<br/>`isConfigured`<br/>`isSignedIn`<br/>`lastName`<br/>`ok`<br/>`publishableKey`<br/>`session`<br/>`user`<br/>`userId`<br/>`username` | iOS, Android | Reads who is signed in, working offline from what the device already holds. |
+| `dsx.module.clerk.submit()` | `status`?: string<br/>`view`?: string | `status`<br/>`step` | iOS, Android | Reports that a view submitted a step, so a double submit cannot happen. |
+| `dsx.module.clerk.task()` | `present`?: boolean | `sessionId`<br/>`status`<br/>`task` | iOS, Android | Reads or shows the step the person must finish before their session is fully active, such as setting up two-step verification. |
+| `dsx.module.clerk.token()` | none | `event`<br/>`jwt`<br/>`ok` | iOS, Android | Returns the current session token for calling your own API, refreshing it when it is about to expire. |
+| `dsx.module.clerk.userprofile()` | `dismissable`?: boolean | `event`<br/>`ok`<br/>`status` | iOS, Android | Shows Clerk's prebuilt account screen and waits until it closes. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Publishable key (`publishable_key`) | Your Clerk publishable key (pk_test_... or pk_live_...). Leave it empty to configure Clerk at run time with configure(). |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `clerk://state` | `dsx.module.clerk.status()` |
+| `clerk://status` | `dsx.module.clerk.status()` |
+| `clerk://configure` | `dsx.module.clerk.configure()` |
+| `clerk://authview` | `dsx.module.clerk.authview()` |
+| `clerk://userprofile` | `dsx.module.clerk.userprofile()` |
+| `clerk://signout` | `dsx.module.clerk.signout()` |
+| `clerk://attribution` | `dsx.module.clerk.attribution()` |
+| `clerk://ssr` | `dsx.module.clerk.ssr()` |
+| `clerk://manual` | `dsx.module.clerk.manual()` |
+| `clerk://token` | `dsx.module.clerk.token()` |

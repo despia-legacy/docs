@@ -1,0 +1,69 @@
+---
+title: "Payments"
+description: "Take payments in your app with one set of calls, whichever payment provider you use."
+icon: "credit-card"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Gives your app one way to start a payment, manage saved cards, link a bank account and open a customer portal, drawn by the payment package you add, such as Stripe. Add the provider packages you need and nothing more. Needs an account with that provider.
+
+**When to use it.** Use it to take payments inside your app through one set of calls, whichever provider package you add. Choose it before wiring a provider's own calls, so you can change provider later. Do not use it for in-app purchases of digital goods, which belong to the stores.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `payments` package is on the global `window.dsx`. `dsx.has('payments')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('payments')) {
+  // Shows the provider's payment sheet so the user can pick a method and pay, and returns when they finish or cancel.
+  const payment = await window.dsx.module.payments.payment({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
+
+  // Shows the sheet where the user manages their saved payment methods, adding or removing cards.
+  const manage = await window.dsx.module.payments.manage({ customer_id: "cus_123", ephemeral_key_secret: "ek_123", publishable_key: "pk_test_123" })
+
+  // Opens the bank-linking flow so the user can connect a bank account for later debits.
+  const connectBank = await window.dsx.module.payments.connectBank({ financial_connections_session_client_secret: "fcsess_secret_abc", publishable_key: "pk_test_123" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.payments.close()` | `session`?: string | `status` | iOS, Android | Abandons the open payment session and clears its state. Call it when the user leaves checkout without paying. |
+| `dsx.module.payments.confirm()` | `session`?: string<br/>`view`?: "inline" \\| "overlay" \\| "wallet" | `code`<br/>`error`<br/>`method`<br/>`status` | iOS, Android | Confirms the payment in the open session using the part of the screen the user acted on. |
+| `dsx.module.payments.connectBank()` | `financial_connections_session_client_secret`: string<br/>`publishable_key`: string<br/>`return_url`?: string | `accounts`<br/>`error`<br/>`session`<br/>`status` | iOS, Android | Opens the bank-linking flow so the user can connect a bank account for later debits. |
+| `dsx.module.payments.manage()` | `accent_color`?: string<br/>`action_corner_radius`?: number<br/>`corner_radius`?: number<br/>`customer_id`: string<br/>`ephemeral_key_secret`: string<br/>`publishable_key`: string<br/>`setup_intent_client_secret`?: string<br/>`theme`?: string | `error`<br/>`method`<br/>`status` | iOS, Android | Shows the sheet where the user manages their saved payment methods, adding or removing cards. |
+| `dsx.module.payments.payAch()` | `email`?: string<br/>`mandate_accepted`: boolean<br/>`name`: string<br/>`payment_intent_client_secret`: string<br/>`publishable_key`: string<br/>`return_url`?: string | `error`<br/>`method`<br/>`status` | iOS, Android | Pays the intent by US bank debit, after the user accepted the debit agreement and linked an account. |
+| `dsx.module.payments.payment()` | `accent_color`?: string<br/>`action_corner_radius`?: number<br/>`corner_radius`?: number<br/>`customer_id`?: string<br/>`ephemeral_key_secret`?: string<br/>`payment_intent_client_secret`: string<br/>`publishable_key`: string<br/>`session`?: string<br/>`theme`?: string | `error`<br/>`method`<br/>`status` | iOS, Android | Shows the provider's payment sheet so the user can pick a method and pay, and returns when they finish or cancel. |
+| `dsx.module.payments.portal()` | `url`: string | `status` | iOS, Android | Opens the provider's hosted customer portal, where users manage subscriptions, invoices and payment methods. Works on the web only. |
+| `dsx.module.payments.session()` | `accent_color`?: string<br/>`amount`?: number<br/>`checkout_session_client_secret`?: string<br/>`corner_radius`?: number<br/>`country_code`?: string<br/>`currency`?: string<br/>`customer_id`?: string<br/>`ephemeral_key_secret`?: string<br/>`label`?: string<br/>`merchant_identifier`?: string<br/>`payment_intent_client_secret`?: string<br/>`publishable_key`: string<br/>`setup_intent_client_secret`?: string<br/>`theme`?: string | `session`<br/>`status` | iOS, Android | Opens a payment session that the card fields and checkout tags on your screen attach to. Close it when the checkout is finished. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Payment processor (retired) (`processor`) | Retired spelling of `provider`; still read as the same choice. Set `provider` instead. |
+| Payment provider (`provider`) | Optional: which provider package takes payments (for example stripe). Empty means the one provider package this app includes. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `stripe://payment` | `dsx.module.payments.payment()` |
+| `stripe://manage` | `dsx.module.payments.manage()` |
+| `stripe://connectBank` | `dsx.module.payments.connectBank()` |
+| `stripe://payAch` | `dsx.module.payments.payAch()` |
+| `stripe://connectOnboard` | `dsx.module.payments.stripe.connectOnboard()` |

@@ -1,0 +1,158 @@
+---
+title: "Modern API"
+description: "Call Despia packages from any web app with the global window.dsx. No npm package needed. Requires Despia version 4 or greater."
+icon: "rocket-launch"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
+<Info>
+  The Modern API requires **Despia version 4 or greater**. Apps built on earlier versions keep using the [Legacy API](/introduction) (`despia-native` and URL schemes), and Legacy calls keep working on version 4 too.
+</Info>
+
+<Note>
+  These pages cover **web view (hybrid) apps**: your web app runs inside the Despia app and calls native features from JavaScript. Native UI apps are coming soon.
+</Note>
+
+Every Despia version 4 app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
+
+```javascript
+await window.dsx.module.haptic.light()
+const purchase = await window.dsx.module.revenuecat.purchase({ product: ["coins_100"] })
+```
+
+There is nothing to install. The global is there before your first script runs, so it works the same from plain JavaScript, React, Vue, Svelte, Next.js or any other framework.
+
+## Detect Despia v4
+
+`window.dsx` exists only inside a Despia version 4 app. In a normal browser, and in apps on older Despia versions, it is `undefined`. Check for it before you call anything:
+
+```javascript
+function isDespiaV4() {
+  return typeof window !== 'undefined' && !!window.dsx && !!window.dsx.module
+}
+
+if (isDespiaV4()) {
+  await window.dsx.module.haptic.success()
+} else {
+  // normal browser, or an app on an older Despia version
+}
+```
+
+The `typeof window` check keeps the same code safe during server-side rendering.
+
+### Check that a package is in the app
+
+An app only contains the packages you added to it (see [Add a package](/packages/add-a-package)). Ask before calling an optional package:
+
+```javascript
+if (window.dsx && window.dsx.has('revenuecat')) {
+  // RevenueCat is in this build
+}
+```
+
+| Check | Answers |
+| :-- | :-- |
+| `dsx.has('revenuecat')` | `true` when the package is in this build. Takes the package name or its scheme, case-insensitive. |
+| `dsx.module.revenuecat.available` | The same answer, read from the package itself. |
+| `dsx.version('revenuecat')` | The package version in this build, or `null`. |
+| `dsx.packages` | Every package in this build, as a list of `{ name, version, scheme }`. |
+| `dsx.wasExcluded('revenuecat')` | `true` when the app excluded the package on purpose. |
+
+<Warning>
+  Do not test `if (window.dsx.module.revenuecat)`. Any name under `dsx.module` gives back a callable value, so that check is always true. Use `dsx.has()` or `.available`.
+</Warning>
+
+## Calling convention
+
+Every call has the shape `dsx.module.<package>.<action>(args)`. `args` is one plain object. Actions with a dot in their name are written as a chain, for example `dsx.module.notify.permission.request()`.
+
+There are three kinds of call:
+
+<CodeGroup>
+
+```javascript Fire and forget
+window.dsx.module.haptic.light()
+```
+
+```javascript Resolve once
+const info = await window.dsx.module.device.info()
+```
+
+```javascript Stream
+const sub = window.dsx.module.speechrecognition.start({ interim: true }, (event) => {
+  console.log(event.event, event.data)
+})
+// later
+sub.stop()
+```
+
+</CodeGroup>
+
+- **Resolve once.** The call returns a promise with the result.
+- **Stream.** Pass a handler as the second argument. It is called for every event with an object that carries `event`, `data` and `final`. The call returns an object with `stop()`.
+- **Files.** A `File` or `Blob` you pass in an argument is uploaded for you and travels to the native side as a URL.
+
+Each package page lists its actions, their arguments and what they return. The full list is in the sidebar under **Packages**.
+
+### Errors
+
+A failed call rejects its promise with an error object. Branch on its `code`:
+
+```javascript
+try {
+  await window.dsx.module.revenuecat.purchase({ product: ["coins_100"] })
+} catch (err) {
+  if (err.code === 'not_ready') {
+    // RevenueCat is still starting up: try again in a moment
+  } else {
+    console.warn(err.code, err.message)
+  }
+}
+```
+
+The codes each action can return are listed in the package's own reference. A call that gets no answer rejects with the code `timeout`.
+
+### Events
+
+Packages also send events that are not the answer to a call, for example when a purchase changes the customer's entitlements. Subscribe on the package:
+
+```javascript
+const off = window.dsx.module.revenuecat.on('customerInfo', (data) => {
+  console.log('entitlements changed', data)
+})
+// later
+off()
+```
+
+`dsx.module.<package>.on(handler)` without an event name receives every event of that package. `dsx.on('<package>', handler)` does the same with the full event object.
+
+## Use it from React
+
+See [Use from React](/packages/react) for a hook and a complete component.
+
+## Coming from despia-native
+
+Your existing `despia('scheme://...')` calls keep working on version 4: the Legacy polyfill answers them. To move a call to the Modern API, look it up in the [Legacy to Modern map](/packages/legacy-map), which lists every Legacy scheme that is still answered and the modern call behind it.
+
+```javascript
+// Legacy
+import despia from 'despia-native'
+despia('lighthaptic://')
+
+// Modern, no import
+window.dsx.module.haptic.light()
+```
+
+<Warning>
+  Removed in 0.1.0: `inapppurchase://` and `inappsubscription://`. Use [RevenueCat](/packages/revenuecat) (`dsx.module.revenuecat.purchase`). `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://` are still answered.
+</Warning>
+
+## What changed in version 4
+
+- **0.1.0 is the migration release** from Despia version 3 to version 4. The Legacy polyfill keeps version 3 apps working without code changes.
+- **The local server is HTTPS only.** Apps that serve their web build from the device do so over HTTPS.
+- **Accessibility uses ARIA.** Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0.

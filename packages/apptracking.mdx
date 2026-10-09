@@ -1,0 +1,71 @@
+---
+title: "AppTracking"
+description: "Ask the user for tracking permission and read their answer."
+icon: "user-shield"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Lets your app find out whether the user allows tracking and ask for it when you choose. On iOS it shows Apple's App Tracking Transparency dialog; on Android it reports the Google Play advertising ID opt-out. The framework never asks on launch, so you decide when to call it. You write the screen that explains why you ask and the code that turns tracking or personalised ads off.
+
+**When to use it.** Use it when your app has cross-app tracking, personalised ads or attribution that depends on user consent, and you need to show the iOS tracking dialog at the right moment. Skip it if your app does no tracking, since nothing asks on launch.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.apptracking.permission.status()
+else if (rt.kind === 'v3') despia('apptracking://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `apptracking` package is on the global `window.dsx`. `dsx.has('apptracking')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('apptracking')) {
+  // Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off.
+  const permissionStatus = await window.dsx.module.apptracking.permission.status()
+
+  // Shows Apple's tracking dialog while it can still appear and resolves with the user's answer. Later calls resolve at once with the standing answer, and on Android it resolves the current state.
+  const permissionRequest = await window.dsx.module.apptracking.permission.request()
+
+  // Opens the app's page in the device Settings so the user can change the tracking choice. It needs the App Settings package.
+  const permissionOpenSettings = await window.dsx.module.apptracking.permission.openSettings()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.apptracking.permission.openSettings()` | none | `opened` | iOS, Android | Opens the app's page in the device Settings so the user can change the tracking choice. It needs the App Settings package. |
+| `dsx.module.apptracking.permission.request()` | none | `canAsk`<br/>`status` | iOS, Android | Shows Apple's tracking dialog while it can still appear and resolves with the user's answer. Later calls resolve at once with the standing answer, and on Android it resolves the current state. |
+| `dsx.module.apptracking.permission.status()` | none | `canAsk`<br/>`status` | iOS, Android | Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Show ads when ATT denied (`att_denied_show_ads`) | Keep showing ads even when the user denies App Tracking Transparency. |
+| Permission prompt (`usage_description`) | The message shown when iOS asks permission to track the user across apps (ATT). |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `apptracking://` | `dsx.module.apptracking.permission.status()` |
+| `user-disable-tracking://` | `dsx.module.apptracking.permission.status()` |
+| `trackingconsent://` | `dsx.module.apptracking.permission.request()` |

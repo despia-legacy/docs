@@ -1,0 +1,99 @@
+---
+title: "Motion"
+description: "Read accelerometer, gyroscope, steps and activity from the device."
+icon: "compass"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Streams motion sensor data at the rate you choose, and reads the barometer, step count and activity type such as walking or driving. Use it for fitness, games and gesture features. Asks for motion permission when needed, with text you set. Phones only.
+
+**When to use it.** Use it for fitness, games, gestures and movement-aware features that need motion data at a rate you choose. For a one-off compass or orientation reading on a page, the browser sensors may be enough.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.motion.stop()
+else if (rt.kind === 'v3') despia('motion://stop')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `motion` package is on the global `window.dsx`. `dsx.has('motion')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('motion')) {
+  // Starts one motion stream with the sensors and sampling rate you choose, and sends each sample as a single object.
+  const startResultSub = window.dsx.module.motion.start({ hz: 60, sensors: ["accelerometer", "gyroscope"] }, (event) => {
+    console.log(event.event, event.data)
+  })
+  // later: startResultSub.stop()
+
+  // Stops the motion stream and releases the sensors.
+  const stopResult = await window.dsx.module.motion.stop()
+
+  // Reports which motion sensors this device has and the highest sampling rate it allows.
+  const capabilities = await window.dsx.module.motion.capabilities()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.motion.activity()` | `on`?: boolean<br/>`prompt`?: boolean | stream (events: `activity`) | iOS, Android | Starts or stops classification of what the person is doing, such as walking, running, cycling or driving. |
+| `dsx.module.motion.barometer()` | `on`?: boolean | stream (events: `pressure`) | iOS, Android | Starts or stops air pressure readings and the altitude change since the first reading. |
+| `dsx.module.motion.capabilities()` | none | `accelerometer`<br/>`activity`<br/>`barometer`<br/>`deviceMotion`<br/>`gyroscope`<br/>`magnetometer`<br/>`maxHz`<br/>`pedometer` | iOS, Android | Reports which motion sensors this device has and the highest sampling rate it allows. |
+| `dsx.module.motion.pedometer()` | `from`?: number<br/>`prompt`?: boolean | `distance`<br/>`end`<br/>`floorsAscended`<br/>`floorsDescended`<br/>`start`<br/>`steps` | iOS, Android | Reads the steps, distance and floors the person has covered since a moment you choose. |
+| `dsx.module.motion.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the person change a limited selection of what the app may access, where the system has such a screen. |
+| `dsx.module.motion.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the person can change the permission there. |
+| `dsx.module.motion.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks the person for motion and fitness data by showing the system permission dialog when it can still be shown. |
+| `dsx.module.motion.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads whether the app may use motion and fitness data right now, without ever showing a dialog. |
+| `dsx.module.motion.start()` | `buffer`?: number<br/>`cap`?: number<br/>`hz`?: number<br/>`sensors`?: string[]<br/>`server`?: string<br/>`threshold`?: number | stream (events: `change`, `batch`, `calibration`) | iOS, Android | Starts one motion stream with the sensors and sampling rate you choose, and sends each sample as a single object. |
+| `dsx.module.motion.stop()` | none | `active` | iOS, Android | Stops the motion stream and releases the sensors. |
+
+## Events
+
+Subscribe with `window.dsx.module.motion.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `activity` | Delivers the activity the device thinks the person is doing, each time it changes. |
+| `batch` | Delivers the samples kept while the app was in the background, as one event when the app comes back or the stream stops. |
+| `calibration` | Tells you the compass heading has become unreliable and the device needs to be moved in a figure of eight. |
+| `change` | Delivers one sample of the sensors you asked for while the app is open. |
+| `pressure` | Delivers one air pressure reading while the barometer stream is on. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Background enabled (`background_enabled`) | Keep the motion stream alive while the app is in the background. |
+| Background notification text (`background_notification_text`) | Body of the ongoing Android notification shown while motion is tracked in the background. |
+| Background notification title (`background_notification_title`) | Title of the ongoing Android notification shown while motion is tracked in the background. |
+| Maximum sampling rate (`max_hz`) | Upper bound, in hertz, on the sampling rate a page may ask for. |
+| Motion & fitness prompt (`usage_motion`) | The message shown when iOS asks for motion & fitness access. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `motion://start` | `dsx.module.motion.start()` |
+| `motion://stop` | `dsx.module.motion.stop()` |
+| `motion://capabilities` | `dsx.module.motion.capabilities()` |
+| `motion://barometer` | `dsx.module.motion.barometer()` |
+| `motion://activity` | `dsx.module.motion.activity()` |
+| `motion://pedometer` | `dsx.module.motion.pedometer()` |

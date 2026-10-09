@@ -4,6 +4,10 @@ icon: "user"
 description: "This guide covers the general user identity management pattern for Despia apps. This system is the foundation that all SDK integrations (RevenueCat, OneSignal, Stripe, etc.) build upon."
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 ## Overview
 
 Every Despia app needs a single, consistent user identifier (`app_user_id`) that persists across sessions and devices. This identifier connects all your services together.

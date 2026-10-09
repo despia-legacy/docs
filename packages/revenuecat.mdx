@@ -1,0 +1,108 @@
+---
+title: "RevenueCat"
+description: "Sell subscriptions and in-app purchases with RevenueCat."
+icon: "coins"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Lets your pages start a purchase, open a RevenueCat paywall or the customer center, and read products, offerings, purchase history and what a user is entitled to. Use it when your team already manages subscriptions in RevenueCat. Needs a RevenueCat account and its iOS and Android API keys.
+
+**When to use it.** Reach for it when your subscriptions and in-app purchases are managed in RevenueCat and you want one call to sell, show a paywall and check what a person owns. Do not include it next to the standalone RevenueCat package, since an app uses one or the other.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.revenuecat.history()
+else if (rt.kind === 'v3') despia('getpurchasehistory://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `revenuecat` package is on the global `window.dsx`. `dsx.has('revenuecat')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('revenuecat')) {
+  // Buys a product through the store's payment sheet and tells you what the person owns afterwards. It tries the products you list in order and stops at the first one the store returns.
+  const purchase = await window.dsx.module.revenuecat.purchase({ external_id: "user_123", product: ["coins_100:monthly"] })
+
+  // Shows a RevenueCat paywall sheet for an offering so the person can pick and buy.
+  const paywall = await window.dsx.module.revenuecat.paywall({ external_id: "user_123" })
+
+  // Returns the person's entitlements, subscriptions and management link in one shared envelope, and also broadcasts it as customer.
+  const customer = await window.dsx.module.revenuecat.customer()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.revenuecat.attach()` | `view`?: string | `attached`<br/>`status` | iOS, Android | Attaches a paywall face to the open session so it is told the outcome. The paywall component does this itself when it mounts. |
+| `dsx.module.revenuecat.attributes()` | `attributes`?: object<br/>`displayName`?: string<br/>`email`?: string<br/>`phone`?: string<br/>`pushToken`?: string | `set` | iOS, Android | Sets subscriber attributes on the current RevenueCat customer, such as email or a custom key, so the customer can be matched to your own records. |
+| `dsx.module.revenuecat.buy()` | `package`?: string<br/>`view`?: string | `package`<br/>`status` | iOS, Android | Buys a package on the open session from your own paywall button, and settles the same way the overlay paywall does. A second buy while one is running is refused. |
+| `dsx.module.revenuecat.catalog()` | `external_id`?: string<br/>`offering`?: string | `code`<br/>`current`<br/>`offerings`<br/>`ok`<br/>`platform`<br/>`products`<br/>`provider`<br/>`runtime` | iOS, Android | Returns the products, offerings and prices in one shared envelope that is identical on iOS and Android, and also broadcasts it as products. |
+| `dsx.module.revenuecat.center()` | `external_id`?: string | `status` | iOS, Android | Opens the RevenueCat customer center, where people manage or restore their subscription. |
+| `dsx.module.revenuecat.close()` | none | `status` | iOS, Android | Closes the paywall session for good. Open a new one to buy again. |
+| `dsx.module.revenuecat.currencies()` | `refresh`?: boolean | `codes`<br/>`currencies` | iOS, Android | Reads the person's virtual currency balances, such as coins or gems, which survive a reinstall. |
+| `dsx.module.revenuecat.customer()` | `external_id`?: string | `code`<br/>`details`<br/>`entitlements`<br/>`management`<br/>`ok`<br/>`platform`<br/>`provider`<br/>`runtime`<br/>`subscriptions` | iOS, Android | Returns the person's entitlements, subscriptions and management link in one shared envelope, and also broadcasts it as customer. |
+| `dsx.module.revenuecat.detach()` | `view`?: string | `attached`<br/>`status` | iOS, Android | Detaches a paywall face from the session without dismissing the paywall or abandoning a purchase in progress. |
+| `dsx.module.revenuecat.eligibility()` | `products`: object[] | `eligibility` | iOS | Checks whether this person would actually get the free trial or introductory price a product advertises. |
+| `dsx.module.revenuecat.entitlements()` | none | `active`<br/>`all` | iOS, Android | Lists the entitlements the person holds now and every entitlement they have ever had. |
+| `dsx.module.revenuecat.history()` | none | object[] | iOS, Android | Reads the person's purchase history as a list of purchase rows. |
+| `dsx.module.revenuecat.login()` | `external_id`: string | `anonymous`<br/>`code`<br/>`entitlements`<br/>`new`<br/>`ok`<br/>`platform`<br/>`provider`<br/>`runtime` | iOS, Android | Binds RevenueCat to your signed-in user and merges any purchases made anonymously before sign-in. Also broadcasts the user as user. |
+| `dsx.module.revenuecat.logout()` | none | `anonymous`<br/>`code`<br/>`entitlements`<br/>`new`<br/>`ok`<br/>`platform`<br/>`provider`<br/>`runtime` | iOS, Android | Switches RevenueCat to a fresh anonymous user so a shared device never shows the previous account's entitlements. It counts as success if the user was already anonymous. |
+| `dsx.module.revenuecat.manage()` | none | `presented` | iOS, Android | Opens the store's own manage-subscriptions page for the signed-in customer through RevenueCat. |
+| `dsx.module.revenuecat.offering()` | none | `all`<br/>`current` | iOS, Android | Reads the same offerings list as offerings, kept as the singular spelling for pages that call it. |
+| `dsx.module.revenuecat.offerings()` | none | `all`<br/>`current` | iOS, Android | Lists the RevenueCat offerings with their packages and store-priced products, and says which one is current. |
+| `dsx.module.revenuecat.paywall()` | `external_id`?: string<br/>`offering`?: string | `offering`<br/>`status` | iOS, Android | Shows a RevenueCat paywall sheet for an offering so the person can pick and buy. |
+| `dsx.module.revenuecat.placement()` | `placement`: string | `found`<br/>`offering`<br/>`placement` | iOS, Android | Finds the offering that RevenueCat's targeting rules pick for a named placement, so one app can show a different paywall at different moments. |
+| `dsx.module.revenuecat.products()` | `product_ids`?: object[] | object[] | iOS, Android | Lists store products with their store-priced details, either every product in all offerings or a set you name. |
+| `dsx.module.revenuecat.purchase()` | `external_id`?: string<br/>`product`: object[] | `active_entitlements`<br/>`customer_info`<br/>`plan_id`<br/>`product_id`<br/>`status`<br/>`transaction` | iOS, Android | Buys a product through the store's payment sheet and tells you what the person owns afterwards. It tries the products you list in order and stops at the first one the store returns. |
+| `dsx.module.revenuecat.redeem()` | none | `status` | iOS | Opens Apple's offer-code redemption sheet on iOS. On Android it reports unsupported, since Google Play codes are redeemed in the Play Store app. |
+| `dsx.module.revenuecat.session()` | `external_id`?: string<br/>`offering`?: string | `offering`<br/>`session`<br/>`status` | iOS, Android | Opens the paywall session that a paywall component on your page binds to. It shows nothing by itself. |
+| `dsx.module.revenuecat.sync()` | none | `entitlements`<br/>`synced` | iOS, Android | Sends the purchases already on this device up to RevenueCat without the store's restore prompt. Use it once after moving an app onto RevenueCat. |
+| `dsx.module.revenuecat.whoami()` | none | `active_entitlement_ids`<br/>`active_subscription_ids`<br/>`all_purchased_product_ids`<br/>`app_user_id`<br/>`first_seen`<br/>`is_anonymous`<br/>`original_app_user_id`<br/>`request_date` | iOS, Android | Reads who the current RevenueCat user is and a summary of their subscriptions, and also broadcasts the user as user. |
+
+## Events
+
+Subscribe with `window.dsx.module.revenuecat.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `center` | Fires when the customer center is closed or the person acts in it. |
+| `customerInfo` | Fires after every purchase, restore, sign-in or SDK update with the person's RevenueCat customer record. |
+| `session.changed` | Fires when the paywall session moves to a new state. |
+| `session.settled` | Fires when the paywall session ends, by a purchase, a failure or a cancel. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Android API key (`androidApiKey`) | Your RevenueCat public Google Play API key. |
+| API key (`apiKey`) | Your RevenueCat public API key. |
+| Project ID (`projectId`) | Your RevenueCat project id, used by the page side and not needed by the SDK. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getpurchasehistory://` | `dsx.module.revenuecat.history()` |
+| `revenuecat://launchPaywall` | `dsx.module.revenuecat.paywall()` |
+| `revenuecat://products` | `dsx.module.revenuecat.catalog()` |
+| `revenuecat://customer` | `dsx.module.revenuecat.customer()` |
+| `revenuecat://purchase` | `dsx.module.revenuecat.purchase()` |
+| `revenuecat://center` | `dsx.module.revenuecat.center()` |

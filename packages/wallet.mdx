@@ -1,0 +1,54 @@
+---
+title: "Wallet"
+description: "Let people add a boarding pass, ticket or card to Apple Wallet."
+icon: "wallet"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Downloads a pass file from a web address and shows the system sheet to add it to Apple Wallet on iOS. On Android and the web it hands the pass to the system or browser handler. You host the pass file yourself. Only iOS tells you when the sheet closes.
+
+**When to use it.** Use it to offer an Add to Wallet button for a ticket, coupon, loyalty card or boarding pass you already generate as a pass file. It does not create passes.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `wallet` package is on the global `window.dsx`. `dsx.has('wallet')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('wallet')) {
+  // Gets a .pkpass file from a web address and hands it to the system so the person can add it to Wallet. On iOS the Apple add-pass sheet is shown.
+  const pkpassSub = window.dsx.module.wallet.pkpass({ url: "https://example.com/boarding.pkpass" }, (event) => {
+    console.log(event.event, event.data)
+  })
+  // later: pkpassSub.stop()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.wallet.pkpass()` | `url`: string | stream (events: `presented`) | iOS, Android | Gets a .pkpass file from a web address and hands it to the system so the person can add it to Wallet. On iOS the Apple add-pass sheet is shown. |
+
+## Events
+
+Subscribe with `window.dsx.module.wallet.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `presented` | Fires when the system pass handler is on screen, with the same details as the call result. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `wallet://pkpass` | `dsx.module.wallet.pkpass()` |

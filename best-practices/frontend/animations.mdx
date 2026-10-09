@@ -4,6 +4,10 @@ icon: "waves-sine"
 description: "CSS animation first. Scroll-driven CSS for drawers, sheets, parallax, and page transitions. JS fallback only where CSS is not supported."
 ---
 
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
 ## Philosophy
 
 CSS animations run on the compositor thread. They stay smooth under Low Power Mode, thermal throttling, and every other constraint a mobile device can throw at them. JavaScript animations run on the main thread and compete with everything else the app is doing.

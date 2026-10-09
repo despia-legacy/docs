@@ -1,0 +1,88 @@
+---
+title: "SpeechRecognition"
+description: "Turn the user's speech into text with the standard web speech API."
+icon: "microphone"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Adds the browser SpeechRecognition API to your web pages inside the app, because the iOS and Android web views do not have it, and also offers a simple start, stop and abort call. It listens through the microphone, streams interim and final transcripts, and asks for speech and microphone permission the first time. You write the page that shows the text.
+
+**When to use it.** Use it for dictation, voice search or voice commands in a web page. Code written for the standard speech recognition API keeps working without changes.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.speechrecognition.stop()
+else if (rt.kind === 'v3') despia('speechrecognition://stop')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `speechrecognition` package is on the global `window.dsx`. `dsx.has('speechrecognition')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('speechrecognition')) {
+  // Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed.
+  const startResultSub = window.dsx.module.speechrecognition.start({ continuous: false, interim: true, language: "en-US", max: 1 }, (event) => {
+    console.log(event.event, event.data)
+  })
+  // later: startResultSub.stop()
+
+  // Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running.
+  const stopResult = await window.dsx.module.speechrecognition.stop()
+
+  // Stops listening and throws away what was heard; it is safe to call when nothing is running.
+  const abort = await window.dsx.module.speechrecognition.abort()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.speechrecognition.abort()` | none | `ok` | iOS, Android | Stops listening and throws away what was heard; it is safe to call when nothing is running. |
+| `dsx.module.speechrecognition.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the user change which items this app can see when speech recognition and the microphone is limited, without leaving the app; elsewhere it only reports the current state. |
+| `dsx.module.speechrecognition.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the user can change a denied permission. |
+| `dsx.module.speechrecognition.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks for speech recognition and the microphone with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it. |
+| `dsx.module.speechrecognition.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current state of speech recognition and the microphone without ever showing a dialog, so a settings screen can call it every time it appears. |
+| `dsx.module.speechrecognition.polyfill()` | `action`: string<br/>`config`?: object<br/>`recognizerId`: string |  | iOS, Android | The internal route the SpeechRecognition polyfill uses to talk to the phone; you do not call it by hand. |
+| `dsx.module.speechrecognition.start()` | `continuous`?: boolean<br/>`interim`?: boolean<br/>`language`?: string<br/>`max`?: number | stream (events: `start`, `result`) | iOS, Android | Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed. |
+| `dsx.module.speechrecognition.stop()` | none | `ok` | iOS, Android | Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running. |
+
+## Events
+
+Subscribe with `window.dsx.module.speechrecognition.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `polyfill` | Carries the standard web speech events to the polyfill on the page; you should not read it by hand. |
+| `result` | The recognizer heard something and has a best transcript with its alternatives. |
+| `start` | The recognizer has started listening. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Permission prompt (`usage_description`) | The message shown when iOS asks the user for speech recognition. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `speechrecognition://start` | `dsx.module.speechrecognition.start()` |
+| `speechrecognition://stop` | `dsx.module.speechrecognition.stop()` |
+| `speechrecognition://abort` | `dsx.module.speechrecognition.abort()` |

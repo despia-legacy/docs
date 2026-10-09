@@ -1,0 +1,52 @@
+---
+title: "AppRating"
+description: "Ask the system to show its in-app rating prompt."
+icon: "star"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Asks iOS or Android to show its own rating sheet inside your app, so people can rate without leaving it. The system decides whether the sheet really appears and limits how often it can, and it never tells you whether the user rated. You choose a good moment to ask.
+
+**When to use it.** Use it after a moment when the user is likely to be happy, such as finishing a task. Do not attach it to a button labelled rate us, because the system may show nothing; link to your store page for that.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.apprating.request()
+else if (rt.kind === 'v3') despia('rateapp://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `apprating` package is on the global `window.dsx`. `dsx.has('apprating')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('apprating')) {
+  // Asks the system to show its rating sheet. It reports that the system was asked, not that the sheet appeared, because the system decides.
+  const request = await window.dsx.module.apprating.request()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.apprating.request()` | none | `requested` | iOS, Android | Asks the system to show its rating sheet. It reports that the system was asked, not that the sheet appeared, because the system decides. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `rateapp://` | `dsx.module.apprating.request()` |

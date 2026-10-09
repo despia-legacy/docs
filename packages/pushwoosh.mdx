@@ -1,0 +1,75 @@
+---
+title: "Pushwoosh"
+description: "Send push notifications to your app's users through Pushwoosh."
+icon: "bell"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Registers each device with Pushwoosh and gives your app the device's subscription, your own user id and typed tags, so you can target pushes from the Pushwoosh dashboard. Use it when your team already runs its messaging on Pushwoosh. Needs a Pushwoosh account, your App ID and an API token.
+
+**When to use it.** Reach for it when your team already sends its messages through Pushwoosh and you want each device registered, linked to your own user ids and tagged for targeting. If you do not use Pushwoosh, choose another push package.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.pushwoosh.subscription.get()
+else if (rt.kind === 'v3') despia('getpushwooshid://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `pushwoosh` package is on the global `window.dsx`. `dsx.has('pushwoosh')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('pushwoosh')) {
+  // Returns this device's Pushwoosh id, its push token and whether it is registered with Pushwoosh.
+  const subscriptionGet = await window.dsx.module.pushwoosh.subscription.get()
+
+  // Sets the language Pushwoosh uses to pick localized messages for this device; the device language is used by default.
+  const languageSet = await window.dsx.module.pushwoosh.language.set({ language: "fr" })
+
+  // Links this device to your own user id so you can send to the person rather than to one device.
+  const login = await window.dsx.module.pushwoosh.login({ externalId: "u_12345" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.pushwoosh.language.set()` | `language`: string | `language` | iOS, Android | Sets the language Pushwoosh uses to pick localized messages for this device; the device language is used by default. |
+| `dsx.module.pushwoosh.login()` | `externalId`: string | `externalId` | iOS, Android | Links this device to your own user id so you can send to the person rather than to one device. |
+| `dsx.module.pushwoosh.logout()` | none | `externalId` | iOS, Android | Unlinks your user id so the device becomes an anonymous Pushwoosh user again. Calling it when nobody is logged in is not an error. |
+| `dsx.module.pushwoosh.subscription.get()` | none | `id`<br/>`optedIn`<br/>`token` | iOS, Android | Returns this device's Pushwoosh id, its push token and whether it is registered with Pushwoosh. |
+| `dsx.module.pushwoosh.subscription.set()` | `optedIn`: boolean | `id`<br/>`optedIn`<br/>`token` | iOS, Android | Registers this device with Pushwoosh or unregisters it, without changing the system notification permission. |
+| `dsx.module.pushwoosh.tags.get()` | none | `tags` | iOS, Android | Returns the tags Pushwoosh holds for this device. |
+| `dsx.module.pushwoosh.tags.remove()` | `keys`: string[] | `tags` | iOS, Android | Removes tags from this device by name and returns the tags afterward. |
+| `dsx.module.pushwoosh.tags.set()` | `tags`: object | `tags` | iOS, Android | Adds or replaces tags on this device and returns the tags afterward. A value is a string, a number, a boolean or a list of strings. |
+| `dsx.module.pushwoosh.user.get()` | none | `externalId` | iOS, Android | Returns the user id this device is currently linked to, or an empty value when anonymous. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| API token (`api_token`) | Your Pushwoosh device API token from the Pushwoosh control panel. |
+| App ID (`app_id`) | Your Pushwoosh application id, shown in the Pushwoosh dashboard, used to register devices. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getpushwooshid://` | `dsx.module.pushwoosh.subscription.get()` |

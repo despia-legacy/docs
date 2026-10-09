@@ -1,0 +1,48 @@
+---
+title: "Browser"
+description: "Open web links in the system's in-app browser tab."
+icon: "globe"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Opens a web address in Safari's in-app tab on iOS, a Chrome Custom Tab on Android and a new tab on the web, with the same checks everywhere. Phone, mail and other safe app links are handed to the system. Unsafe addresses such as javascript: are refused.
+
+**When to use it.** Use it for links that leave your app, such as articles, terms or a payment page. For screens inside your own app, use navigation instead.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `browser` package is on the global `window.dsx` and is built into every app:
+
+```javascript
+// built into every Despia v4 app
+if (window.dsx) {
+  // Opens a link outside the app's own screens. Web addresses open in an in-app browser tab, and safe links such as phone or mail are passed to the system.
+  const openResult = await window.dsx.module.browser.open({ url: "https://example.com" })
+
+  // Reloads the page the app is showing.
+  const reload = await window.dsx.module.browser.reload()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.browser.open()` | `target`?: "blank" \\| "self"<br/>`url`: string | `opened` | iOS, Android | Opens a link outside the app's own screens. Web addresses open in an in-app browser tab, and safe links such as phone or mail are passed to the system. |
+| `dsx.module.browser.reload()` | none | `reloaded` | iOS, Android | Reloads the page the app is showing. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `addpkpass://` | `dsx.module.browser.open()` |

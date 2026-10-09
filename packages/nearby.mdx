@@ -1,0 +1,96 @@
+---
+title: "Nearby"
+description: "Connect two phones running your app directly and send them data, with no server."
+icon: "tower-broadcast"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Finds nearby devices that run the same app, connects them and lets them exchange small messages, using Nearby Connections on Android and MultipeerConnectivity on iOS with the same calls. iPhones only connect to iPhones and Android phones to Android phones. You write the screens for picking a peer and the messages you send.
+
+**When to use it.** Reach for it for local multiplayer, file-less data sharing or classroom-style features between devices in the same room. Do not use it when an iPhone must talk to an Android phone, because the two systems cannot find each other; use a server for that.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.nearby.stop()
+else if (rt.kind === 'v3') despia('nearby://stop')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `nearby` package is on the global `window.dsx`. `dsx.has('nearby')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('nearby')) {
+  // Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events.
+  const startResultSub = window.dsx.module.nearby.start({ mode: "both", name: "Alice", strategy: "star" }, (event) => {
+    console.log(event.event, event.data)
+  })
+  // later: startResultSub.stop()
+
+  // Asks a discovered device to connect. Connections are accepted automatically, so any device running the same app and service id can join.
+  const connect = await window.dsx.module.nearby.connect({ peer: "4a2f" })
+
+  // Closes the connection to one device, or to every connected device when no peer is given.
+  const disconnect = await window.dsx.module.nearby.disconnect({ peer: "4a2f" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.nearby.capabilities()` | none | `maxPayloadBytes`<br/>`strategies` | iOS, Android | Reports what this device's nearby connection can do, such as the largest message and the connection strategies on offer. |
+| `dsx.module.nearby.connect()` | `peer`: string | `connected`<br/>`peer` | iOS, Android | Asks a discovered device to connect. Connections are accepted automatically, so any device running the same app and service id can join. |
+| `dsx.module.nearby.disconnect()` | `peer`?: string | `disconnected` | iOS, Android | Closes the connection to one device, or to every connected device when no peer is given. |
+| `dsx.module.nearby.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the person change a limited selection of what the app can access, where the system offers that, and otherwise just reports the current state. |
+| `dsx.module.nearby.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the person can change a permission they refused earlier. |
+| `dsx.module.nearby.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks the person for nearby device access through the system prompt and reports the answer. |
+| `dsx.module.nearby.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reports whether the app currently has nearby device access without asking the person. |
+| `dsx.module.nearby.send()` | `data`: string<br/>`peer`?: string | `bytes`<br/>`sent` | iOS, Android | Sends a message to one connected device, or to all of them when no peer is given. |
+| `dsx.module.nearby.start()` | `mode`?: string<br/>`name`?: string<br/>`prompt`?: boolean<br/>`strategy`?: string | stream (events: `peerFound`, `peerLost`, `connecting`, `connected`, `disconnected`, `payload`) | iOS, Android | Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events. |
+| `dsx.module.nearby.stop()` | none | `active` | iOS, Android | Ends the nearby session and disconnects everyone. |
+
+## Events
+
+Subscribe with `window.dsx.module.nearby.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `connected` | The connection to a device is established and you can send messages. |
+| `connecting` | A connection to a device is being set up. |
+| `disconnected` | A device disconnected, or a connection attempt ended without connecting on iOS. |
+| `payload` | A message arrived from a connected device. |
+| `peerFound` | A nearby device running the same app and service id was found. |
+| `peerLost` | A device that had been found has stopped advertising or gone out of range. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Service id (`service_id`) | The identifier peers use to find each other. Both sides of a connection must use the same value. |
+| Local network prompt (`usage_local_network`) | The message shown when iOS asks for local-network access. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `nearby://start` | `dsx.module.nearby.start()` |
+| `nearby://connect` | `dsx.module.nearby.connect()` |
+| `nearby://disconnect` | `dsx.module.nearby.disconnect()` |
+| `nearby://send` | `dsx.module.nearby.send()` |
+| `nearby://stop` | `dsx.module.nearby.stop()` |

@@ -1,0 +1,61 @@
+---
+title: "Scanner"
+description: "Scan QR codes, barcodes and paper documents with the camera."
+icon: "qrcode"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Opens the phone's own scanner to read a QR code or barcode, or to scan a paper document into pages with the text read off them. It also gives you a scanner preview you can place inside your own layout. QR and barcode scanning stay free.
+
+**When to use it.** Reach for it when people need to scan a QR code, a barcode or a paper document. If you want your own camera screen with scanning on top, use the scanner preview in your layout instead.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.scanner.scan({ for: "code" })
+else if (rt.kind === 'v3') despia('qrcode://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `scanner` package is on the global `window.dsx`. `dsx.has('scanner')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('scanner')) {
+  // Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled.
+  const scan = await window.dsx.module.scanner.scan({ for: "code", formats: ["qr"] })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.scanner.scan()` | `facing`?: string<br/>`for`: string<br/>`formats`?: string[] | `cancelled`<br/>`format`<br/>`pages`<br/>`result`<br/>`type`<br/>`value` | iOS, Android | Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Permission prompt (`usage_description`) | The message shown when iOS asks the user for camera access to scan a code or a document. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `qrcode://` | `dsx.module.scanner.scan()` |
+| `barcodescanner://` | `dsx.module.scanner.scan()` |

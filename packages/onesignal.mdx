@@ -1,0 +1,84 @@
+---
+title: "OneSignal"
+description: "Send push notifications to your app's users through OneSignal."
+icon: "bell-ring"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Registers the device with OneSignal, asks for notification permission and links each device to your signed-in user, so you can send pushes from the OneSignal dashboard. Use it when your team already runs its messaging on OneSignal. Needs a OneSignal account and your OneSignal App ID.  ## Set it up  1. Create an app in the [OneSignal dashboard](https://onesignal.com) and add your Apple push key and Firebase project. 2. Add **OneSignal** and paste your **OneSignal App ID**. 3. Build the app. The first launch registers the device; the permission prompt shows when your app asks for it.  ## Settings  \| Setting \| What it does \| \| --- \| --- \| \| OneSignal App ID \| Your OneSignal application ID \| \| Push enabled \| Turns OneSignal push on or off \| \| Open deeplink in browser \| Opens a tapped notification's link in Safari instead of the app \| 
+
+**When to use it.** Add it when your team already sends push, email and text messages from OneSignal and you want devices linked to your signed-in people. If you do not use OneSignal, use the plain notifications package.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.onesignal.subscription.get()
+else if (rt.kind === 'v3') despia('getonesignalplayerid://')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `onesignal` package is on the global `window.dsx`. `dsx.has('onesignal')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('onesignal')) {
+  // Reads this device's push subscription: its id, token and whether it is opted in.
+  const subscriptionGet = await window.dsx.module.onesignal.subscription.get()
+
+  // Links this device to your own user id so you can send pushes to a person instead of a device.
+  const login = await window.dsx.module.onesignal.login({ externalId: "u_12345" })
+
+  // Removes aliases from this user by label.
+  const aliasesRemove = await window.dsx.module.onesignal.aliases.remove({ labels: ["crm"] })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.onesignal.aliases.remove()` | `labels`: string[] | `labels` | iOS, Android | Removes aliases from this user by label. |
+| `dsx.module.onesignal.aliases.set()` | `aliases`: object | `labels` | iOS, Android | Adds ids from your other systems to this user, or replaces them. |
+| `dsx.module.onesignal.email.add()` | `email`: string | `email` | iOS, Android | Adds an email address to this user so you can message them by email through OneSignal. |
+| `dsx.module.onesignal.email.remove()` | `email`: string | `email` | iOS, Android | Removes an email address from this user. |
+| `dsx.module.onesignal.language.set()` | `language`: string | `language` | iOS, Android | Sets the language OneSignal uses for this user's localized messages. |
+| `dsx.module.onesignal.login()` | `externalId`: string | `externalId`<br/>`onesignalId` | iOS, Android | Links this device to your own user id so you can send pushes to a person instead of a device. |
+| `dsx.module.onesignal.logout()` | none | `externalId`<br/>`onesignalId` | iOS, Android | Unlinks your user id from this device, which then continues as an anonymous user. |
+| `dsx.module.onesignal.sms.add()` | `number`: string | `number` | iOS, Android | Adds a phone number to this user so you can message them by text through OneSignal. |
+| `dsx.module.onesignal.sms.remove()` | `number`: string | `number` | iOS, Android | Removes a phone number from this user. |
+| `dsx.module.onesignal.subscription.get()` | none | `id`<br/>`optedIn`<br/>`token` | iOS, Android | Reads this device's push subscription: its id, token and whether it is opted in. |
+| `dsx.module.onesignal.subscription.set()` | `optedIn`: boolean | `id`<br/>`optedIn`<br/>`token` | iOS, Android | Opts this device in or out of push for this app without changing the system permission. |
+| `dsx.module.onesignal.tags.get()` | none | `tags` | iOS, Android | Reads the tags stored on this user. |
+| `dsx.module.onesignal.tags.remove()` | `keys`: string[] | `tags` | iOS, Android | Removes tags from this user by key. |
+| `dsx.module.onesignal.tags.set()` | `tags`: object | `tags` | iOS, Android | Adds tags to this user or replaces tags with the same key. |
+| `dsx.module.onesignal.user.get()` | none | `externalId`<br/>`onesignalId` | iOS, Android | Reads the current user: your external id and OneSignal's own id. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| OneSignal App ID (`app_id`) | Your OneSignal application ID (from the OneSignal dashboard). |
+| Push enabled (`enabled`) | Master switch for OneSignal push. |
+| Open deeplink in browser (`open_deeplink_in_browser`) | Open a tapped notification's deeplink in Safari instead of the in-app web view. |
+| Reload on subscription ID (`reload_on_user_id`) | Reload the web view once OneSignal returns the push subscription ID. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `getonesignalplayerid://` | `dsx.module.onesignal.subscription.get()` |
+| `setonesignalplayerid://` | `dsx.module.onesignal.login()` |

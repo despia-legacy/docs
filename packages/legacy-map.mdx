@@ -1,0 +1,219 @@
+---
+title: "Legacy to Modern map"
+description: "Every Legacy URL scheme the v4 Legacy polyfill still answers, and the modern call it runs."
+icon: "right-left"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<RuntimeCheck />
+
+Despia version 4 keeps V3 apps working: the Legacy polyfill answers the old `despia('scheme://...')` calls (from the `despia-native` npm package or a raw URL scheme) and runs the modern package call for you. This table is generated from the polyfill's own map, so it lists exactly what is answered.
+
+<Warning>Removed in 0.1.0: `inapppurchase://` and `inappsubscription://` are no longer answered. Use [RevenueCat](/packages/revenuecat) (`dsx.module.revenuecat.purchase`). Still answered: `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://`.</Warning>
+
+Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps the V3 behaviour through its own compatibility module.
+
+| Legacy scheme | Modern call |
+| :-- | :-- |
+| `writevalue://` | [`dsx.module.storage.set()`](/packages/storage) |
+| `readvalue://` | [`dsx.module.storage.get()`](/packages/storage) |
+| `lighthaptic://` | [`dsx.module.haptic.light()`](/packages/haptic) |
+| `mediumhaptic://` | [`dsx.module.haptic.medium()`](/packages/haptic) |
+| `heavyhaptic://` | [`dsx.module.haptic.heavy()`](/packages/haptic) |
+| `successhaptic://` | [`dsx.module.haptic.success()`](/packages/haptic) |
+| `warninghaptic://` | [`dsx.module.haptic.warning()`](/packages/haptic) |
+| `errorhaptic://` | [`dsx.module.haptic.error()`](/packages/haptic) |
+| `statusbarbackgroundcolor://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `statusbartextcolor://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `statusbarcolor://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `navbartextcolor://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `hidebars://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `enableflashlight://` | [`dsx.module.flashlight.set()`](/packages/flashlight) |
+| `disableflashlight://` | [`dsx.module.flashlight.set()`](/packages/flashlight) |
+| `bottombarcolor://` | [`dsx.module.systembars.set()`](/packages/systembars) |
+| `stoplocation://` | Legacy polyfill |
+| `widget://` | Legacy polyfill |
+| `getonesignalplayerid://` | [`dsx.module.onesignal.subscription.get()`](/packages/onesignal) |
+| `setonesignalplayerid://` | [`dsx.module.onesignal.login()`](/packages/onesignal) |
+| `registerpush://` | [`dsx.module.notify.permission.request()`](/packages/notify) |
+| `getpushwooshid://` | [`dsx.module.pushwoosh.subscription.get()`](/packages/pushwoosh) |
+| `getfirebaseplayerid://` | [`dsx.module.firebase.subscription.get()`](/packages/firebase) |
+| `readhealthkit://` | [`dsx.module.healthkit.read()`](/packages/healthkit) |
+| `writehealthkit://` | [`dsx.module.healthkit.write()`](/packages/healthkit) |
+| `get-uuid://` | [`dsx.module.uuid.get()`](/packages/uuid) |
+| `getappversion://` | [`dsx.module.device.app()`](/packages/device) |
+| `getstorelocation://` | [`dsx.module.store.storefront()`](/packages/store) |
+| `checknativepushpermissions://` | [`dsx.module.notify.permission.status()`](/packages/notify) |
+| `getclipboard://` | [`dsx.module.clipboard.read()`](/packages/clipboard) |
+| `gyroscope://stop` | Legacy polyfill |
+| `gyroscope://` | Legacy polyfill |
+| `motion://start` | [`dsx.module.motion.start()`](/packages/motion) |
+| `motion://stop` | [`dsx.module.motion.stop()`](/packages/motion) |
+| `motion://capabilities` | [`dsx.module.motion.capabilities()`](/packages/motion) |
+| `motion://barometer` | [`dsx.module.motion.barometer()`](/packages/motion) |
+| `motion://activity` | [`dsx.module.motion.activity()`](/packages/motion) |
+| `motion://pedometer` | [`dsx.module.motion.pedometer()`](/packages/motion) |
+| `backgroundlocationon://` | Legacy polyfill |
+| `backgroundlocationoff://` | Legacy polyfill |
+| `location://` | Legacy polyfill |
+| `oauth://` | [`dsx.module.oauth.start()`](/packages/oauth) |
+| `googlelogin://` | [`dsx.module.oauth.start()`](/packages/oauth) |
+| `bioauth://` | [`dsx.module.biometric.authenticate()`](/packages/biometric) |
+| `biometric://available` | Legacy polyfill |
+| `camera://burst` | Legacy polyfill |
+| `camera://clear` | [`dsx.module.camera.clear()`](/packages/camera) |
+| `camera://capabilities` | Legacy polyfill |
+| `clerk://state` | [`dsx.module.clerk.status()`](/packages/clerk) |
+| `clerk://status` | [`dsx.module.clerk.status()`](/packages/clerk) |
+| `clerk://configure` | [`dsx.module.clerk.configure()`](/packages/clerk) |
+| `clerk://authview` | [`dsx.module.clerk.authview()`](/packages/clerk) |
+| `clerk://userprofile` | [`dsx.module.clerk.userprofile()`](/packages/clerk) |
+| `clerk://signout` | [`dsx.module.clerk.signout()`](/packages/clerk) |
+| `clerk://attribution` | [`dsx.module.clerk.attribution()`](/packages/clerk) |
+| `clerk://ssr` | [`dsx.module.clerk.ssr()`](/packages/clerk) |
+| `clerk://manual` | [`dsx.module.clerk.manual()`](/packages/clerk) |
+| `clerk://token` | [`dsx.module.clerk.token()`](/packages/clerk) |
+| `readcontacts://` | [`dsx.module.contacts.read()`](/packages/contacts) |
+| `contacts://read` | [`dsx.module.contacts.read()`](/packages/contacts) |
+| `requestcontactpermission://` | [`dsx.module.contacts.permission.request()`](/packages/contacts) |
+| `healthkit://state` | [`dsx.module.healthkit.status()`](/packages/healthkit) |
+| `setvault://` | [`dsx.module.identityvault.write()`](/packages/identityvault) |
+| `readvault://` | [`dsx.module.identityvault.read()`](/packages/identityvault) |
+| `sendlocalpushmsg://push.send.cancel` | Legacy polyfill |
+| `sendlocalpushmsg://cartreminderpush.send.cancel` | Legacy polyfill |
+| `sendlocalpushmsg://categoryrecommpush.cancel` | Legacy polyfill |
+| `sendlocalpushmsg://productrecommpush.cancel` | Legacy polyfill |
+| `sendlocalpushmsg://` | Legacy polyfill |
+| `localpush://schedule` | Legacy polyfill |
+| `localpush://cronjobs` | Legacy polyfill |
+| `nearby://start` | [`dsx.module.nearby.start()`](/packages/nearby) |
+| `nearby://connect` | [`dsx.module.nearby.connect()`](/packages/nearby) |
+| `nearby://disconnect` | [`dsx.module.nearby.disconnect()`](/packages/nearby) |
+| `nearby://send` | [`dsx.module.nearby.send()`](/packages/nearby) |
+| `nearby://stop` | [`dsx.module.nearby.stop()`](/packages/nearby) |
+| `nearby://capabilities` | Legacy polyfill |
+| `stripe://payment` | [`dsx.module.payments.payment()`](/packages/payments) |
+| `stripe://manage` | [`dsx.module.payments.manage()`](/packages/payments) |
+| `stripe://connectBank` | [`dsx.module.payments.connectBank()`](/packages/payments) |
+| `stripe://payAch` | [`dsx.module.payments.payAch()`](/packages/payments) |
+| `stripe://connectOnboard` | [`dsx.module.payments.stripe.connectOnboard()`](/packages/payments) |
+| `qrcode://` | [`dsx.module.scanner.scan()`](/packages/scanner) |
+| `barcodescanner://` | [`dsx.module.scanner.scan()`](/packages/scanner) |
+| `vision://ocr` | Legacy polyfill |
+| `wallet://pkpass` | [`dsx.module.wallet.pkpass()`](/packages/wallet) |
+| `addpkpass://` | [`dsx.module.browser.open()`](/packages/browser) |
+| `apptracking://` | [`dsx.module.apptracking.permission.status()`](/packages/apptracking) |
+| `user-disable-tracking://` | [`dsx.module.apptracking.permission.status()`](/packages/apptracking) |
+| `trackingconsent://` | [`dsx.module.apptracking.permission.request()`](/packages/apptracking) |
+| `speechrecognition://start` | [`dsx.module.speechrecognition.start()`](/packages/speechrecognition) |
+| `speechrecognition://stop` | [`dsx.module.speechrecognition.stop()`](/packages/speechrecognition) |
+| `speechrecognition://abort` | [`dsx.module.speechrecognition.abort()`](/packages/speechrecognition) |
+| `speechsynthesis://start` | [`dsx.module.speechsynthesis.start()`](/packages/speechsynthesis) |
+| `speechsynthesis://stop` | [`dsx.module.speechsynthesis.stop()`](/packages/speechsynthesis) |
+| `getpurchasehistory://` | [`dsx.module.revenuecat.history()`](/packages/revenuecat) |
+| `revenuecat://launchPaywall` | [`dsx.module.revenuecat.paywall()`](/packages/revenuecat) |
+| `revenuecat://products` | [`dsx.module.revenuecat.catalog()`](/packages/revenuecat) |
+| `revenuecat://customer` | [`dsx.module.revenuecat.customer()`](/packages/revenuecat) |
+| `revenuecat://purchase` | [`dsx.module.revenuecat.purchase()`](/packages/revenuecat) |
+| `revenuecat://center` | [`dsx.module.revenuecat.center()`](/packages/revenuecat) |
+| `multiapicall://` | Legacy polyfill |
+| `readnfc://` | [`dsx.module.nfc.read()`](/packages/nfc) |
+| `writenfc://` | [`dsx.module.nfc.write()`](/packages/nfc) |
+| `spinneron://` | [`dsx.module.spinner.show()`](/packages/spinner) |
+| `spinneroff://` | [`dsx.module.spinner.hide()`](/packages/spinner) |
+| `shareapp://` | [`dsx.module.share.url()`](/packages/share) |
+| `displayrewardedad://` | Legacy polyfill |
+| `increasetapcounter://` | Legacy polyfill |
+| `disableads://` | Legacy polyfill |
+| `enableads://` | Legacy polyfill |
+| `enablepulltorefresh://` | [`dsx.module.pulltorefresh.set()`](/packages/pulltorefresh) |
+| `disablepulltorefresh://` | [`dsx.module.pulltorefresh.set()`](/packages/pulltorefresh) |
+| `scanningmode://on` | Legacy polyfill |
+| `scanningmode://off` | Legacy polyfill |
+| `scanningmode://auto` | Legacy polyfill |
+| `settingsapp://notifications` | [`dsx.module.settings.notifications()`](/packages/settings) |
+| `savethisimage://` | Legacy polyfill |
+| `startnativevideo://` | [`dsx.module.player.play()`](/packages/player) |
+| `printitem://` | [`dsx.module.print.document()`](/packages/print) |
+| `reset://` | Legacy polyfill |
+| `reconnect://` | Legacy polyfill |
+| `restoreinapppurchases://` | Legacy polyfill |
+| `cancelinapppurchase://` | [`dsx.module.store.manage()`](/packages/store) |
+| `takescreenshot://` | Legacy polyfill |
+| `sharefile://` | [`dsx.module.filesharing.share()`](/packages/filesharing) |
+| `download://` | [`dsx.module.filesharing.share()`](/packages/filesharing) |
+| `rateapp://` | [`dsx.module.apprating.request()`](/packages/apprating) |
+| `addtosiri://` | Legacy polyfill |
+| `filepicker://` | [`dsx.module.fileupload.nativeOverwrite()`](/packages/fileupload) |
+| `actionsheet://` | `dsx.module.actionsheet.show()` |
+| `admob://interstitial` | Legacy polyfill |
+| `appsflyer://log_event` | [`dsx.module.appsflyer.logEvent()`](/packages/appsflyer) |
+| `appsflyer://set_user_id` | [`dsx.module.appsflyer.setUserId()`](/packages/appsflyer) |
+| `appsflyer://get_uid` | [`dsx.module.appsflyer.get_uid()`](/packages/appsflyer) |
+| `appsflyer://set_email` | [`dsx.module.appsflyer.setEmail()`](/packages/appsflyer) |
+| `appsflyer://set_phone` | [`dsx.module.appsflyer.setPhone()`](/packages/appsflyer) |
+| `appsflyer://log_ad_revenue` | [`dsx.module.appsflyer.logAdRevenue()`](/packages/appsflyer) |
+| `appsflyer://get_attribution` | [`dsx.module.appsflyer.get_attribution()`](/packages/appsflyer) |
+| `appsflyer://set_consent` | [`dsx.module.appsflyer.setConsent()`](/packages/appsflyer) |
+| `nfc://read` | [`dsx.module.nfc.read()`](/packages/nfc) |
+| `nfc://write` | [`dsx.module.nfc.write()`](/packages/nfc) |
+| `healthkit://observe` | [`dsx.module.healthkit.observe()`](/packages/healthkit) |
+| `healthkit://unobserve` | [`dsx.module.healthkit.unobserve()`](/packages/healthkit) |
+| `healthkit://workouts` | [`dsx.module.healthkit.workouts()`](/packages/healthkit) |
+| `pagesheet://open` | Legacy polyfill |
+| `fileviewer://` | [`dsx.module.fileviewer.preview()`](/packages/fileviewer) |
+| `ageassurance://check` | [`dsx.module.ageassurance.check()`](/packages/ageassurance) |
+| `ageassurance://resolve` | [`dsx.module.ageassurance.resolve()`](/packages/ageassurance) |
+| `ageassurance://last` | [`dsx.module.ageassurance.last()`](/packages/ageassurance) |
+| `ageassurance://forget` | [`dsx.module.ageassurance.forget()`](/packages/ageassurance) |
+| `settingsapp://` | [`dsx.module.settings.app()`](/packages/settings) |
+| `websocket://connect` | [`dsx.module.websocket.connect()`](/packages/websocket) |
+| `websocket://send` | [`dsx.module.websocket.send()`](/packages/websocket) |
+| `websocket://subscribe` | [`dsx.module.websocket.subscribe()`](/packages/websocket) |
+| `websocket://status` | [`dsx.module.websocket.status()`](/packages/websocket) |
+| `websocket://disconnect` | [`dsx.module.websocket.disconnect()`](/packages/websocket) |
+| `terra://connect` | [`dsx.module.terra.connect()`](/packages/terra) |
+| `terra://sync` | [`dsx.module.terra.sync()`](/packages/terra) |
+| `terra://permissions` | [`dsx.module.terra.permission.request()`](/packages/terra) |
+| `terra://data` | [`dsx.module.terra.data()`](/packages/terra) |
+| `terra://disconnect` | [`dsx.module.terra.disconnect()`](/packages/terra) |
+| `terra://settings` | [`dsx.module.terra.permission.openSettings()`](/packages/terra) |
+| `preventdefault://autoscroll` | [`dsx.module.preventdefault.autoscroll()`](/packages/preventdefault) |
+| `healthkit://read` | [`dsx.module.healthkit.read()`](/packages/healthkit) |
+| `localcdn://write` | Legacy polyfill |
+| `localcdn://read` | Legacy polyfill |
+| `localcdn://query` | Legacy polyfill |
+| `localcdn://delete` | Legacy polyfill |
+| `audio://setqueue` | Legacy polyfill |
+| `audio://setfeed` | Legacy polyfill |
+| `audio://play` | Legacy polyfill |
+| `audio://pause` | Legacy polyfill |
+| `audio://next` | Legacy polyfill |
+| `audio://prev` | Legacy polyfill |
+| `audio://playat` | Legacy polyfill |
+| `audio://seek` | Legacy polyfill |
+| `audio://skipforward` | Legacy polyfill |
+| `audio://skipback` | Legacy polyfill |
+| `audio://speed` | Legacy polyfill |
+| `audio://config` | Legacy polyfill |
+| `audio://webhook` | Legacy polyfill |
+| `audio://sync` | Legacy polyfill |
+| `audio://terminate` | Legacy polyfill |
+| `audio://routepicker` | Legacy polyfill |
+| `audio://` | Legacy polyfill |
+| `posthog://capture` | Legacy polyfill |
+| `posthog://identify` | Legacy polyfill |
+| `posthog://whoami` | Legacy polyfill |
+| `posthog://alias` | Legacy polyfill |
+| `posthog://group` | Legacy polyfill |
+| `posthog://screen` | Legacy polyfill |
+| `posthog://set_person_properties` | Legacy polyfill |
+| `posthog://register` | Legacy polyfill |
+| `posthog://unregister` | Legacy polyfill |
+| `posthog://reset` | Legacy polyfill |
+| `posthog://opt_out` | Legacy polyfill |
+| `posthog://opt_in` | Legacy polyfill |
+| `sandbox://set` | `dsx.module.dev.set()` |
+| `sandbox://clear` | `dsx.module.dev.reset()` |

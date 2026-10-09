@@ -1,0 +1,67 @@
+---
+title: "AppSettings"
+description: "Open your app's page in the system Settings."
+icon: "gear"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Sends the user to this app's page in the Settings app, or to a deeper page such as notifications, so they can switch back on a permission they denied earlier. The phone will not show the system prompt a second time, so this is the way back. It does not wait for the user to return. You write the button and the explanation around it.
+
+**When to use it.** Use it from a button the user taps after a permission was denied, such as notifications or location. Do not call it automatically, and note that it cannot change a setting for the user.
+
+<RuntimeCheck />
+
+**On v3 and v4:**
+
+```javascript
+const rt = getDespiaRuntime() // from the block above
+if (rt.kind === 'v4') await window.dsx.module.settings.notifications()
+else if (rt.kind === 'v3') despia('settingsapp://notifications')
+else { /* web fallback */ }
+```
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `settings` package is on the global `window.dsx`. `dsx.has('settings')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('settings')) {
+  // Opens this app's notification settings page, which needs iOS 15.4 or later on iPhone.
+  const notifications = await window.dsx.module.settings.notifications()
+
+  // Opens this app's own page in the system Settings, where the user can change its permissions.
+  const app = await window.dsx.module.settings.app()
+
+  // On Android, asks the system to let the app ignore battery optimization; on iOS it fails with unsupported_platform.
+  const battery = await window.dsx.module.settings.battery()
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.settings.app()` | none | `ok` | iOS, Android | Opens this app's own page in the system Settings, where the user can change its permissions. |
+| `dsx.module.settings.battery()` | none | `ok` | iOS, Android | On Android, asks the system to let the app ignore battery optimization; on iOS it fails with unsupported_platform. |
+| `dsx.module.settings.bluetooth()` | none | `ok` | iOS, Android | Opens the Bluetooth settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link. |
+| `dsx.module.settings.defaults()` | none | `ok` | iOS, Android | Opens the system default apps page, which needs iOS 18.2 or later on iPhone. |
+| `dsx.module.settings.locale()` | none | `ok` | iOS, Android | Opens the Android per-app language settings on Android 13 and later; on iOS it fails with unsupported_platform. |
+| `dsx.module.settings.location()` | none | `ok` | iOS, Android | Opens the location settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link. |
+| `dsx.module.settings.notifications()` | none | `ok` | iOS, Android | Opens this app's notification settings page, which needs iOS 15.4 or later on iPhone. |
+| `dsx.module.settings.overlay()` | none | `ok` | iOS, Android | Opens the Android page where the user allows drawing over other apps; on iOS it fails with unsupported_platform. |
+| `dsx.module.settings.wifi()` | none | `ok` | iOS, Android | Opens the Wi-Fi settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `settingsapp://notifications` | `dsx.module.settings.notifications()` |
+| `settingsapp://` | `dsx.module.settings.app()` |

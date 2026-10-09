@@ -1,0 +1,43 @@
+---
+title: "SocialShare"
+description: "Let people share text, links and files from your app through the phone's share sheet."
+icon: "share-nodes"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Opens the native share sheet so users can send to Messages, Mail, WhatsApp, AirDrop, Files or copy to the clipboard. You can share a message, a link and attachments from your app's files together. No account or keys needed.
+
+**When to use it.** Reach for it when the user wants to send something out of your app, such as a link, a message or a file, through whichever app they choose. It does not post to a specific network for you.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `share` package is on the global `window.dsx`. `dsx.has('share')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('share')) {
+  // Opens the system share sheet with a message, a link and files, and resolves when the user shares or closes it.
+  const url = await window.dsx.module.share.url({ message: "Check out this listing", url: "https://example.com/listings/cozy-loft" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.share.url()` | `file`?: string<br/>`files`?: string[]<br/>`message`?: string<br/>`url`?: string | `activityType`<br/>`completed` | iOS, Android | Opens the system share sheet with a message, a link and files, and resolves when the user shares or closes it. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `shareapp://` | `dsx.module.share.url()` |

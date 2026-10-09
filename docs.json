@@ -20,7 +20,6 @@
               "packages/overview",
               "packages/react",
               "packages/add-a-package",
-              "packages/mcp",
               "packages/legacy-map"
             ]
           },
@@ -77,7 +76,8 @@
                   "packages/pulltorefresh",
                   "packages/preventdefault",
                   "packages/apprating",
-                  "packages/quickactions"
+                  "packages/quickactions",
+                  "packages/actionsheet"
                 ]
               },
               {

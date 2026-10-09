@@ -300,7 +300,7 @@ async function saveAuth(token, refreshToken) {
   localStorage.setItem('auth_token', token);
   localStorage.setItem('refresh_token', refreshToken);
   
-  // Only use vault if running in Despia native app
+  // Only use vault if running in Despia app
   if (isVaultAvailable()) {
     try {
       await despia(`setvault://?key=authToken&value=${token}&locked=false`);
@@ -313,7 +313,7 @@ async function saveAuth(token, refreshToken) {
 
 // Check auth on app load
 async function checkAuth() {
-  // Try vault first if running in Despia native app
+  // Try vault first if running in Despia app
   if (isVaultAvailable()) {
     try {
       const data = await despia('readvault://?key=authToken', ['authToken']);

@@ -1,0 +1,51 @@
+---
+title: "ActionSheet"
+description: "Show the system's own action sheet and find out which option the user picked."
+icon: "list"
+tag: "V4"
+---
+
+import RuntimeCheck from '/snippets/runtime-check.mdx';
+
+<Info>Modern API. Requires Despia version 4 or greater. Check for it first, see [Detect Despia v4](/packages/overview#detect-despia-v4).</Info>
+
+Presents a list of choices in the platform's native action sheet or bottom sheet and gives you back the value of the row the user chose, or nothing if they dismissed it. You supply the rows, the title and the message, and mark destructive choices so the system styles them.
+
+**When to use it.** Use it when the user must choose one action from a short list, such as share, edit or delete for an item. For choosing a value in a form or a long list, use a picker or list screen instead.
+
+<RuntimeCheck />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia v4 app, the `actionsheet` package is on the global `window.dsx`. `dsx.has('actionsheet')` is true when the package is in your app's build:
+
+```javascript
+if (window.dsx && window.dsx.has('actionsheet')) {
+  // Shows the action sheet and waits. You get the value of the chosen row, or nothing when the user dismissed it.
+  const showResult = await window.dsx.module.actionsheet.show({ items: [{"label": "Edit", "value": "edit"}, {"label": "Delete", "role": "destructive", "value": "delete"}], title: "Choose an action" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.actionsheet.show()` | `items`?: object[]<br/>`message`?: string<br/>`title`?: string | `nullable`<br/>`type` | iOS, Android | Shows the action sheet and waits. You get the value of the chosen row, or nothing when the user dismissed it. |
+
+## Events
+
+Subscribe with `window.dsx.module.actionsheet.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+
+| Event | When it fires |
+| :-- | :-- |
+| `select` | The user picked a row or dismissed the sheet. Dismissing sends no value. |
+
+## Coming from the Legacy API
+
+Older apps call these through `despia-native` or a URL scheme. They keep working on v4 through the Legacy polyfill. New code should use the modern call.
+
+| Legacy (`despia('...')`) | Modern |
+| :-- | :-- |
+| `actionsheet://` | `dsx.module.actionsheet.show()` |

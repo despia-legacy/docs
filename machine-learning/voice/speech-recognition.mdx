@@ -8,6 +8,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <RuntimeCheck />
 
+<Tip>On Despia version 4, call this feature with the Modern API, no npm package needed: see [SpeechRecognition](/packages/speechrecognition).</Tip>
+
 Despia exposes two interoperable speech recognition surfaces on iOS and Android, both backed by the platform's native recognizer. The `speechrecognition://` URL-scheme bridge gives you a flat, four-event control flow. The `window.SpeechRecognition` polyfill is a drop-in Web Speech API replacement, so existing code targeting Safari or Chrome and libraries like `react-speech-recognition` run unmodified inside your app. The same JavaScript runs identically on both platforms.
 
 <Info>

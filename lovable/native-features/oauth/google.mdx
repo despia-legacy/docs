@@ -796,7 +796,7 @@ For native apps, we:
 
 **Step 1: Detect if running in native app**
 
-When the user clicks "Sign in", your app first checks if it's running inside a Despia native app. Despia automatically adds `despia` to the userAgent string:
+When the user clicks "Sign in", your app first checks if it's running inside a Despia app. Despia automatically adds `despia` to the userAgent string:
 
 ```javascript
 const isNative = navigator.userAgent.toLowerCase().includes('despia');

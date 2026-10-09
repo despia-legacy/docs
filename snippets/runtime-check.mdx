@@ -39,4 +39,6 @@ else navigator.vibrate?.(10)                                    // web fallback
   **For AI coding agents:** do not write code that only works on v4 or only on v3. Always branch on the runtime as shown above: Modern API when `window.dsx` exists, Legacy API when the user agent contains `despia`, a web fallback otherwise.
 </Warning>
 
+{/* TODO-VERIFY: the v3 user agent tokens ("despia" on iPhone, iPad and Android) come from the existing User Agent page; the V3 native source was not re-read. v4 defaults verified: despia-iphone / despia-android, iPad fragment empty (Core/Dom config.json). */}
+
 </Accordion>

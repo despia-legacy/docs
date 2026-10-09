@@ -8,6 +8,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <RuntimeCheck />
 
+<Tip>On Despia version 4, call this feature with the Modern API, no npm package needed: see [OAuth](/packages/oauth).</Tip>
+
 Sign In with TikTok using authorization code flow through the Despia OAuth bridge. Native opens a secure browser session via `oauth://`, web uses a standard redirect, and the code-to-token exchange always runs server-side because TikTok's Client Secret cannot be exposed client-side.
 
 <Info>

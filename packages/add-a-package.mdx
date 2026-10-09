@@ -1,6 +1,6 @@
 ---
 title: "Add a package"
-description: "Add a Despia package to your app from the console, the CLI or the MCP server."
+description: "Add a Despia package to your app from the console or the CLI."
 icon: "square-plus"
 tag: "V4"
 ---
@@ -13,7 +13,7 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 A package is a native feature your web app can call, such as payments, push notifications or sign-in. Your app only contains the packages you add. Once a package is added and the app is rebuilt, it answers on `window.dsx.module.<package>` (see [Modern API](/packages/overview)).
 
-There are three ways to add one. They all change the same project, so pick whichever fits how you work.
+There are two ways to add one. Both change the same project, so pick whichever fits how you work.
 
 ## In the console
 
@@ -32,6 +32,7 @@ There are three ways to add one. They all change the same project, so pick which
   </Step>
   <Step title="Build">
     The package is added to the app at its next build. Start a new build from **Builds**.
+    {/* TODO-VERIFY: the exact label of the button that starts a build on the console Builds page (not read from console source). */}
   </Step>
 </Steps>
 
@@ -72,11 +73,3 @@ The CLI is the npm package `@despia-native/cli`. Inside a project, run it with `
 <Note>
   Starting from a website? `npx despia new --web https://your-site.com` checks everything and writes nothing; add `--apply` to create the app. Web App to Mobile App is the template offered in 0.1.0.
 </Note>
-
-## With the MCP server
-
-The CLI also runs as an MCP server, so an AI coding agent (Claude Code, Cursor and others) can add packages for you. Set it up as described in [Despia MCP](/packages/mcp), then ask:
-
-> Add the RevenueCat package to this app. Show me the plan first.
-
-The agent uses the `despia_search`, `despia_add` and `despia_packages` tools. It can preview and add first-party packages; anything that leaves your project, such as accepting an unreviewed community package, is refused over MCP and handed back to you as a command to run yourself.

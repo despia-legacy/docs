@@ -8,6 +8,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <RuntimeCheck />
 
+<Tip>On Despia version 4, call this feature with the Modern API, no npm package needed: see [PreventDefault](/packages/preventdefault).</Tip>
+
 When a keyboard appears, iOS and Android both attempt to resize or reposition the WebView automatically. If your web app is already full-height and manages keyboard avoidance in JavaScript, this native adjustment creates a white gap below the keyboard and disrupts your layout. The `preventdefault://autoscroll` scheme disables that native behavior and lets you opt back in at any time.
 
 ---

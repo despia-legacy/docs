@@ -735,7 +735,7 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
     const [isLoading, setIsLoading] = useState(false);
   
     const handleTikTokLogin = async () => {
-      // Detect if running in Despia native app
+      // Detect if running in Despia app
       const isNative = navigator.userAgent.toLowerCase().includes('despia');
       
       setIsLoading(true);
@@ -1484,7 +1484,7 @@ When you wrap a Lovable web app as a native iOS/Android app using Despia:
 
 **Step 1: Detect if running in native app**
 
-When the user clicks "Sign in", your app first checks if it's running inside a Despia native app. Despia automatically adds `despia` to the userAgent string:
+When the user clicks "Sign in", your app first checks if it's running inside a Despia app. Despia automatically adds `despia` to the userAgent string:
 
 ```javascript
 const isNative = navigator.userAgent.toLowerCase().includes('despia');

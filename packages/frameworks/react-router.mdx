@@ -1,0 +1,72 @@
+---
+title: "React Router v7 and Remix"
+sidebarTitle: "React Router / Remix"
+description: "Call Despia V4 packages from React Router v7 and Remix through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
+icon: "route"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+import TestIt from '/snippets/test-it.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+## Where dsx code runs
+
+Only in the browser: the client web view of your app, never during server rendering.
+
+- `loader` and `action` run on the server: never read `window.dsx` there.
+- `clientLoader` and `clientAction` run in the browser and may read it; in components use `useEffect` or an event handler.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
+
+```jsx app/components/DoneButton.jsx
+import { useEffect, useState } from 'react'
+
+export function DoneButton() {
+  const [env, setEnv] = useState('web')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setEnv(window.dsx ? 'v4' : 'web')
+    return window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+  }, [])
+
+  async function done() {
+    setBusy(true)
+    setError(null)
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      setError(e.code)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (env !== 'v4') return null // normal browser: web code
+  return <button disabled={busy} onClick={done}>Done{error && ` (${error})`}</button>
+}
+```
+
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
+
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+{/* TODO-VERIFY: the component is the React one (run in jsdom against runtime.js); a React Router / Remix production build and server render were not run. */}
+
+## TypeScript
+
+Save the declaration as `app/dsx.d.ts`:
+
+<DsxTypes />
+
+## Test it
+
+<TestIt />

@@ -2,10 +2,12 @@
 title: "PostHog"
 description: "Send your app's analytics events to PostHog."
 icon: "chart-column"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -34,3 +36,56 @@ Calls that return something give you a promise; calls that stream take a handler
 | Call | Arguments | Returns | Platforms | What it does |
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.posthog.send()` | `endpoint`?: string<br/>`events`: object[]<br/>`token`: string | `confirmed`<br/>`sent` | iOS, Android | Sends a batch of recorded events to your PostHog project in one request. The product analytics package calls it for you. |
+
+## Action reference
+
+<AccordionGroup>
+<Accordion title="send">
+
+Sends a batch of recorded events to your PostHog project in one request. The product analytics package calls it for you.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `endpoint`? | string | The PostHog address to send to, such as the EU cloud, your own server or a proxy; defaults to the US cloud. |
+| `events` | object[] | The batch of events to send, each with its id, name, properties and time. |
+| `token` | string | Your PostHog project token, which starts with phc_ and is safe to ship in an app. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.posthog.send({ events: [{"anonymousId": "a-1", "at": 1758801600000, "event": "checkout.started", "eventId": "e-1", "platform": "ios", "properties": {}, "sessionId": "s-1", "source": "app"}], token: "phc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG" })
+```
+
+```json Result
+{
+  "confirmed": false,
+  "sent": 1
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `confirmed`? | boolean | Always false: PostHog accepted the request but that is not a delivery receipt. |
+| `sent` | number | How many events were sent in the batch. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `destination_unavailable` | PostHog could not be reached. |
+| `invalid_endpoint` | The PostHog endpoint must be https, or http to a local development host. |
+| `invalid_token` | That is not a PostHog project token (phc_ plus 20 to 64 letters and digits). |
+| `rejected` | PostHog refused the batch. |
+
+</Accordion>
+</AccordionGroup>
+
+## What you need on your side
+
+- A PostHog project. `send()` takes its project token (the public key PostHog gives you for client apps).
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.

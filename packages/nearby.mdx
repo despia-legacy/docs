@@ -2,10 +2,12 @@
 title: "Nearby"
 description: "Connect two phones running your app directly and send them data, with no server."
 icon: "tower-broadcast"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -53,6 +55,330 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.nearby.start()` | `mode`?: string<br/>`name`?: string<br/>`prompt`?: boolean<br/>`strategy`?: string | stream (sends `peerFound`, `peerLost`, `connecting`, `connected`, `disconnected`, `payload`) | iOS, Android | Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events. |
 | `dsx.module.nearby.stop()` | none | `active` | iOS, Android | Ends the nearby session and disconnects everyone. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="capabilities">
+
+Reports what this device's nearby connection can do, such as the largest message and the connection strategies on offer.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.capabilities()
+```
+
+```json Result
+{
+  "maxPayloadBytes": 32768,
+  "strategies": [
+    "star",
+    "cluster",
+    "p2p"
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `maxPayloadBytes` | number | The largest message you can send, in bytes. |
+| `strategies` | string[] | The connection strategies this device supports. |
+
+</Accordion>
+<Accordion title="connect">
+
+Asks a discovered device to connect. Connections are accepted automatically, so any device running the same app and service id can join.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `peer` | string | The id of a device from a peerFound event. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.connect({ peer: "4a2f" })
+```
+
+```json Result
+{
+  "connected": true,
+  "peer": {
+    "id": "4a2f",
+    "name": "Bob"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `connected` | boolean | True once the connection is made. |
+| `peer` | object | The device you connected to, with its id and name. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `connection_failed` | The connection could not be established. |
+| `not_started` | No nearby session is running. |
+| `peer_not_found` | No discovered peer has that id. |
+
+</Accordion>
+<Accordion title="disconnect">
+
+Closes the connection to one device, or to every connected device when no peer is given.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `peer`? | string | The id of the device to disconnect. Leave it out to disconnect all. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.disconnect({ peer: "4a2f" })
+```
+
+```json Result
+{
+  "disconnected": 1
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `disconnected` | number | How many connections were closed. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the person change a limited selection of what the app can access, where the system offers that, and otherwise just reports the current state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True when the system will still show its prompt, false once the person has refused and must change it in Settings. |
+| `changed` | boolean | True when the person changed their selection. |
+| `level`? | string | A finer detail of the grant where the system has one, for example limited access, otherwise left out. |
+| `status` | string | Whether nearby device access is granted, denied or not yet asked. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the person can change a permission they refused earlier.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Asks the person for nearby device access through the system prompt and reports the answer.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True when the system will still show its prompt, false once the person has refused and must change it in Settings. |
+| `level`? | string | A finer detail of the grant where the system has one, for example limited access, otherwise left out. |
+| `status` | string | Whether nearby device access is granted, denied or not yet asked. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reports whether the app currently has nearby device access without asking the person.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True when the system will still show its prompt, false once the person has refused and must change it in Settings. |
+| `level`? | string | A finer detail of the grant where the system has one, for example limited access, otherwise left out. |
+| `status` | string | Whether nearby device access is granted, denied or not yet asked. |
+
+</Accordion>
+<Accordion title="send">
+
+Sends a message to one connected device, or to all of them when no peer is given.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data` | string | The message as a base64 string. |
+| `peer`? | string | The id of the device to send to. Leave it out to broadcast. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.send({ data: "aGVsbG8=" })
+```
+
+```json Result
+{
+  "bytes": 5,
+  "sent": 2
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `bytes` | number | The size of the message in bytes. |
+| `sent` | number | How many devices the message was sent to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_started` | No nearby session is running. |
+| `peer_not_found` | No connected peer has that id. |
+| `send_failed` | The payload could not be sent. |
+| `too_large` | The payload exceeds the bytes-payload limit. |
+
+</Accordion>
+<Accordion title="start">
+
+Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `mode`? | string | Whether to advertise, discover or do both. Defaults to both. |
+| `name`? | string | The name other devices see for this one. Defaults to the device name. |
+| `prompt`? | boolean | Set to false to fail with permission_denied instead of showing the system permission dialog. |
+| `strategy`? | string | On Android, how devices connect: star, cluster or p2p. iOS ignores it. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.start({ mode: "both", name: "Alice", strategy: "star" })
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A nearby session is already running. |
+| `invalid_argument` | mode must be advertise\|discover\|both; strategy star\|cluster\|p2p. |
+| `permission_denied` | Nearby access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `switched_off` | Bluetooth is turned off. |
+| `unavailable` | Nearby could not start right now. |
+| `unsupported_device` | This device cannot run a nearby session: no Google Play services, or no Bluetooth or Wi-Fi radio to discover and advertise over. |
+
+</Accordion>
+<Accordion title="stop">
+
+Ends the nearby session and disconnects everyone.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nearby.stop()
+```
+
+```json Result
+{
+  "active": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `active` | boolean | False once the session has ended. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.nearby.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -75,4 +401,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Service id (`service_id`) | The identifier peers use to find each other. Both sides of a connection must use the same value. |
 | Local network prompt (`usage_local_network`) | The message shown when iOS asks for local-network access. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

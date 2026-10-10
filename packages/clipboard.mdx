@@ -43,6 +43,149 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.clipboard.read()` | `type`?: "text" \\| "url" \\| "html" \\| "image" \\| "files" | `files`<br/>`html`<br/>`image`<br/>`text`<br/>`url` | iOS, Android | Reads the current clipboard as text, a link, rich text, an image or files. |
 | `dsx.module.clipboard.write()` | `expiresIn`?: number<br/>`files`?: string[]<br/>`html`?: string<br/>`image`?: string<br/>`localOnly`?: boolean<br/>`sensitive`?: boolean<br/>`text`?: string<br/>`url`?: string | `expiry`<br/>`ignored`<br/>`ok` | iOS, Android | Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="inspect">
+
+Checks what kinds of content are on the clipboard without reading it, so no paste alert appears.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `patterns`? | string[] | Content types to look for without reading, such as webURL, phoneNumber or emailAddress. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clipboard.inspect()
+```
+
+```json Result
+{
+  "hasFiles": false,
+  "hasHTML": false,
+  "hasImage": false,
+  "hasText": true,
+  "hasURL": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `changeCount`? | number | A number that goes up each time the clipboard changes, on iOS only. |
+| `hasFiles` | boolean | True when the clipboard holds files. |
+| `hasHTML` | boolean | True when the clipboard holds rich text. |
+| `hasImage` | boolean | True when the clipboard holds an image. |
+| `hasText` | boolean | True when the clipboard holds text. |
+| `hasURL` | boolean | True when the clipboard holds a link. |
+| `patterns`? | object | For each pattern you asked about, whether the clipboard matches it. |
+| `pendingPatterns`? | string[] | Patterns Android has not finished classifying yet; ask again shortly. |
+| `unsupportedPatterns`? | string[] | Patterns this device cannot detect. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_param` | patterns takes canonical detection words. |
+| `permission_denied` | The browser will not report clipboard contents without a clipboard-read grant. |
+| `unsupported_platform` | This context has no clipboard API. |
+
+</Accordion>
+<Accordion title="read">
+
+Reads the current clipboard as text, a link, rich text, an image or files.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `type`? | "text" \\| "url" \\| "html" \\| "image" \\| "files" | What to read: text (the default), url, html, image or files. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clipboard.read({ type: "image" })
+```
+
+```json Result
+{
+  "image": "temp:clipboard/1/image.png"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `files`? | string[] | Temporary file paths of the files on the clipboard. |
+| `html`? | string | The rich text as HTML, when type is html. |
+| `image`? | string | A temporary file path to the image, or null when there is none. |
+| `text`? | string | The clipboard text, when type is text. |
+| `url`? | string | The link on the clipboard, or null when the clip is not a whole web address. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `denied` | The browser did not allow this page to read the clipboard. |
+| `invalid_param` | type takes text, url, html, image or files. |
+| `unavailable` | Core/Files did not take the clipboard content. |
+| `unsupported_platform` | This platform's clipboard cannot carry that type. |
+
+</Accordion>
+<Accordion title="write">
+
+Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `expiresIn`? | number | Seconds after which the clipboard is cleared, if it still holds this copy. |
+| `files`? | string[] | File paths to copy. Works on iOS only today. |
+| `html`? | string | Rich text to copy, as HTML. |
+| `image`? | string | A file path to a PNG image to copy. |
+| `localOnly`? | boolean | On iOS, keeps the copy off Universal Clipboard so it does not reach the person's other devices. |
+| `sensitive`? | boolean | On Android 13 and later, hides the copy in the clipboard preview. |
+| `text`? | string | The plain text to put on the clipboard. |
+| `url`? | string | A web address to copy. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clipboard.write({ text: "Copied value" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `expiry`? | "system" \\| "app" \\| "unsupported" | Who clears the copy: system, app, or unsupported when expiry could not be set. |
+| `ignored`? | string[] | Options this device could not apply, listed by name. |
+| `ok` | boolean | True when the clipboard was written. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `denied` | The browser did not allow this page to write to the clipboard. |
+| `invalid_param` | write takes text, url, html, image or files, and expiresIn/localOnly/sensitive options. |
+| `missing_param` | A text value is required. |
+| `unsupported_platform` | This platform's clipboard cannot carry that item. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.clipboard.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -51,4 +194,4 @@ Listen with `window.dsx.module.clipboard.on('<broadcast>', (data) => { ... })`. 
 | :-- | :-- |
 | `change` | The system clipboard changed. It starts after the first inspect call. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

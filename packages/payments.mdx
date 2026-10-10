@@ -2,10 +2,12 @@
 title: "Payments"
 description: "Take payments in your app with one set of calls, whichever payment provider you use."
 icon: "credit-card"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -48,6 +50,378 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.payments.portal()` | `url`: string | `status` | iOS, Android | Opens the provider's hosted customer portal, where users manage subscriptions, invoices and payment methods. Works on the web only. |
 | `dsx.module.payments.session()` | `accent_color`?: string<br/>`amount`?: number<br/>`checkout_session_client_secret`?: string<br/>`corner_radius`?: number<br/>`country_code`?: string<br/>`currency`?: string<br/>`customer_id`?: string<br/>`ephemeral_key_secret`?: string<br/>`label`?: string<br/>`merchant_identifier`?: string<br/>`payment_intent_client_secret`?: string<br/>`publishable_key`: string<br/>`setup_intent_client_secret`?: string<br/>`theme`?: string | `session`<br/>`status` | iOS, Android | Opens a payment session that the card fields and checkout tags on your screen attach to. Close it when the checkout is finished. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="close">
+
+Abandons the open payment session and clears its state. Call it when the user leaves checkout without paying.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `session`? | string | The id of the open payment session this call applies to. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.close()
+```
+
+```json Result
+{
+  "status": "canceled"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_ready` | No Stripe session is open. |
+| `settled` | This session is finished. Open a new one to take another payment. |
+
+</Accordion>
+<Accordion title="confirm">
+
+Confirms the payment in the open session using the part of the screen the user acted on.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `session`? | string | The id of the open payment session this call applies to. |
+| `view`? | "inline" \\| "overlay" \\| "wallet" | Which part of the screen is confirming: inline (the card field), overlay (the payment sheet) or wallet (Apple Pay or Google Pay). |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.confirm()
+```
+
+```json Result
+{
+  "method": "cardInput",
+  "status": "completed"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `code`? | string | A short code for the failure, when there was one. |
+| `error`? | string | A readable reason, when the payment did not succeed. |
+| `method` | string | The payment method the user paid with, such as card or Apple Pay. |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A payment is already being confirmed. |
+| `detached_view` | That face is not attached to this session. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_confirming` | No payment is being confirmed. |
+| `not_ready` | No Stripe session is open. |
+| `settled` | This session is finished. Open a new one to take another payment. |
+
+</Accordion>
+<Accordion title="connectBank">
+
+Opens the bank-linking flow so the user can connect a bank account for later debits.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `financial_connections_session_client_secret` | string | The client secret of the bank-linking session your server created. |
+| `publishable_key` | string | Your Stripe publishable key, which is safe to ship in the app. |
+| `return_url`? | string | The address the user returns to after finishing in another app or page. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.connectBank({ financial_connections_session_client_secret: "fcsess_secret_abc", publishable_key: "pk_test_123" })
+```
+
+```json Result
+{
+  "accounts": [
+    "fca_1"
+  ],
+  "session": "fcsess_1",
+  "status": "linked"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accounts`? | array | The bank accounts the user linked. |
+| `error`? | string | A readable reason, when the payment did not succeed. |
+| `session`? | string | The id of the bank-linking session. |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A bank link or ACH confirm is already open. |
+| `missing_param` | A required parameter is missing. |
+| `no_presenter` | Couldn't find a screen to present the bank link. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_ready` | Stripe is not ready yet. Please try again in a moment. |
+
+</Accordion>
+<Accordion title="manage">
+
+Shows the sheet where the user manages their saved payment methods, adding or removing cards.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accent_color`? | string | The accent colour for buttons and highlights, as a hex value. |
+| `action_corner_radius`? | number | How rounded the buttons on the payment sheet are, in points. |
+| `corner_radius`? | number | How rounded the payment fields are, in points. |
+| `customer_id` | string | The Stripe customer id of the signed-in user, to show their saved payment methods. |
+| `ephemeral_key_secret` | string | A short-lived key your server made so the app may read this customer's saved methods. |
+| `publishable_key` | string | Your Stripe publishable key, which is safe to ship in the app. |
+| `setup_intent_client_secret`? | string | The client secret of a setup intent, used to save a payment method without charging. |
+| `theme`? | string | The look of the payment screens: light, dark or automatic. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.manage({ customer_id: "cus_123", ephemeral_key_secret: "ek_123", publishable_key: "pk_test_123" })
+```
+
+```json Result
+{
+  "method": "customerSheet",
+  "status": "selected"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `error`? | string | A readable reason, when the payment did not succeed. |
+| `method` | string | The payment method the user paid with, such as card or Apple Pay. |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A payment sheet is already open. |
+| `missing_param` | A required parameter is missing. |
+| `no_presenter` | Couldn't find a screen to present the payment. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_ready` | Stripe is not ready yet. Please try again in a moment. |
+
+</Accordion>
+<Accordion title="payAch">
+
+Pays the intent by US bank debit, after the user accepted the debit agreement and linked an account.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email`? | string | The account holder's email address. |
+| `mandate_accepted` | boolean | True when the user has accepted the bank debit agreement. |
+| `name` | string | The account holder's full name. |
+| `payment_intent_client_secret` | string | The client secret of the payment intent your server created for this payment. |
+| `publishable_key` | string | Your Stripe publishable key, which is safe to ship in the app. |
+| `return_url`? | string | The address the user returns to after finishing in another app or page. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.payAch({ email: "ada@example.com", mandate_accepted: true, name: "Ada Lovelace", payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
+```
+
+```json Result
+{
+  "method": "us_bank_account",
+  "status": "completed"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `error`? | string | A readable reason, when the payment did not succeed. |
+| `method` | string | The payment method the user paid with, such as card or Apple Pay. |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A bank link or ACH confirm is already open. |
+| `missing_param` | A required parameter is missing. |
+| `no_presenter` | Couldn't find a screen to present the bank collection. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_ready` | Stripe is not ready yet. Please try again in a moment. |
+
+</Accordion>
+<Accordion title="payment">
+
+Shows the provider's payment sheet so the user can pick a method and pay, and returns when they finish or cancel.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accent_color`? | string | The accent colour for buttons and highlights, as a hex value. |
+| `action_corner_radius`? | number | How rounded the buttons on the payment sheet are, in points. |
+| `corner_radius`? | number | How rounded the payment fields are, in points. |
+| `customer_id`? | string | The Stripe customer id of the signed-in user, to show their saved payment methods. |
+| `ephemeral_key_secret`? | string | A short-lived key your server made so the app may read this customer's saved methods. |
+| `payment_intent_client_secret` | string | The client secret of the payment intent your server created for this payment. |
+| `publishable_key` | string | Your Stripe publishable key, which is safe to ship in the app. |
+| `session`? | string | The id of the open payment session this call applies to. |
+| `theme`? | string | The look of the payment screens: light, dark or automatic. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.payment({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
+```
+
+```json Result
+{
+  "method": "paymentSheet",
+  "status": "completed"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `error`? | string | A readable reason, when the payment did not succeed. |
+| `method` | string | The payment method the user paid with, such as card or Apple Pay. |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A payment sheet is already open. |
+| `missing_param` | A required parameter is missing. |
+| `no_presenter` | Couldn't find a screen to present the payment. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `not_ready` | Stripe is not ready yet. Please try again in a moment. |
+| `settled` | This session is finished. Open a new one to take another payment. |
+
+</Accordion>
+<Accordion title="portal">
+
+Opens the provider's hosted customer portal, where users manage subscriptions, invoices and payment methods. Works on the web only.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `url` | string | The https address of the customer portal session your server created. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.portal({ url: "https://billing.stripe.com/p/session/test_abc" })
+```
+
+```json Result
+{
+  "status": "opened"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status` | string | How the payment ended, for example completed, canceled or failed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_param` | The portal URL must be an https://billing.stripe.com session URL. |
+| `missing_param` | A required parameter is missing. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+| `unsupported_platform` | The customer portal is a web page; on iOS and Android use manage(). |
+
+</Accordion>
+<Accordion title="session">
+
+Opens a payment session that the card fields and checkout tags on your screen attach to. Close it when the checkout is finished.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accent_color`? | string | The accent colour for buttons and highlights, as a hex value. |
+| `amount`? | number | The payment amount in the currency's smallest unit, such as cents. |
+| `checkout_session_client_secret`? | string | The client secret of a Stripe Checkout session created by your server. |
+| `corner_radius`? | number | How rounded the payment fields are, in points. |
+| `country_code`? | string | The two-letter country code of your business, used for wallet payments. |
+| `currency`? | string | The three-letter currency code of the payment, such as USD. |
+| `customer_id`? | string | The Stripe customer id of the signed-in user, to show their saved payment methods. |
+| `ephemeral_key_secret`? | string | A short-lived key your server made so the app may read this customer's saved methods. |
+| `label`? | string | The name shown on the wallet payment sheet, such as your business name. |
+| `merchant_identifier`? | string | Your Apple Pay merchant id, needed to show Apple Pay. |
+| `payment_intent_client_secret`? | string | The client secret of the payment intent your server created for this payment. |
+| `publishable_key` | string | Your Stripe publishable key, which is safe to ship in the app. |
+| `setup_intent_client_secret`? | string | The client secret of a setup intent, used to save a payment method without charging. |
+| `theme`? | string | The look of the payment screens: light, dark or automatic. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.payments.session({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
+```
+
+```json Result
+{
+  "session": "sess_1",
+  "status": "ready"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `session` | string | The id of the session that was opened. |
+| `status` | string | The state of the session, such as open. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `already_open` | A Stripe session is already open. Close it before opening another. |
+| `missing_param` | A required parameter is missing. |
+| `not_configured` | No payment processor serves this build: add a processor package (payments.stripe) or set the payments `processor` config. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -57,4 +431,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Payment processor (retired) (`processor`) | Retired spelling of `provider`; still read as the same choice. Set `provider` instead. |
 | Payment provider (`provider`) | Optional: which provider package takes payments (for example stripe). Empty means the one provider package this app includes. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- An account with your payment provider (for example Stripe) and your own backend.
+- Your backend creates the payment objects and hands the page their client secrets (`payment_intent_client_secret`, `setup_intent_client_secret`, `ephemeral_key_secret`) and the provider's publishable key. The secret API key stays on your server and never goes into the app.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

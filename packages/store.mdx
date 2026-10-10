@@ -2,10 +2,12 @@
 title: "Store"
 description: "Sell subscriptions and purchases with a native paywall and one simple way to check what a user owns."
 icon: "store"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -57,6 +59,685 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.store.subscription()` | `group`?: string<br/>`product`?: string<br/>`provider`?: string | `billingIssue`<br/>`gracePeriodEndsAt`<br/>`provider`<br/>`renewsAt`<br/>`state`<br/>`subscriptions`<br/>`willRenew` | iOS, Android | Reads the renewal state of the person's active subscription, including grace period and billing problems, which entitlements alone cannot tell you. |
 | `dsx.module.store.update()` | `data`?: object | `updated` | iOS, Android | Changes what a paywall that is already open shows, by name, without closing it. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="billingMessages">
+
+Shows Google Play's own in-app message about a billing problem, such as a declined card during a grace period, so the person can fix it without leaving the app.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.billingMessages()
+```
+
+```json Result
+{
+  "outcome": "no_action_needed",
+  "purchaseToken": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `outcome` | string | How the message ended, such as shown or dismissed. |
+| `purchaseToken` | string | The purchase token the message was about. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `no_presenter` | Couldn't find a screen to show the payment message on. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="catalog">
+
+Reads store products with their titles and prices for a list of ids, so you can show prices in your own screens.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `product`? | string[] | The product ids to look up. |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.catalog({ product: ["pro_monthly"], provider: "store" })
+```
+
+```json Result
+{
+  "products": [],
+  "provider": "storekit"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `products` | object[] | The products found, each with its id, type, title and price. |
+| `provider` | string | Which purchase provider answered the request. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="checkout">
+
+Starts the store payment sheet for one product and resolves with the outcome and the transaction.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `appAccountToken`? | string | A UUID you choose that the store attaches to the transaction so your server can match it to an account. |
+| `coins`? | boolean | Set it to true when the product is a coin pack. |
+| `externalId`? | string | Your own id for the signed-in person, so the purchase belongs to your account. |
+| `kind`? | string | Whether you are buying a plan or a coin pack. |
+| `offer`? | string | The offer to buy: an offer id, basePlan:offerId on Google Play, or a Play offer token. Leave it out to take the first offer the store lists. |
+| `offerSignature`? | object | For an iOS promotional offer, the signature your server made, so the signing key never ships in the app. |
+| `product` | string | The store product id to buy. |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.checkout({ product: "pro_monthly", provider: "store" })
+```
+
+```json Result
+{
+  "outcome": "purchased",
+  "product": "pro_monthly"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `entitlements`? | string[] | The entitlements the person holds after the purchase. |
+| `kind`? | string | Whether it was a coin pack or a plan. Present only after a purchase. |
+| `outcome` | string | How checkout ended: purchased, pending, busy or failed. |
+| `platform`? | string | Which platform it ran on, ios or android. |
+| `product` | string | The product id that was bought. |
+| `provider`? | string | Which provider ran the purchase: storekit, play_store or revenuecat. |
+| `raw`? | object | The untouched provider response, present when RevenueCat is the provider. |
+| `transaction`? | object | The normalized store transaction for the purchase. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `cancelled` | Purchase cancelled. |
+| `missing_param` | A product id is required. |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `offer_signature_required` | A promotional offer needs a signature from your server. |
+| `purchase_failed` | The purchase could not be completed. |
+| `store_unavailable` | The store is not available on this device. |
+| `unknown_offer` | That offer isn't available for this product. |
+| `unsupported_provider` | Offers are bought through the store provider. |
+
+</Accordion>
+<Accordion title="dismiss">
+
+Closes the open paywall and resolves it with the outcome you name.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `outcome`? | string | The outcome to resolve the paywall with. It defaults to dismissed. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.dismiss({ outcome: "unlocked" })
+```
+
+```json Result
+{
+  "dismissed": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dismissed` | boolean | True when a paywall was closed. |
+
+</Accordion>
+<Accordion title="entitlements">
+
+Lists what the person owns right now, as entitlement ids from RevenueCat or product ids from the store.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.entitlements({ provider: "store" })
+```
+
+```json Result
+{
+  "entitlements": [],
+  "provider": "store"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `entitlements` | string[] | The ids the person is entitled to. |
+| `provider` | string | Which purchase provider answered the request. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="manage">
+
+Opens the store's own screen for managing subscriptions, where the person can cancel or change plan.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `product`? | string | On Android, opens that subscription's own row. On iOS, or when left out, it opens the subscription list. |
+| `provider`? | string | Which purchase provider shows the page: store (the default) or a provider such as revenuecat. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.manage()
+```
+
+```json Result
+{
+  "presented": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `presented` | boolean | True when the store screen was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `no_presenter` | Couldn't find a screen to present the subscription settings. |
+| `store_unavailable` | The store is not available on this device. |
+| `unavailable` | Subscription settings aren't available on this device. |
+
+</Accordion>
+<Accordion title="offers">
+
+Lists every offer a product carries, such as free trials and promotional prices, in one shape for both stores.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `product` | string | The store product id to read offers for. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.offers({ product: "pro_monthly" })
+```
+
+```json Result
+{
+  "eligibleForIntro": true,
+  "offers": [],
+  "product": "pro_monthly"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `eligibleForIntro` | boolean | True when the person can still use an introductory offer. |
+| `offers` | object[] | The offers, each with its kind, id and pricing phases. |
+| `product` | string | The product the offers belong to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A product id is required. |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `not_found` | We couldn't find that product. |
+| `store_unavailable` | The store is not available on this device. |
+| `unsupported_platform` | Store offers exist only in the App Store and Google Play. On the web, promotion codes are entered on the Stripe checkout page. |
+
+</Accordion>
+<Accordion title="paywall">
+
+Builds and shows a native paywall from a JSON description of products, features and coins, and resolves when the person buys, restores or closes it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accent`? | string | The accent colour used for buttons and highlights. |
+| `actions`? | string[] | Names of your own actions the layout may fire, each sent back to you as an event of that name. |
+| `appAccountToken`? | string | A UUID you choose that the store attaches to the transaction so your server can match it to an account. |
+| `balance`? | number | The person's current coin balance, shown on a coin paywall. |
+| `coins`? | object[] | The coin pack rows to show, each with a product id and a coin amount. |
+| `countdown`? | number | A number of seconds for a countdown shown on the paywall. |
+| `cta`? | string | The text on the main buy button. |
+| `data`? | object | The whole paywall as one object. Any top-level paywall key here wins, and other keys become named state the layout can read. |
+| `display`? | string | How the paywall is displayed on screen. |
+| `entitlement`? | string | The entitlement the paywall is selling, used to check whether the person already has it. |
+| `externalId`? | string | Your own id for the signed-in person, so the purchase belongs to your account. |
+| `features`? | string[] | The feature lines listed on the paywall. |
+| `footer`? | object | Content for the bottom of the paywall, such as links to terms. |
+| `header`? | object | Content for the top of the paywall. |
+| `mode`? | string | How the paywall is presented. |
+| `products`? | object[] | The subscription or purchase rows to show, each with a store product id and a title. |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+| `restore`? | boolean | Set it to true to show a restore purchases button. |
+| `subtitle`? | string | The line under the heading. |
+| `template`? | string | The built-in paywall layout to use. |
+| `theme`? | object | Colours and styling overrides for the paywall. |
+| `title`? | string | The main heading of the paywall. |
+| `token`? | string | A token passed through to the provider with the purchase. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.paywall({ externalId: "user_123", products: [{"price": "$9.99", "productId": "pro_monthly", "title": "Pro"}], provider: "revenuecat", template: "tiers" })
+```
+
+```json Result
+{
+  "entitlements": [],
+  "outcome": "dismissed"
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `no_presenter` | Could not find a screen to present the purchase. |
+
+</Accordion>
+<Accordion title="product">
+
+Reads one product from the store with its title, description, price and subscription details.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `product` | string | The store product id to look up. |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.product({ product: "pro_monthly", provider: "store" })
+```
+
+```json Result
+{
+  "id": "pro_monthly"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `description`? | string | The product description from the store. |
+| `id` | string | The store product id of the product that was found. |
+| `introductory_offer`? | object | The introductory offer, present only when RevenueCat is the provider. |
+| `price`? | object | The store price, absent on Google Play when no price is listed. |
+| `store`? | string | Which store the product comes from, app_store or play_store. |
+| `subscription`? | object | The subscription details, present only for subscriptions. |
+| `title`? | string | The product name shown in the store. |
+| `type`? | string | What kind of product it is, such as auto_renewable, consumable or non_consumable. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A product id is required. |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `not_found` | That product is not available. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="receipts">
+
+Lists the person's transactions the store knows about, for example to send to your server for checking.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.receipts({ provider: "store" })
+```
+
+```json Result
+{
+  "provider": "storekit",
+  "transactions": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `provider` | string | Which purchase provider answered the request. |
+| `transactions` | object[] | The transactions, each with its product id, type and environment. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="redeemCode">
+
+Takes the person to the store's own screen for redeeming an offer code.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `code`? | string | A code to prefill. Android uses it, iOS ignores it because Apple's sheet takes the typed code. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.redeemCode({ code: "SPRING24" })
+```
+
+```json Result
+{
+  "presented": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `presented` | boolean | True when the redemption screen was shown. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `no_presenter` | Couldn't find a screen to present the offer code sheet. |
+| `unavailable` | Offer codes can't be redeemed on this device. |
+| `unsupported_platform` | Offer codes are redeemed in the App Store or Google Play. On the web, promotion codes are entered on the Stripe checkout page. |
+
+</Accordion>
+<Accordion title="refund">
+
+Shows Apple's refund request sheet for a purchase the person already made.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `product`? | string | The product to find the transaction for when no transaction id is given. |
+| `transaction`? | string | The original transaction id. Leave it out to use the most recent purchase for the product, or the most recent one overall. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.refund({ product: "pro_monthly" })
+```
+
+```json Result
+{
+  "outcome": "success"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `outcome` | string | How the refund request ended. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `duplicate_request` | A refund request for this purchase is already in progress. |
+| `ineligible` | This purchase isn't eligible for a refund. |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `no_presenter` | Couldn't find a screen to present the refund request. |
+| `not_found` | We couldn't find that purchase. |
+| `refund_failed` | The refund request couldn't be sent. |
+
+</Accordion>
+<Accordion title="restore">
+
+Asks the store to bring back purchases the person made before, for example on a new phone.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+| `sync`? | boolean | Set it to true to also sync with the store before restoring. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.restore({ sync: false })
+```
+
+```json Result
+{
+  "restored": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `restored` | boolean | True when the restore completed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+
+</Accordion>
+<Accordion title="select">
+
+Marks a product as chosen, as plain state, so a plan picker drawn in any markup can drive the paywall. It works on every platform including the web.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `productId` | string | The id of the product the person picked in your plan picker. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.select({ productId: "pro.yearly" })
+```
+
+```json Result
+{
+  "selectedProduct": "pro.yearly"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `selectedProduct` | string | The id of the product now selected. |
+
+</Accordion>
+<Accordion title="storefront">
+
+Reads which country's store the person is using, as a country code.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.storefront()
+```
+
+```json Result
+{
+  "alpha3": "ARE",
+  "countryCode": "AE",
+  "id": "143481"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `alpha3` | string | The three-letter country code of the store. |
+| `countryCode` | string | The two-letter country code of the store. |
+| `id` | string | The store's own identifier for the storefront. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | No store storefront is available. |
+
+</Accordion>
+<Accordion title="subscription">
+
+Reads the renewal state of the person's active subscription, including grace period and billing problems, which entitlements alone cannot tell you.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `group`? | string | On iOS, a subscription group id to read the status for. It is ignored elsewhere. |
+| `product`? | string | Limit the answer to one product id. Leave it out to read every active subscription. |
+| `provider`? | string | Which provider answers, such as store or revenuecat. Leave it out to use the provider this app has set. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.subscription({ provider: "store" })
+```
+
+```json Result
+{
+  "billingIssue": false,
+  "gracePeriodEndsAt": 0,
+  "provider": "store",
+  "renewsAt": 0,
+  "state": "subscribed",
+  "subscriptions": [],
+  "willRenew": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `billingIssue` | boolean | True when the store is having trouble charging the person. |
+| `gracePeriodEndsAt` | number | When the grace period ends, in milliseconds since 1970, or 0 when none applies. |
+| `provider` | string | Which purchase provider answered the request. |
+| `renewsAt` | number | When the next renewal is due, in milliseconds since 1970, or 0 when unknown. |
+| `state` | string | The subscription state, such as active, grace period or expired. |
+| `subscriptions` | object[] | Every active subscription with its own state and renewal time. |
+| `willRenew` | boolean | True when the subscription will renew on its own. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | The store could not be reached. Your purchases are safe; try again when you are back online. |
+| `store_unavailable` | The store is not available on this device. |
+
+</Accordion>
+<Accordion title="update">
+
+Changes what a paywall that is already open shows, by name, without closing it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data`? | object | The values to change. An array replaces that list and anything else sets that value. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.store.update({ data: {"balance": 50} })
+```
+
+```json Result
+{
+  "updated": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `updated` | boolean | True when the open paywall took the change. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.store.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -73,4 +754,12 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Purchase provider (`provider`) | Optional: which provider runs purchases and answers what a person owns (store, revenuecat or commerce). Empty means the one provider package this app includes, or the App Store and Google Play directly. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- Products set up in App Store Connect and Google Play Console.
+- The **provider** setting chooses who answers: `store` (the App Store and Google Play directly), `revenuecat` or `commerce`. With `revenuecat`, you also need what the [RevenueCat](/packages/revenuecat) page lists.
+- If your server must check purchases itself, it talks to Apple's and Google's server APIs (or your provider's) with your own credentials.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

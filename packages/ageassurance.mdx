@@ -2,10 +2,12 @@
 title: "AgeAssurance"
 description: "Ask the phone's operating system for the user's age range."
 icon: "id-card"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -44,6 +46,179 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.ageassurance.last()` | none | `ageLower`<br/>`ageUpper`<br/>`assurance`<br/>`bridge`<br/>`error`<br/>`gates`<br/>`ok`<br/>`platform`<br/>`platformExtras`<br/>`provider`<br/>`runtime`<br/>`status` | iOS, Android | Returns the most recent age answer without asking again, or an unavailable answer if nothing has been asked yet. |
 | `dsx.module.ageassurance.resolve()` | `gates`?: int[] | `ageLower`<br/>`ageUpper`<br/>`assurance`<br/>`bridge`<br/>`error`<br/>`gates`<br/>`ok`<br/>`platform`<br/>`platformExtras`<br/>`provider`<br/>`runtime`<br/>`status` | iOS, Android | On Android, starts Google's verification step for the user and then returns a fresh answer; on iOS it reports that it is not supported. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="check">
+
+Asks the system for the user's age band and tells whether the user is at least each age you list; the system may show a prompt.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `gates`? | int[] | Up to three ages in whole years to test against; if left out, the ages set in the package settings are used. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.ageassurance.check({ gates: [13, 15, 17] })
+```
+
+```json Result
+{
+  "ageLower": 13,
+  "ageUpper": 16,
+  "gates": {
+    "13": true,
+    "15": null,
+    "17": false
+  },
+  "status": "shared"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ageLower`? | number | The lower bound of the user's age band in whole years; null when there is no band. |
+| `ageUpper`? | number | The upper bound of the user's age band in whole years; null when the band is open at the top or unknown. |
+| `assurance`? | string | How the age was established, or unknown when the system does not say. |
+| `bridge`? | number | The version of the answer format. |
+| `error`? | object | The error code and message when the call failed; null when it did not. |
+| `gates`? | object | Whether the user is at least each age you asked about, keyed by age: true, false, or null when the band cannot tell. |
+| `ok`? | boolean | True when the system gave an answer; false when age assurance is unavailable or the call failed. |
+| `platform`? | string | The platform that answered: ios, android or web. |
+| `platformExtras`? | object | Extra fields only one platform reports, grouped by platform name; empty when there are none. |
+| `provider`? | string | Which service answered, or none when no age service exists on the device. |
+| `runtime`? | number | The runtime generation of the package that produced the answer. |
+| `status`? | string | The outcome: shared, declined, unavailable or error. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_gates` | Gates must be whole numbers of years. |
+| `too_many_gates` | At most three age gates per request. |
+| `unsupported_device` | This device has no age-range service: the OS ships no age assurance API (iOS below 26.2), Google Play services are absent, or this is a browser. |
+
+</Accordion>
+<Accordion title="forget">
+
+Drops the saved age answer so the next account on the device does not inherit it.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.ageassurance.forget()
+```
+
+```json Result
+{
+  "cleared": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cleared` | boolean | True when the saved answer was removed. |
+
+</Accordion>
+<Accordion title="last">
+
+Returns the most recent age answer without asking again, or an unavailable answer if nothing has been asked yet.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.ageassurance.last()
+```
+
+```json Result
+{
+  "ok": false,
+  "status": "unavailable"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ageLower`? | number | The lower bound of the user's age band in whole years; null when there is no band. |
+| `ageUpper`? | number | The upper bound of the user's age band in whole years; null when the band is open at the top or unknown. |
+| `assurance`? | string | How the age was established, or unknown when the system does not say. |
+| `bridge`? | number | The version of the answer format. |
+| `error`? | object | The error code and message when the call failed; null when it did not. |
+| `gates`? | object | Whether the user is at least each age you asked about, keyed by age: true, false, or null when the band cannot tell. |
+| `ok`? | boolean | True when the system gave an answer; false when age assurance is unavailable or the call failed. |
+| `platform`? | string | The platform that answered: ios, android or web. |
+| `platformExtras`? | object | Extra fields only one platform reports, grouped by platform name; empty when there are none. |
+| `provider`? | string | Which service answered, or none when no age service exists on the device. |
+| `runtime`? | number | The runtime generation of the package that produced the answer. |
+| `status`? | string | The outcome: shared, declined, unavailable or error. |
+
+</Accordion>
+<Accordion title="resolve">
+
+On Android, starts Google's verification step for the user and then returns a fresh answer; on iOS it reports that it is not supported.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `gates`? | int[] | Up to three ages in whole years to test against; if left out, the ages set in the package settings are used. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.ageassurance.resolve({ gates: [18] })
+```
+
+```json Result
+{
+  "gates": {
+    "18": null
+  },
+  "ok": false,
+  "status": "error"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ageLower`? | number | The lower bound of the user's age band in whole years; null when there is no band. |
+| `ageUpper`? | number | The upper bound of the user's age band in whole years; null when the band is open at the top or unknown. |
+| `assurance`? | string | How the age was established, or unknown when the system does not say. |
+| `bridge`? | number | The version of the answer format. |
+| `error`? | object | The error code and message when the call failed; null when it did not. |
+| `gates`? | object | Whether the user is at least each age you asked about, keyed by age: true, false, or null when the band cannot tell. |
+| `ok`? | boolean | True when the system gave an answer; false when age assurance is unavailable or the call failed. |
+| `platform`? | string | The platform that answered: ios, android or web. |
+| `platformExtras`? | object | Extra fields only one platform reports, grouped by platform name; empty when there are none. |
+| `provider`? | string | Which service answered, or none when no age service exists on the device. |
+| `runtime`? | number | The runtime generation of the package that produced the answer. |
+| `status`? | string | The outcome: shared, declined, unavailable or error. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_gates` | Gates must be whole numbers of years. |
+| `too_many_gates` | At most three age gates per request. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -52,4 +227,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Default age gates (`default_gates`) | The ages this app asks about when a call passes none. At most three, whole years. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

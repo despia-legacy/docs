@@ -2,10 +2,12 @@
 title: "NFC"
 description: "Read and write NFC tags from your app."
 icon: "wifi"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -46,6 +48,223 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.nfc.read()` | `message`?: string | `records`<br/>`tagId` | iOS, Android | Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records. |
 | `dsx.module.nfc.write()` | `lang`?: string<br/>`message`?: string<br/>`text`: string | `ok` | iOS, Android | Opens the system scan sheet and writes one text record onto a writable NDEF tag the user holds to the phone. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="permission.manage">
+
+Lets the user change a limited NFC selection where the system offers one; otherwise it reports the current state with changed set to false.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `changed` | boolean | True when the selection was changed; always false when there is nothing to change. |
+| `level`? | string | The level of access granted, where the platform has levels. |
+| `status` | string | The permission state: granted, denied, not determined, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the user can change the NFC permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Shows the system NFC permission dialog when the OS can still ask, and reports the resulting state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `level`? | string | The level of access granted, where the platform has levels. |
+| `status` | string | The permission state: granted, denied, not determined, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the current NFC permission without ever showing a dialog, so a settings screen can call it every time it appears.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `level`? | string | The level of access granted, where the platform has levels. |
+| `status` | string | The permission state: granted, denied, not determined, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="read">
+
+Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `message`? | string | The text shown in the system scan sheet while it waits for a tag. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.read({ message: "Hold a tag near the phone." })
+```
+
+```json Result
+{
+  "records": [
+    {
+      "format": "nfcWellKnown",
+      "identifier": "",
+      "payload": "hello",
+      "type": "T"
+    }
+  ],
+  "tagId": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `records` | object[] | The records found on the tag, each with its format, type, identifier and payload. |
+| `tagId` | string | The id of the tag that was read, where the platform provides one. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | Another NFC session is in progress. |
+| `cancelled` | NFC scan dismissed. |
+| `permission_denied` | NFC access was refused. |
+| `read_failed` | NFC read failed, please try again. |
+| `switched_off` | NFC is turned off. |
+| `unavailable` | NFC is not available right now. |
+| `unsupported_device` | This device cannot read or write NFC tags. |
+
+</Accordion>
+<Accordion title="write">
+
+Opens the system scan sheet and writes one text record onto a writable NDEF tag the user holds to the phone.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `lang`? | string | The language code saved with the text, such as en. The default is en. |
+| `message`? | string | The text shown in the system scan sheet while it waits for a tag. |
+| `text` | string | The text to write onto the tag. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.nfc.write({ lang: "en", message: "Hold a writable tag near the phone.", text: "hello" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the tag accepted the write. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | Another NFC session is in progress. |
+| `cancelled` | NFC scan dismissed. |
+| `missing_param` | write requires a non-empty text value. |
+| `permission_denied` | NFC access was refused. |
+| `switched_off` | NFC is turned off. |
+| `unavailable` | NFC is not available right now. |
+| `unsupported_device` | This device cannot read or write NFC tags. |
+| `write_failed` | NFC write failed, please try again. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -54,4 +273,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for NFC tag scanning. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

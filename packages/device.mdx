@@ -46,6 +46,263 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.device.power()` | none | `level`<br/>`lowPowerMode`<br/>`state`<br/>`thermalState` | iOS, Android | Returns the battery level and charging state, whether low power mode is on, and how hot the device is. |
 | `dsx.module.device.screen()` | none | `cornerRadius`<br/>`fontScale`<br/>`hasDynamicIsland`<br/>`hasNotch`<br/>`height`<br/>`insets`<br/>`refreshRate`<br/>`scale`<br/>`width` | iOS, Android | Returns the screen size, pixel scale, text scale, refresh rate, safe-area insets and corner radius. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="app">
+
+Returns the app's own identity, such as its name, version and bundle id, plus whether this is the first launch and which version was installed before.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.app()
+```
+
+```json Result
+{
+  "buildNumber": "412",
+  "bundleId": "com.acme.app",
+  "installSource": "appstore",
+  "installTime": 1735689600000,
+  "installationId": "6f1e2c00-6b3a-4a2e-9f0c-2f6f0a0c9c11",
+  "isFirstLaunch": true,
+  "lastUpdateTime": 1735689600000,
+  "name": "Acme",
+  "version": "2.0.0"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `buildNumber` | string | The app's build number. |
+| `bundleId` | string | The app's bundle or package identifier. |
+| `installReferrer`? | string | The install referrer string, where the platform provides one. |
+| `installSource`? | string | Where the app was installed from, such as a store or TestFlight, where the platform says. |
+| `installTime`? | number | When the app was first installed, as a timestamp. |
+| `installationId`? | string | A random id made for this install. It is not an advertising id and is absent when generating it is switched off. |
+| `isFirstLaunch` | boolean | True only on the first launch after install, and for the whole of that first session. |
+| `lastUpdateTime`? | number | When the app was last updated, as a timestamp. |
+| `name` | string | The name of the app as shown on the home screen. |
+| `previousVersion`? | string | The version that was installed before this one; absent on a fresh install. |
+| `version` | string | The app's version string. |
+
+</Accordion>
+<Accordion title="capabilities">
+
+Returns yes-or-no facts about hardware and display features, such as cellular, Apple Pencil support, haptics and HDR.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.capabilities()
+```
+
+```json Result
+{
+  "alwaysOnDisplay": true,
+  "cellular": true,
+  "haptics": true,
+  "hdr": true,
+  "pencil": false,
+  "telephony": true,
+  "wideColor": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `alwaysOnDisplay` | boolean | True when the display can stay on at low power. |
+| `cellular` | boolean | True when the device has a cellular modem. |
+| `haptics` | boolean | True when the device has a haptic engine. |
+| `hdr` | boolean | True when the display supports HDR. |
+| `pencil` | boolean | True when the device supports Apple Pencil. |
+| `telephony` | boolean | True when the device can place phone calls. |
+| `wideColor` | boolean | True when the display supports wide color. |
+
+</Accordion>
+<Accordion title="info">
+
+Returns facts about the hardware and operating system, such as the brand, model, OS version and memory.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.info()
+```
+
+```json Result
+{
+  "brand": "Apple",
+  "deviceType": "phone",
+  "deviceYearClass": 2023,
+  "isDevice": true,
+  "isRooted": false,
+  "manufacturer": "Apple",
+  "model": "iPhone",
+  "modelId": "iPhone16,1",
+  "osBuild": "22C152",
+  "osName": "iOS",
+  "osVersion": "18.2",
+  "supportedCpuArchitectures": [
+    "arm64"
+  ],
+  "totalMemory": 8589934592
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `brand`? | string | The device brand, such as Apple or Google. |
+| `designName`? | string | The internal design or board name, where the platform has one. |
+| `deviceType` | string | The kind of device: phone, tablet, desktop, tv or watch. |
+| `deviceYearClass`? | number | A rough year bucket for how old the hardware class is, for dropping heavy effects on old devices. It is not a benchmark. |
+| `isDevice`? | boolean | True on a real device and false on a simulator or emulator. |
+| `isRooted`? | boolean | A hint that the device is rooted or jailbroken. Easy to fool, so use it only to soften features. |
+| `manufacturer`? | string | The company that made the device. |
+| `model`? | string | The model name as the platform reports it. Android gives the marketing name; iOS gives only the family such as iPhone. |
+| `modelId`? | string | The technical model identifier, such as iPhone16,1. Absent on Android. |
+| `osBuild`? | string | The operating system build string. |
+| `osName` | string | The name of the operating system, such as iOS or Android. |
+| `osVersion` | string | The version number of the operating system. |
+| `supportedCpuArchitectures`? | string[] | The processor architectures the device supports. |
+| `totalMemory`? | number | How much memory the device has in total, in bytes; useful to scale back heavy features. |
+
+</Accordion>
+<Accordion title="locale">
+
+Returns the user's language preferences, region, time zone, currency, measurement system and text direction.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.locale()
+```
+
+```json Result
+{
+  "calendar": "gregorian",
+  "currency": "USD",
+  "hour12": true,
+  "isRTL": false,
+  "locales": [
+    "en-US"
+  ],
+  "measurementSystem": "us",
+  "region": "US",
+  "temperatureUnit": "fahrenheit",
+  "timezone": "America/New_York"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `calendar` | string | The calendar system in use, such as gregorian. |
+| `currency`? | string | The currency code for the user's region. |
+| `hour12` | boolean | True when the user prefers a 12-hour clock. |
+| `isRTL` | boolean | True when the language is written right to left. |
+| `locales` | string[] | The user's preferred language tags, most preferred first. |
+| `measurementSystem` | string | Metric, US or UK units. |
+| `region`? | string | The user's region code, such as CH. |
+| `temperatureUnit`? | string | The temperature unit the user prefers. |
+| `timezone` | string | The time zone name, such as Europe/Zurich. |
+
+</Accordion>
+<Accordion title="power">
+
+Returns the battery level and charging state, whether low power mode is on, and how hot the device is.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.power()
+```
+
+```json Result
+{
+  "level": 0.62,
+  "lowPowerMode": false,
+  "state": "charging",
+  "thermalState": "nominal"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `level`? | number | The battery level from 0 to 1. |
+| `lowPowerMode` | boolean | True when the device is in low power or battery saver mode. |
+| `state` | string | The charging state: charging, full, unplugged or unknown. |
+| `thermalState`? | string | How hot the device is: nominal, fair, serious or critical. |
+
+</Accordion>
+<Accordion title="screen">
+
+Returns the screen size, pixel scale, text scale, refresh rate, safe-area insets and corner radius.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.device.screen()
+```
+
+```json Result
+{
+  "cornerRadius": 55,
+  "fontScale": 1,
+  "hasDynamicIsland": true,
+  "hasNotch": false,
+  "height": 852,
+  "insets": {
+    "bottom": 34,
+    "left": 0,
+    "right": 0,
+    "top": 59
+  },
+  "refreshRate": 120,
+  "scale": 3,
+  "width": 393
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cornerRadius`? | number | The display's own corner radius in points; absent when the platform does not say. |
+| `fontScale` | number | The user's text size multiplier. |
+| `hasDynamicIsland` | boolean | True when the device has a Dynamic Island. |
+| `hasNotch` | boolean | True when the screen has a notch. |
+| `height` | number | The screen height in points. |
+| `insets` | object | The safe-area insets in points: the space taken by the notch, status bar and home indicator. |
+| `refreshRate`? | number | The screen refresh rate in hertz. |
+| `scale` | number | The number of pixels per point. |
+| `width` | number | The screen width in points. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -55,4 +312,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Installation id (`generate_installation_id`) | Mint a random per-install UUID that survives across launches. |
 | Track battery (`track_battery`) | Keep the battery level and charging state live, so markup can react to them. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -35,4 +35,51 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.share.url()` | `file`?: string<br/>`files`?: string[]<br/>`message`?: string<br/>`url`?: string | `activityType`<br/>`completed` | iOS, Android | Opens the system share sheet with a message, a link and files, and resolves when the user shares or closes it. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="url">
+
+Opens the system share sheet with a message, a link and files, and resolves when the user shares or closes it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `file`? | string | A single file to attach, in the same forms as files. |
+| `files`? | string[] | A list of files to attach, each a file path from the app's storage or a File or Blob object. |
+| `message`? | string | Text to share. Surrounding spaces are trimmed. |
+| `url`? | string | A link to share. A value that is not a valid address is ignored. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.share.url({ message: "Check out this listing", url: "https://example.com/listings/cozy-loft" })
+```
+
+```json Result
+{
+  "activityType": "com.apple.UIKit.activity.Message",
+  "completed": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `activityType`? | string | The system identifier of the chosen target. Only iOS can name it; it is empty on dismissal and on platforms that do not report it. |
+| `completed` | boolean | True when the user shared, false when they closed the sheet. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `no_presenter` | Couldn't find a screen to present the share sheet from. |
+| `nothing_to_share` | Provide a message, URL, or file(s) to share. |
+| `share_failed` | The share couldn't be completed. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

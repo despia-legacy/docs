@@ -2,10 +2,12 @@
 title: "Browser"
 description: "Open web links in the system's in-app browser tab."
 icon: "globe"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -40,4 +42,73 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.browser.open()` | `target`?: "blank" \\| "self"<br/>`url`: string | `opened` | iOS, Android | Opens a link outside the app's own screens. Web addresses open in an in-app browser tab, and safe links such as phone or mail are passed to the system. |
 | `dsx.module.browser.reload()` | none | `reloaded` | iOS, Android | Reloads the page the app is showing. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="open">
+
+Opens a link outside the app's own screens. Web addresses open in an in-app browser tab, and safe links such as phone or mail are passed to the system.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `target`? | "blank" \\| "self" | On the web only: blank opens a new tab (the default) and self replaces the current page. |
+| `url` | string | The address to open. It can be a web address, a bare host such as example.com, or a safe app link like tel: or mailto:. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.browser.open({ url: "https://example.com" })
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the link was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `blocked` | The browser blocked the new tab. Open it from a tap handler. |
+| `invalid_target` | Use blank or self for the browser target. |
+| `invalid_url` | Use an HTTP(S) URL, a host, or a safe external app link. |
+| `missing_url` | A non-empty "url" is required. |
+
+</Accordion>
+<Accordion title="reload">
+
+Reloads the page the app is showing.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.browser.reload()
+```
+
+```json Result
+{
+  "reloaded": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `reloaded` | boolean | True when the reload was started. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

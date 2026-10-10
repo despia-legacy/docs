@@ -1,94 +1,61 @@
 ---
-title: "Plain HTML, vanilla JS and Astro"
-description: "Call Despia V4 packages from a script tag, plain JavaScript or an Astro site through the global dsx, with loading and error state, events and TypeScript."
+title: "Plain HTML and vanilla JS"
+sidebarTitle: "Plain HTML"
+description: "Call Despia V4 packages from Plain HTML and vanilla JS through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "html5"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-No package and no build step: inside a Despia V4 app, `window.dsx` is installed before the first script on the page runs.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## Call a package from a script tag
+- There is no server rendering: the script runs in the page, after `window.dsx` is installed.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
 
 ```html index.html
-<button id="buy" hidden>Buy 100 coins</button>
-<small id="buy-error"></small>
+<button id="done" hidden>Done</button>
 
 <script type="module">
-  // safe in a normal browser and in Despia V4
-  const dsx = window.dsx
-  const button = document.getElementById('buy')
-  const errorText = document.getElementById('buy-error')
-
-  if (dsx && dsx.has('revenuecat')) {
+  const button = document.getElementById('done')
+  if (window.dsx) {
     button.hidden = false
     button.addEventListener('click', async () => {
       button.disabled = true
-      button.textContent = 'Buying…'
-      errorText.textContent = ''
       try {
-        const result = await dsx.module.revenuecat.purchase({ product: ['coins_100'] })
-        console.log('active entitlements', result.active_entitlements)
-      } catch (err) {
-        errorText.textContent = err.code // for example user_cancelled
+        await window.dsx.module.haptic.success()
+      } catch (e) {
+        button.textContent = `Done (${e.code})`
       } finally {
         button.disabled = false
-        button.textContent = 'Buy 100 coins'
       }
     })
+    window.dsx.module.revenuecat.on('customerInfo', (data) => console.log(data)) // for the page's lifetime
   }
 </script>
 ```
 
-## Listen to a broadcast
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-```html
-<script type="module">
-  const dsx = window.dsx
-  if (dsx) {
-    const off = dsx.module.focus.on('change', ({ focused }) => {
-      document.body.classList.toggle('in-background', !focused)
-    })
-    // call off() when you no longer need it
-  }
-</script>
-```
-
-`type="module"` gives each script its own scope, so two scripts can both declare `const dsx`.
-
-## Astro
-
-The frontmatter of an `.astro` file and its components run on the server, where `window` does not exist. Put Despia calls in a `<script>` tag, which Astro runs in the browser:
-
-```astro BuyButton.astro
----
-// server side: no window.dsx here
----
-<button id="buy" hidden>Buy 100 coins</button>
-
-<script>
-  const dsx = window.dsx
-  const button = document.getElementById('buy')
-  if (dsx && dsx.has('revenuecat') && button) {
-    button.hidden = false
-    button.addEventListener('click', () => {
-      dsx.module.revenuecat.purchase({ product: ['coins_100'] }).catch((err) => console.warn(err.code))
-    })
-  }
-</script>
-```
-
-In an island that uses React, Vue, Svelte or Solid, follow that framework's page and hydrate it with `client:load` or `client:only`.
+More in [How calls, results and broadcasts work](/packages/concepts).
 
 ## TypeScript
 
+Save the declaration as `dsx.d.ts` (only if you type-check with TypeScript or JSDoc):
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

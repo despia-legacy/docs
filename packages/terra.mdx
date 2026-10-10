@@ -2,10 +2,12 @@
 title: "Terra"
 description: "Pull Apple Health and wearable data into your app through Terra."
 icon: "webhook"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -48,6 +50,316 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.terra.permission.status()` | `user_id`?: string | `canAsk`<br/>`level`<br/>`message`<br/>`status` | iOS, Android | Reads the health data permission without ever showing a dialog. |
 | `dsx.module.terra.sync()` | `backfill_days`?: number | `days`<br/>`durationMs`<br/>`failed`<br/>`reason`<br/>`skipped`<br/>`source`<br/>`succeeded` | iOS, Android | Sends the latest health data to your Terra destination now, without asking the person again. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="connect">
+
+Links Apple Health or a wearable provider to Terra for this person and starts the first sync.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `backfill_days`? | number | How many days of history to load when connecting; defaults to the last value, then 7. |
+| `ignored_sources`? | string[] | App ids whose Apple Health data should be left out, for example to avoid duplicates with a wearable provider. |
+| `session`? | string | A Terra token from your server for Apple Health, or a Connect widget address for other providers. |
+| `user_id`? | string | Your own stable id for the person; Terra stores it as the reference id. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.connect({ session: "https://widget.tryterra.co/session/abc", user_id: "ref_123" })
+```
+
+```json Result
+{
+  "provider": "fitbit",
+  "via": "widget"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `alreadyConnected`? | boolean | True when the source was already linked and was only resynced. |
+| `params`? | object | Extra values the widget returned. |
+| `provider` | string | The linked source, such as healthkit. |
+| `referenceId`? | string | Your own id for the person, as stored in Terra. |
+| `resource`? | string | The provider that was linked through the widget. |
+| `userId`? | string | The Terra user id for the person. |
+| `via`? | string | Set to widget when a provider was linked through the Connect widget. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `connect_failed` | The connection could not be completed. |
+| `invalid_widget_url` | That is not a usable Terra Connect widget URL. |
+| `missing_session` | A session token is required for a first-time connect. |
+| `missing_user_id` | A user_id is required. |
+| `not_configured` | Terra is not configured. Fill in the dev-id in this package's config.json. |
+| `sdk_init_failed` | The Terra SDK could not start. |
+| `widget_auth_failed` | The provider's sign-in sheet did not authenticate. |
+| `widget_cancelled` | The sign-in sheet was dismissed before it finished. |
+
+</Accordion>
+<Accordion title="data">
+
+Reads health data straight from the device for display in your app, without sending it to your destination.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `end`? | number | End of the window as a time in milliseconds; overrides query. |
+| `query`? | string | The time window: daily (since the start of today), weekly (last 7 days) or hourly (last hour). |
+| `resources`? | string[] | Which kinds of data to read, such as daily, activity, sleep, body, nutrition, menstruation or athlete. |
+| `start`? | number | Start of the window as a time in milliseconds; overrides query. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.data({ query: "daily", resources: ["daily", "sleep"] })
+```
+
+```json Result
+{
+  "query": "daily",
+  "succeeded": [
+    "daily"
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `endMs`? | int | End of the window as a time in milliseconds. |
+| `failed`? | object[] | The data kinds that could not be read, each with the reason. |
+| `query` | string | The window that was read. |
+| `resources`? | string[] | The data kinds that were read. |
+| `results`? | object | The data read, grouped by kind. |
+| `startMs`? | int | Start of the window as a time in milliseconds. |
+| `succeeded` | string[] | The data kinds that were read. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Terra is not configured. Fill in the dev-id in this package's config.json. |
+| `not_connected` | The health store is not connected yet. Call connect first. |
+| `sdk_init_failed` | The Terra SDK could not start. |
+
+</Accordion>
+<Accordion title="disconnect">
+
+Unlinks the person inside the app; your server must remove them in Terra itself.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.disconnect()
+```
+
+```json Result
+{}
+```
+
+**Result:** `object`: shape not declared yet.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Terra is not configured. Fill in the dev-id in this package's config.json. |
+| `not_connected` | The health store is not connected yet. Call connect first. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the person change a limited selection where the system has one; otherwise returns the current state unchanged.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `user_id`? | string | Your id for the person; optional here. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `changed` | boolean | True when the selection was changed; false where the platform has no limited selection. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the person can change the health data permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Shows the system health data permission dialog when it can still be shown, and returns the resulting state.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `user_id`? | string | Your id for the person; optional here. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `message`? | string | A plain-language note about the result, for logging. |
+| `requested`? | boolean | True when the system sheet was shown by this call. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the health data permission without ever showing a dialog.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `user_id`? | string | Your id for the person; optional here. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `message`? | string | A plain-language note about the state, for logging. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="sync">
+
+Sends the latest health data to your Terra destination now, without asking the person again.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `backfill_days`? | number | How many days to include in this sync; defaults to the last value, then 7. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.terra.sync({ backfill_days: 7 })
+```
+
+```json Result
+{
+  "days": 7,
+  "source": "sync"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `days`? | int | How many days of data the sync covered. |
+| `durationMs`? | int | How long the sync took in milliseconds. |
+| `failed`? | object[] | The data types that failed, each with the reason. |
+| `reason`? | string | Why the sync was skipped, such as in_progress. |
+| `skipped`? | boolean | True when another sync was already running, so none was started. |
+| `source` | string | What started the sync, such as sync, connect or launch_resync. |
+| `succeeded`? | string[] | The data types that synced. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_user_id` | A user_id is required. |
+| `not_configured` | Terra is not configured. Fill in the dev-id in this package's config.json. |
+| `not_connected` | The health store is not connected yet. Call connect first. |
+| `sdk_init_failed` | The Terra SDK could not start. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.terra.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -70,4 +382,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Health read prompt (`usage_share_description`) | The message shown when iOS asks permission to read Health data. |
 | Health write prompt (`usage_update_description`) | The message shown when iOS asks permission to save data to Health. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- A Terra developer account: your **developer ID** in the package settings.
+- Your server creates the Terra token that `terra.connect({ session })` needs; your Terra API key stays on your server.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

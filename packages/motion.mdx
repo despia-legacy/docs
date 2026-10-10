@@ -53,6 +53,329 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.motion.start()` | `buffer`?: number<br/>`cap`?: number<br/>`hz`?: number<br/>`sensors`?: string[]<br/>`server`?: string<br/>`threshold`?: number | stream (sends `change`, `batch`, `calibration`) | iOS, Android | Starts one motion stream with the sensors and sampling rate you choose, and sends each sample as a single object. |
 | `dsx.module.motion.stop()` | none | `active` | iOS, Android | Stops the motion stream and releases the sensors. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="activity">
+
+Starts or stops classification of what the person is doing, such as walking, running, cycling or driving.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `on`? | boolean | True starts the classification and false stops it. |
+| `prompt`? | boolean | True lets the system permission dialog appear on this call when it can; false never shows it and fails if access is missing. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.activity({ on: true })
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Motion & fitness access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `start_failed` | Activity recognition could not be started. |
+| `unsupported_device` | Activity recognition is not available on this device. |
+| `unsupported_platform` | This runtime has no sensor of that kind. |
+
+</Accordion>
+<Accordion title="barometer">
+
+Starts or stops air pressure readings and the altitude change since the first reading.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `on`? | boolean | True starts the readings and false stops them. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.barometer({ on: true })
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unsupported_device` | This device has no barometer. |
+| `unsupported_platform` | This runtime has no sensor of that kind. |
+
+</Accordion>
+<Accordion title="capabilities">
+
+Reports which motion sensors this device has and the highest sampling rate it allows.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.capabilities()
+```
+
+```json Result
+{
+  "accelerometer": true,
+  "activity": true,
+  "barometer": true,
+  "deviceMotion": true,
+  "gyroscope": true,
+  "magnetometer": true,
+  "maxHz": 100,
+  "pedometer": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accelerometer` | boolean | True when the device has an accelerometer. |
+| `activity` | boolean | True when the device can tell walking from driving and similar activities. |
+| `barometer` | boolean | True when the device has an air pressure sensor. |
+| `deviceMotion` | boolean | True when the device can report fused motion such as attitude and gravity. |
+| `gyroscope` | boolean | True when the device has a gyroscope. |
+| `magnetometer` | boolean | True when the device has a magnetometer or compass. |
+| `maxHz` | number | The highest sampling rate in hertz that start may use. |
+| `pedometer` | boolean | True when the device can count steps. |
+
+</Accordion>
+<Accordion title="pedometer">
+
+Reads the steps, distance and floors the person has covered since a moment you choose.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `from`? | number | The start of the period to count, as a time in milliseconds since 1970; leave it out for a default period. |
+| `prompt`? | boolean | True lets the system permission dialog appear on this call when it can; false never shows it and fails if access is missing. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.pedometer({ from: 1700000000000 })
+```
+
+```json Result
+{
+  "distance": 2410.5,
+  "end": 1700003600000,
+  "floorsAscended": 3,
+  "floorsDescended": 1,
+  "start": 1700000000000,
+  "steps": 3120
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `distance` | number | The distance walked or run in the period, in meters. |
+| `end` | number | The end of the counted period, in milliseconds since 1970. |
+| `floorsAscended` | number | The number of floors climbed up in the period. |
+| `floorsDescended` | number | The number of floors walked down in the period. |
+| `start` | number | The start of the counted period, in milliseconds since 1970. |
+| `steps` | number | The number of steps taken in the period. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `no_reading` | The step counter delivered no reading. |
+| `permission_denied` | Motion & fitness access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `unsupported_device` | Step counting is not available on this device. |
+| `unsupported_platform` | This runtime has no sensor of that kind. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the person change a limited selection of what the app may access, where the system has such a screen.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `changed` | boolean | True when the person changed the selection; false where the system has no such screen. |
+| `level`? | string | How much access is granted when the system offers levels. |
+| `status` | string | The permission state after the screen closed. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the person can change the permission there.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Asks the person for motion and fitness data by showing the system permission dialog when it can still be shown.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `level`? | string | How much access was granted when the system offers levels, such as full or limited. |
+| `status` | string | The permission state after the request. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads whether the app may use motion and fitness data right now, without ever showing a dialog.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog. |
+| `level`? | string | How much access was granted when the system offers levels, such as full or limited. |
+| `status` | string | The Motion and Fitness permission state, such as granted, denied or undetermined. |
+
+</Accordion>
+<Accordion title="start">
+
+Starts one motion stream with the sensors and sampling rate you choose, and sends each sample as a single object.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `buffer`? | number | While the app is in the background, seconds between the samples that are kept for later. |
+| `cap`? | number | How many samples to keep while in the background; the oldest are dropped and counted. |
+| `hz`? | number | How many samples per second to take; it is capped by the maximum sampling rate setting. |
+| `sensors`? | string[] | The sensor blocks to include in each sample, such as accelerometer, gyroscope, magnetometer, attitude, gravity or userAcceleration. |
+| `server`? | string | A web address that the app posts the background samples to by itself, even if the app is never reopened. |
+| `threshold`? | number | A movement size in g below which samples are skipped, so a still phone sends nothing. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.start({ hz: 60, sensors: ["accelerometer", "gyroscope"] })
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Motion and orientation access was not granted. |
+| `unsupported_device` | This device has none of the requested motion sensors. |
+| `unsupported_sensor` | One of the requested sensors is not a known sensor name. |
+
+</Accordion>
+<Accordion title="stop">
+
+Stops the motion stream and releases the sensors.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.motion.stop()
+```
+
+```json Result
+{
+  "active": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `active` | boolean | True while the stream is still running; false once it has stopped. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.motion.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -77,4 +400,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Maximum sampling rate (`max_hz`) | Upper bound, in hertz, on the sampling rate a page may ask for. |
 | Motion & fitness prompt (`usage_motion`) | The message shown when iOS asks for motion & fitness access. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

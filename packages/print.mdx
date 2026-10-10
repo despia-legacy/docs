@@ -35,4 +35,41 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.print.document()` | `jobName`?: string<br/>`path`?: string<br/>`url`?: string | `completed`<br/>`fallback` | iOS, Android | Shows the system print sheet for a document, which is a file in your app or one downloaded from a web address. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="document">
+
+Shows the system print sheet for a document, which is a file in your app or one downloaded from a web address.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `jobName`? | string | The name shown for the job in the print queue. |
+| `path`? | string | A Files path of the document to print, such as cache:invoice.pdf or documents:report.pdf. Give either path or url. |
+| `url`? | string | A web address to download the document from before printing. |
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `completed` | boolean | True when printing went ahead; false when the person cancelled the print sheet. |
+| `fallback`? | "unknown" | On the web only, unknown means the browser cannot tell a cancel from a print, so completed only says the dialog closed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `cannot_print` | This document can't be printed, the system found no printable representation for it. |
+| `download_failed` | Couldn't download the document to print. |
+| `missing_param` | Pass the document as `path` (a Core/Files path) or `url`. |
+| `no_presenter` | Couldn't find an active screen to present the print sheet from. |
+| `not_found` | There is no file at that path. |
+| `print_failed` | The print job couldn't be completed. |
+| `write_failed` | Couldn't save the document for printing. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -52,6 +52,521 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.contacts.remove()` | `id`: string<br/>`prompt`?: boolean | `removed` | iOS, Android | Deletes one contact from the address book, which the app cannot undo. |
 | `dsx.module.contacts.update()` | `contact`: object<br/>`id`: string<br/>`prompt`?: boolean | `id` | iOS, Android | Changes fields on an existing contact and leaves every field you do not send as it was; an empty list clears that field. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="add">
+
+Saves a new contact in the address book; it needs the user's write permission.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `contact` | object | The details of the new contact. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.add({ contact: {"emails": [{"label": "work", "value": "ada@example.com"}], "familyName": "Lovelace", "givenName": "Ada"} })
+```
+
+```json Result
+{
+  "id": "c9"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id of the contact that was created. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_contact` | A contact needs at least one of displayName, givenName, familyName, phones or emails. |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `write_failed` | The contact could not be saved. |
+
+</Accordion>
+<Accordion title="get">
+
+Returns one contact with all its fields, found by the id that pick or list gave you.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `fields`? | string[] | A list of contact fields to load; leave it out for all of them. |
+| `id` | string | The id of the contact to load. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.get({ id: "c1" })
+```
+
+```json Result
+{
+  "contact": {
+    "addresses": [
+      {
+        "city": "Lisbon",
+        "country": "PT",
+        "label": "home",
+        "postalCode": "1000-001",
+        "region": "",
+        "street": "1 Main St"
+      }
+    ],
+    "birthday": "1990-04-02",
+    "company": "Example Inc",
+    "displayName": "Jane Doe",
+    "emails": [
+      {
+        "label": "work",
+        "value": "jane@example.com"
+      }
+    ],
+    "familyName": "Doe",
+    "givenName": "Jane",
+    "id": "c1",
+    "jobTitle": "Engineer",
+    "phones": [
+      {
+        "label": "mobile",
+        "value": "+15551234567"
+      }
+    ]
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `contact` | object | The contact that was found. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_found` | No contact with that id exists in this store. |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+
+</Accordion>
+<Accordion title="groups">
+
+Lists the contact groups in the address book; groups can be read but not edited.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.groups()
+```
+
+```json Result
+{
+  "groups": [
+    {
+      "count": 4,
+      "id": "g1",
+      "name": "Family"
+    },
+    {
+      "count": 12,
+      "id": "g2",
+      "name": "Work"
+    }
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `groups` | object[] | The contact groups found on the device. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `read_failed` | The contact groups could not be read. |
+
+</Accordion>
+<Accordion title="list">
+
+Returns one page of contacts from the address book, optionally filtered by name and limited to the fields you ask for.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `after`? | string | The end cursor from the previous page, to get the next page. |
+| `fields`? | string[] | A list of contact fields to load; asking for fewer fields makes the call faster. |
+| `limit`? | int | How many contacts to return in this page; defaults to 100 and never exceeds 500. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+| `query`? | string | Text to look for inside the contact display names, ignoring case. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.list({ limit: 2 })
+```
+
+```json Result
+{
+  "access": "granted",
+  "contacts": [
+    {
+      "displayName": "Jane Doe",
+      "id": "c1"
+    },
+    {
+      "displayName": "Sam Ray",
+      "id": "c2"
+    }
+  ],
+  "endCursor": "2",
+  "hasNextPage": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `access` | string | Whether the app can see the whole address book or only a limited selection the user shared. |
+| `contacts` | object[] | The contacts found in this page, with the fields you asked for. |
+| `endCursor`? | string | Pass this as after to load the next page. |
+| `hasNextPage` | boolean | True when another page is available. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `read_failed` | The address book could not be read. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the user change which items this app can see when the address book is limited, without leaving the app; elsewhere it only reports the current state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for the address book; false means only Settings can change it. |
+| `changed` | boolean | True when the user changed the selection in the system picker. |
+| `level`? | string | The permission level that this answer is about. |
+| `status` | string | The current state of the address book: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the user can change a denied permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Asks for the address book with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `level`? | string | Which permission level to check, read, write or full; it defaults to read when left out. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.permission.request({ level: "read" })
+```
+
+```json Result
+{
+  "canAsk": false,
+  "level": "read",
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for the address book; false means only Settings can change it. |
+| `level`? | string | The permission level that this answer is about. |
+| `status` | string | The current state of the address book: undetermined, granted, limited, denied, restricted or unavailable. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_level` | level must be "read", "write" or "full". |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the current state of the address book without ever showing a dialog, so a settings screen can call it every time it appears.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `level`? | string | Which permission level to check, read, write or full; it defaults to read when left out. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.permission.status({ level: "read" })
+```
+
+```json Result
+{
+  "canAsk": false,
+  "level": "read",
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for the address book; false means only Settings can change it. |
+| `level`? | string | The permission level that this answer is about. |
+| `status` | string | The current state of the address book: undetermined, granted, limited, denied, restricted or unavailable. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_level` | level must be "read", "write" or "full". |
+
+</Accordion>
+<Accordion title="pick">
+
+Opens the system contact picker and returns only the contacts the user chooses, without asking for any permission.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `fields`? | string[] | A list of contact fields to return; leave it out to get every field the picker provides. |
+| `multiple`? | boolean | Pass true to allow choosing several contacts; Android allows only one and says so in the result. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.pick({ multiple: true })
+```
+
+```json Result
+{
+  "cancelled": false,
+  "contacts": [
+    {
+      "displayName": "Jane Doe",
+      "id": "c1"
+    },
+    {
+      "displayName": "Sam Ray",
+      "id": "c2"
+    }
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cancelled` | boolean | True when the user closed the picker without choosing. |
+| `contacts` | object[] | The contacts the user chose, empty when the picker was dismissed. |
+| `multiple`? | boolean | Only present as false when several were requested but the platform picker can return just one. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `pick_unavailable` | No contact picker is available on this device. |
+| `unsupported_device` | This device has no contact picker this app can open. |
+
+</Accordion>
+<Accordion title="read">
+
+Returns the whole address book at once as names mapped to phone numbers, asking for access first.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `groupBy`? | "contact" \\| "name" | Use contact to keep contacts with the same name apart with numbered suffixes, or name to merge them into one entry. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.read()
+```
+
+```json Result
+{
+  "Jane Doe": [
+    "+15551234567"
+  ]
+}
+```
+
+**Result:** `object`: shape not declared yet.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `fetch_failed` | Couldn't read your contacts. |
+| `fetch_unavailable` | The address-book query returned no cursor in name grouping mode. |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+
+</Accordion>
+<Accordion title="remove">
+
+Deletes one contact from the address book, which the app cannot undo.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id of the contact to delete. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.remove({ id: "c1" })
+```
+
+```json Result
+{
+  "removed": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `removed` | boolean | True when the contact was deleted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_found` | No contact with that id exists in this store. |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `write_failed` | The contact could not be removed. |
+
+</Accordion>
+<Accordion title="update">
+
+Changes fields on an existing contact and leaves every field you do not send as it was; an empty list clears that field.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `contact` | object | The fields to change on the contact; fields you leave out stay as they are. |
+| `id` | string | The id of the contact to change. |
+| `prompt`? | boolean | Leave it out or pass true to let the system permission dialog appear on this call when needed; pass false to never show a dialog and fail with the permission state instead. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.contacts.update({ contact: {"jobTitle": "Principal Engineer"}, id: "c1" })
+```
+
+```json Result
+{
+  "id": "c1"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id of the contact that was changed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_found` | No contact with that id exists in this store. |
+| `permission_denied` | Contacts access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `write_failed` | The contact could not be saved. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -62,4 +577,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Contacts permission prompt (`usage_description`) | The message iOS shows when the app asks to read the user's contacts. Say what the app does with them, in one concrete sentence. |
 | Contacts write permission prompt (`write_usage_description`) | The message iOS shows when the app asks to add or change contacts without reading the rest of the address book. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

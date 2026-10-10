@@ -43,6 +43,116 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.identityvault.read()` | `key`: string<br/>`reason`?: string | `key`<br/>`locked`<br/>`value` | iOS, Android | Reads the value stored under a key. A locked record shows the biometric prompt first, and a successful read also sets the value on the page under the key name for older pages. |
 | `dsx.module.identityvault.write()` | `allowPasscode`?: boolean<br/>`key`: string<br/>`locked`?: boolean<br/>`reason`?: string<br/>`value`?: string | `key`<br/>`locked`<br/>`protection` | iOS, Android | Saves a value under a key. With locked set to true, the value is tied to the user's biometrics and can only be read after they authenticate. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="durability">
+
+Reports how long stored records will last and how far they reach, for example whether they follow the user to a new phone. It never fails and says none when nothing can be stored.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.identityvault.durability()
+```
+
+```json Result
+{
+  "durability": "synced",
+  "evictable": false,
+  "plane": "keychain_synced",
+  "proven": false,
+  "reason": "",
+  "restorable": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `durability` | string | How long records last: synced, device, session or none. |
+| `evictable` | boolean | True if the platform may clear the records by itself. |
+| `plane` | string | Where the records are held, such as the synced keychain or device-only storage. |
+| `proven` | boolean | True if a record from another install has been read on this device. |
+| `reason` | string | A plain explanation when the level is lower than expected. |
+| `restorable` | boolean | True if the platform's cross-device store was used, so a new phone can recover the records. |
+
+</Accordion>
+<Accordion title="read">
+
+Reads the value stored under a key. A locked record shows the biometric prompt first, and a successful read also sets the value on the page under the key name for older pages.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The name the value was stored under. |
+| `reason`? | string | The text shown in the biometric prompt for a locked record. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.identityvault.read({ key: "token" })
+```
+
+```json Result
+{
+  "key": "token",
+  "locked": false,
+  "value": "abc123"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The key that was read. |
+| `locked` | boolean | True if the record is locked behind biometrics. |
+| `value` | string | The text that was stored under the key. |
+
+</Accordion>
+<Accordion title="write">
+
+Saves a value under a key. With locked set to true, the value is tied to the user's biometrics and can only be read after they authenticate.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `allowPasscode`? | boolean | Set to true to let the device passcode unlock a locked record as well. |
+| `key` | string | The name to store the value under. |
+| `locked`? | boolean | Set to true to require Face ID, Touch ID or a fingerprint before the value can be read. |
+| `reason`? | string | The text shown in the biometric prompt. |
+| `value`? | string | The text you want to store under the key. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.identityvault.write({ key: "token", locked: false, value: "abc123" })
+```
+
+```json Result
+{
+  "key": "token",
+  "locked": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The key the value was stored under. |
+| `locked` | boolean | True if the record is locked behind biometrics. |
+| `protection`? | string | What holds a locked record: secure_enclave, strongbox, tee or prf. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -52,4 +162,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | When the vault can be read (`accessibility`) | "whenUnlocked" (default) allows reads only while the device is unlocked. "afterFirstUnlock" also allows reads while it is locked, once the user has unlocked it after a restart. |
 | Let vault records reach the user's other devices (`cloud_sync`) | On by default. Records are also kept in the platform's own cross-device credential store: iCloud Keychain on iOS, Google Play Block Store on Android: so a person who buys a new phone keeps the identity they paid with. Turn it off only for a record that must stay on one device. A browser has no equivalent; the web reports that rather than pretending. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

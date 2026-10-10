@@ -86,7 +86,7 @@ Show an in-app purchase button inside Despia and a web checkout flow in the brow
 import { useState, useEffect } from 'react'
 import despia from 'despia-native'
 
-function CheckoutButton() {
+function CheckoutButton({ userId }) {
     const [isDespia, setIsDespia] = useState(false)
 
     useEffect(() => {
@@ -95,7 +95,7 @@ function CheckoutButton() {
 
     if (isDespia) {
         return (
-            <button onClick={() => despia('iap://?productId=pro_monthly')}>
+            <button onClick={() => despia(`revenuecat://launchPaywall?external_id=${userId}&offering=default`)}>
                 Purchase in App
             </button>
         )

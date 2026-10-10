@@ -2,10 +2,12 @@
 title: "Spinner"
 description: "Show or hide the page-load activity indicator."
 icon: "spinner"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -39,4 +41,59 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.spinner.hide()` | none | `ok` | iOS, Android | Hides the activity indicator again. |
 | `dsx.module.spinner.show()` | none | `ok` | iOS, Android | Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="hide">
+
+Hides the activity indicator again.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.spinner.hide()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the spinner was hidden. |
+
+</Accordion>
+<Accordion title="show">
+
+Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.spinner.show()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the spinner was shown. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

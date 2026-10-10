@@ -1,0 +1,73 @@
+---
+title: "Nuxt"
+sidebarTitle: "Nuxt"
+description: "Call Despia V4 packages from Nuxt through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
+icon: "mountain"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+import TestIt from '/snippets/test-it.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+## Where dsx code runs
+
+Only in the browser: the client web view of your app, never during server rendering.
+
+- `setup` runs on the server and in the browser; `onMounted` and event handlers run only in the browser.
+- Never read `window.dsx` in `server/` routes, server plugins or `useAsyncData` / `useFetch` handlers. Wrap UI that only makes sense in the app in `<ClientOnly>`.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
+
+```vue components/DoneButton.vue
+<script setup>
+import { onMounted, onUnmounted, ref } from 'vue'
+
+const env = ref('web')
+const busy = ref(false)
+const error = ref(null)
+let off
+
+onMounted(() => {
+  env.value = window.dsx ? 'v4' : 'web'
+  off = window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+})
+onUnmounted(() => off?.())
+
+async function done() {
+  busy.value = true
+  error.value = null
+  try {
+    await window.dsx.module.haptic.success()
+  } catch (e) {
+    error.value = e.code
+  } finally {
+    busy.value = false
+  }
+}
+</script>
+
+<template>
+  <button v-if="env === 'v4'" :disabled="busy" @click="done">Done<span v-if="error"> ({{ error }})</span></button>
+</template>
+```
+
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
+
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+## TypeScript
+
+Save the declaration as `types/dsx.d.ts`:
+
+<DsxTypes />
+
+## Test it
+
+<TestIt />

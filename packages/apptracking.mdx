@@ -43,6 +43,96 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.apptracking.permission.request()` | none | `canAsk`<br/>`status` | iOS, Android | Shows Apple's tracking dialog while it can still appear and resolves with the user's answer. Later calls resolve at once with the standing answer, and on Android it resolves the current state. |
 | `dsx.module.apptracking.permission.status()` | none | `canAsk`<br/>`status` | iOS, Android | Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="permission.openSettings">
+
+Opens the app's page in the device Settings so the user can change the tracking choice. It needs the App Settings package.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.apptracking.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Shows Apple's tracking dialog while it can still appear and resolves with the user's answer. Later calls resolve at once with the standing answer, and on Android it resolves the current state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.apptracking.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True if the dialog could still be shown after this call, false once the answer is final. |
+| `status` | string | The tracking answer after the request: undetermined, granted, denied or restricted on iOS. On Android it is granted, denied or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.apptracking.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the iOS dialog can still be shown, false once the user has answered. |
+| `status` | string | The tracking answer: undetermined, granted, denied or restricted on iOS. On Android it is granted, denied or unavailable. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -52,4 +142,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Show ads when ATT denied (`att_denied_show_ads`) | Keep showing ads even when the user denies App Tracking Transparency. |
 | Permission prompt (`usage_description`) | The message shown when iOS asks permission to track the user across apps (ATT). |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

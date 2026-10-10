@@ -2,10 +2,12 @@
 title: "Biometric"
 description: "Confirm it is really the user with Face ID, Touch ID or the device passcode."
 icon: "fingerprint"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -35,6 +37,57 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.biometric.authenticate()` | `allow`?: string[]<br/>`challenge`?: string<br/>`reason`?: string<br/>`rpId`?: string | `assertion`<br/>`message`<br/>`ok`<br/>`platformCode`<br/>`reason` | iOS, Android | Shows the system Face ID, Touch ID or fingerprint prompt, falling back to the device passcode, and tells you whether the person confirmed. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="authenticate">
+
+Shows the system Face ID, Touch ID or fingerprint prompt, falling back to the device passcode, and tells you whether the person confirmed.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `allow`? | string[] | A list of credential ids that may answer the challenge. Used only together with challenge. |
+| `challenge`? | string | A one-time value from your server; when given, the answer is a passkey assertion your server can verify. |
+| `reason`? | string | The sentence shown in the prompt, for example Unlock your vault; defaults to the usage description in the package config. |
+| `rpId`? | string | The domain of your server (the relying party) that the passkey belongs to. Used together with challenge. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.biometric.authenticate({ reason: "Unlock your records" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `assertion`? | object | The signed passkey proof your server verifies. Present only when a challenge was given and ok is true. |
+| `message`? | string | A readable explanation of the failure from the system. |
+| `ok` | boolean | True when the person confirmed, false when they did not or the device could not ask. |
+| `platformCode`? | number | The operating system's own error number, useful only for diagnosis. |
+| `reason`? | string | Why it failed when ok is false, such as cancelled, fallback, failed, lockout or not_enrolled. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | The authenticator is in use. Try again in a moment. |
+| `challenge_unsupported` | A challenge needs Core/Passkeys in the build: it performs the server-verifiable ceremony. |
+| `failed` | The passkey confirmation could not run. |
+| `not_set_up` | Biometric unlock isn't set up on this device. |
+| `unsupported_device` | This device has no authenticator to ask: no biometric or device-credential hardware route (on the web, a browser with no WebAuthn over HTTPS). |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -43,4 +96,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message explaining why the app uses Face ID / Touch ID. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

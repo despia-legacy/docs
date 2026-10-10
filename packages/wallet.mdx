@@ -2,10 +2,12 @@
 title: "Wallet"
 description: "Let people add a boarding pass, ticket or card to Apple Wallet."
 icon: "wallet"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -38,6 +40,48 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.wallet.pkpass()` | `url`: string | stream (sends `presented`) | iOS, Android | Gets a .pkpass file from a web address and hands it to the system so the person can add it to Wallet. On iOS the Apple add-pass sheet is shown. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="pkpass">
+
+Gets a .pkpass file from a web address and hands it to the system so the person can add it to Wallet. On iOS the Apple add-pass sheet is shown.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `url` | string | The http or https address of the .pkpass file to add. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.wallet.pkpass({ url: "https://example.com/boarding.pkpass" })
+```
+
+```json Result
+{
+  "action": "pkpass",
+  "status": "dismissed"
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `cannot_add_passes` | This device cannot add passes to Apple Wallet. |
+| `download_failed` | The pass couldn't be downloaded. |
+| `invalid_pass` | The downloaded file is not a readable .pkpass. |
+| `invalid_url` | The pass URL isn't valid. |
+| `missing_or_invalid_url` | pkpass needs an http(s) url pointing at a .pkpass file. |
+| `no_presenter` | Couldn't find a screen to present the pass from. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.wallet.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -46,4 +90,10 @@ Listen with `window.dsx.module.wallet.on('<broadcast>', (data) => { ... })`. It 
 | :-- | :-- |
 | `presented` | Fires when the system pass handler is on screen, with the same details as the call result. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- Your server produces signed `.pkpass` files (Apple Wallet passes are signed with your own Pass Type ID certificate); `wallet.pkpass({ url })` downloads one from your address.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

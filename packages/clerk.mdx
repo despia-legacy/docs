@@ -2,10 +2,12 @@
 title: "Clerk"
 description: "Add sign-in, sign-up and account screens to your app with Clerk."
 icon: "user-lock"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -61,6 +63,840 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.clerk.token()` | none | `event`<br/>`jwt`<br/>`ok` | iOS, Android | Returns the current session token for calling your own API, refreshing it when it is about to expire. |
 | `dsx.module.clerk.userprofile()` | `dismissable`?: boolean | `event`<br/>`ok`<br/>`status` | iOS, Android | Shows Clerk's prebuilt account screen and waits until it closes. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="attach">
+
+Connects a view to the open sign-in attempt so it hears the result.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `view`? | string | The name of the view to connect. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.attach({ view: "inline" })
+```
+
+```json Result
+{
+  "attached": [
+    "inline"
+  ],
+  "status": "ready"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `attached` | array | The views now connected to the attempt. |
+| `status` | string | Where the sign-in attempt currently stands. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_ready` | No Clerk sign-in attempt is open. |
+
+</Accordion>
+<Accordion title="attribution">
+
+Turns on or off sharing the signed-in person's id with OneSignal and AppsFlyer.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `enabled`? | boolean | True shares the id after each sign-in; false clears it and stops sharing. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.attribution({ enabled: true })
+```
+
+```json Result
+{
+  "event": "attribution",
+  "ok": true,
+  "status": "enabled"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always attribution for this call. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | Whether id sharing is now enabled or disabled. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `unsupported_platform` | This Clerk capability has no twin on this renderer. |
+
+</Accordion>
+<Accordion title="authview">
+
+Shows Clerk's prebuilt sign-in and sign-up sheet and waits until it closes.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dismissable`? | boolean | Whether the person can swipe the sheet away. |
+| `mode`? | string | Which flow to show: signin, signup or signinorup. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.authview({ mode: "signup" })
+```
+
+```json Result
+{
+  "event": "authview",
+  "ok": true,
+  "status": "presented"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always authview for this call. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | How the sheet ended, such as presented or dismissed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `presentation_failed` | Clerk's own view could not be presented. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+
+</Accordion>
+<Accordion title="close">
+
+Abandons the sign-in attempt; to sign in again you open a new one.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.close()
+```
+
+```json Result
+{
+  "status": "canceled"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status` | string | Where the attempt ended, such as closed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_ready` | No Clerk sign-in attempt is open. |
+| `settled` | This attempt is finished. Open a new one to sign in again. |
+
+</Accordion>
+<Accordion title="configure">
+
+Gives Clerk your publishable key so sign-in can start.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | Your Clerk publishable key, which starts with pk_. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.configure({ key: "pk_test_abc123" })
+```
+
+```json Result
+{
+  "event": "ready",
+  "ok": true,
+  "status": "configured"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always ready for this call. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | Whether Clerk is now configured. |
+
+</Accordion>
+<Accordion title="createOrganization">
+
+Creates an organization with the signed-in person as its administrator.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `name` | string | The display name of the organization. |
+| `slug`? | string | A short URL-friendly name; Clerk makes one if you leave it out. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.createOrganization({ name: "Acme" })
+```
+
+```json Result
+{
+  "organization": {
+    "id": "org_9",
+    "name": "Acme"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `organization` | object | The organization that was created. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `create_organization_failed` | That organization could not be created. |
+| `missing_params` | That Clerk call is missing a required parameter. |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+
+</Accordion>
+<Accordion title="detach">
+
+Disconnects a view from the sign-in attempt without cancelling the attempt.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `view`? | string | The name of the view to disconnect. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.detach({ view: "inline" })
+```
+
+```json Result
+{
+  "attached": [],
+  "status": "ready"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `attached` | array | The views still connected to the attempt. |
+| `status` | string | Where the sign-in attempt currently stands. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_ready` | No Clerk sign-in attempt is open. |
+
+</Accordion>
+<Accordion title="invitations">
+
+Lists pending organization invitations, and accepts one when you give its id.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accept`? | string | The id of the invitation to accept; leave empty to only list. |
+| `limit`? | number | The most invitations to return. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.invitations()
+```
+
+```json Result
+{
+  "accepted": "",
+  "invitations": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accepted` | string | The id of the invitation that was accepted, or empty. |
+| `invitations` | array | The pending invitations after the call. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invitation_not_found` | No pending invitation with that id. |
+| `invitations_failed` | The invitation list could not be read. |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+
+</Accordion>
+<Accordion title="leaveOrganization">
+
+Removes the signed-in person from an organization; with no id it leaves the active one.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `organization`? | string | The id of the organization to leave; empty means the active one. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.leaveOrganization({ organization: "org_9" })
+```
+
+```json Result
+{
+  "organization": "org_9"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `organization` | string | The id of the organization that was left. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `leave_organization_failed` | That organization could not be left. |
+| `missing_params` | That Clerk call is missing a required parameter. |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+
+</Accordion>
+<Accordion title="manual">
+
+Runs a sign-in or sign-up flow step by step so you can build your own screens.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `action`? | string | Which step of a multi-step flow to run, such as prepare or verify. |
+| `code`? | string | The one-time code the person typed, for the verify step. |
+| `emailAddress`? | string | The email address for sign-up or for the code and reset flows. |
+| `firstName`? | string | The first name to save on sign-up. |
+| `identifier`? | string | The email address, username or phone number to sign in as. |
+| `lastName`? | string | The last name to save on sign-up. |
+| `method` | string | Which flow to run: password, oauth, apple, email_code, phone_code, passkey, second_factor, enterprise_sso, reset_password or ticket. |
+| `newPassword`? | string | The new password for the reset password flow. |
+| `password`? | string | The person's account password, for the password method. |
+| `phoneNumber`? | string | The phone number for sign-up or for the phone code flow. |
+| `provider`? | string | The sign-in provider name for the oauth flow, such as google. |
+| `ticket`? | string | The sign-in ticket for the ticket flow. |
+| `type`? | string | Whether the password flow signs in or signs up: signin or signup. |
+| `username`? | string | The username for sign-in or sign-up. |
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `emailAddress`? | string | The primary email address of the signed-in person. |
+| `event` | string | The kind of answer this is, such as signIn. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | Where the flow stands, such as complete or needs_second_factor. |
+| `userId`? | string | The signed-in person's Clerk id, once there is a user. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `apple_failed` | Sign in with Apple could not be completed. |
+| `auth_failed` | That sign-in could not be completed. |
+| `email_code_failed` | That email code could not be sent or verified. |
+| `enterprise_sso_failed` | That enterprise SSO sign-in could not be completed. |
+| `missing_params` | That Clerk call is missing a required parameter. |
+| `missing_state` | Start the flow before verifying it. |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+| `oauth_failed` | That OAuth sign-in could not be completed. |
+| `passkey_failed` | That passkey sign-in could not be completed. |
+| `phone_code_failed` | That phone code could not be sent or verified. |
+| `prepare_not_needed` | That second factor needs no prepare step. |
+| `reset_password_failed` | That password reset could not be completed. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `second_factor_failed` | That second factor could not be sent or verified. |
+| `ticket_failed` | That Clerk ticket could not be redeemed. |
+| `unknown_method` | That Clerk sign-in method does not exist. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+| `use_native_apple` | Use the native Apple sign-in method on this platform. |
+
+</Accordion>
+<Accordion title="organizations">
+
+Lists the organizations the signed-in person belongs to.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `limit`? | number | The most organizations to return. |
+| `offset`? | number | How many organizations to skip, for paging. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.organizations()
+```
+
+```json Result
+{
+  "activeId": "",
+  "memberships": [],
+  "total": 0
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `activeId` | string | The id of the active organization, or empty for the personal account. |
+| `memberships` | array | The person's organization memberships, with role and organization details. |
+| `total` | number | How many organizations the person belongs to in all. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+| `organizations_failed` | The organization list could not be read. |
+
+</Accordion>
+<Accordion title="session">
+
+Opens the sign-in attempt that the inline Clerk views use and publishes it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `mode`? | string | Which flow the attempt is for: signin, signup or signinorup. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.session({ mode: "signin" })
+```
+
+```json Result
+{
+  "session": "auth_1",
+  "status": "ready"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `session` | string | The id of the sign-in attempt. |
+| `status` | string | Where the attempt stands, such as open or complete. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `already_open` | A Clerk sign-in attempt is already open. Close it before opening another. |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+
+</Accordion>
+<Accordion title="sessions">
+
+Lists the sessions on this device, or ends one of them when you give its id.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `revoke`? | string | The id of the session to end; leave empty to only list. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.sessions()
+```
+
+```json Result
+{
+  "activeId": "",
+  "revoked": "",
+  "sessions": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `activeId` | string | The id of the session currently in use on this device. |
+| `revoked` | string | The id of the session that was ended, or empty. |
+| `sessions` | array | The sessions on this device, each with its status and pending task. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `revoke_session_failed` | That session could not be revoked. |
+| `session_not_found` | No session on this client with that id. |
+
+</Accordion>
+<Accordion title="setOrganization">
+
+Switches the active organization, or back to the personal account when you pass an empty id.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `organization`? | string | The id of the organization to activate; empty means the personal account. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.setOrganization({ organization: "org_9" })
+```
+
+```json Result
+{
+  "orgId": "org_9",
+  "orgSlug": "acme"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `orgId` | string | The id of the now active organization, or empty. |
+| `orgSlug` | string | The short name of the now active organization, or empty. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+| `set_active_failed` | The active organization could not be changed. |
+
+</Accordion>
+<Accordion title="signout">
+
+Ends the session and clears the stored identity and cookies.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.signout()
+```
+
+```json Result
+{
+  "event": "signOut",
+  "ok": true,
+  "status": "complete"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always signOut for this call. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | Whether the sign-out finished, such as complete. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `signout_failed` | Sign-out could not be completed. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+
+</Accordion>
+<Accordion title="ssr">
+
+Makes the native session readable by your own web server by writing session cookies.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `domains`? | string | Comma separated list of domains the cookies apply to, replacing the default. |
+| `enabled`? | boolean | False removes all session cookies. |
+| `header`? | string | An extra request header to attach the token to; Authorization sends it as a Bearer token. |
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `domains` | string[] | The domains the session cookies are written for. |
+| `event` | string | The kind of answer this is, such as ssr. |
+| `header`? | string | The request header name your server can check, when one is set. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | Whether cookie sharing is now enabled or disabled. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+| `unsupported_platform` | This Clerk capability has no twin on this renderer. |
+
+</Accordion>
+<Accordion title="status">
+
+Reads who is signed in, working offline from what the device already holds.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.status()
+```
+
+```json Result
+{
+  "event": "state",
+  "isSignedIn": false,
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `emailAddress`? | string | The primary email address of the signed-in person. |
+| `event` | string | The kind of answer this is, always state for this call. |
+| `firstName`? | string | The first name of the signed-in person. |
+| `imageUrl`? | string | The link to the signed-in person's picture. |
+| `isConfigured`? | boolean | True once configure has been called with a publishable key. |
+| `isSignedIn` | boolean | True when a person is signed in on this device. |
+| `lastName`? | string | The last name of the signed-in person. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `publishableKey`? | string | The Clerk publishable key in use. |
+| `session`? | object | The current session, when one exists. |
+| `user`? | object | The signed-in person's record, when someone is signed in. |
+| `userId`? | string | The signed-in person's Clerk id. |
+| `username`? | string | The username of the signed-in person. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+
+</Accordion>
+<Accordion title="submit">
+
+Reports that a view submitted a step, so a double submit cannot happen.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status`? | string | The outcome the view reports for the step. |
+| `view`? | string | The name of the view that submitted. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.submit({ status: "needs_first_factor" })
+```
+
+```json Result
+{
+  "status": "confirming",
+  "step": "first_factor"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status` | string | Where the sign-in attempt stands after this step. |
+| `step` | string | The step the attempt moved to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A sign-in submit is already in flight. |
+| `not_ready` | No Clerk sign-in attempt is open. |
+| `settled` | This attempt is finished. Open a new one to sign in again. |
+
+</Accordion>
+<Accordion title="task">
+
+Reads or shows the step the person must finish before their session is fully active, such as setting up two-step verification.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `present`? | boolean | True to show Clerk's screen for the pending step. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.task()
+```
+
+```json Result
+{
+  "sessionId": "sess_1",
+  "status": "",
+  "task": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `sessionId` | string | The id of the session that has the pending step. |
+| `status` | string | Whether the session is active or pending. |
+| `task` | string | The pending step, such as chooseOrganization or setupMFA, or empty when nothing is pending. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+| `unsupported_task` | This build has no prebuilt view for that session task. |
+
+</Accordion>
+<Accordion title="token">
+
+Returns the current session token for calling your own API, refreshing it when it is about to expire.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.clerk.token()
+```
+
+```json Result
+{
+  "event": "token",
+  "jwt": null,
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always token for this call. |
+| `jwt` | string | The session token to send to your own API, or null when nobody is signed in. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `token_fetch_failed` | The session token could not be refreshed. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+
+</Accordion>
+<Accordion title="userprofile">
+
+Shows Clerk's prebuilt account screen and waits until it closes.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dismissable`? | boolean | Whether the person can swipe the sheet away. |
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event` | string | The kind of answer this is, always userprofile for this call. |
+| `ok` | boolean | True when the call worked and the result carries real data. |
+| `status` | string | How the sheet ended, such as closed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Clerk is not configured. Call configure with your publishable key first. |
+| `not_signed_in` | Sign in before making this request. |
+| `presentation_failed` | Clerk's own view could not be presented. |
+| `sdk_not_linked` | The Clerk SDK is not linked in this build. |
+| `unsupported_os` | Clerk needs iOS 17 or newer. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -69,4 +905,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Publishable key (`publishable_key`) | Your Clerk publishable key (pk_test_... or pk_live_...). Leave it empty to configure Clerk at run time with configure(). |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- A Clerk application and its **publishable key** (`pk_test_...` or `pk_live_...`) in the package settings.
+- Your backend verifies the session token from `clerk.token()` with Clerk before it trusts a request.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

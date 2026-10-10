@@ -2,10 +2,12 @@
 title: "FileSharing"
 description: "Send a file to other apps through the system share sheet."
 icon: "share-from-square"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -35,4 +37,58 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.filesharing.share()` | `filename`?: string<br/>`path`?: string<br/>`url`?: string | `cancelled`<br/>`delivery`<br/>`path`<br/>`shared` | iOS, Android | Opens the system share sheet with a file, taken from a device path or downloaded first from an https address. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="share">
+
+Opens the system share sheet with a file, taken from a device path or downloaded first from an https address.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `filename`? | string | The name to give the shared file; if left out, the name from the path or address is used. |
+| `path`? | string | A path to a file already on the device, such as cache: or documents:; give this or url. |
+| `url`? | string | An https address of the file to download and share; give this or path, not both. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.filesharing.share({ url: "https://files.example.com/report.pdf" })
+```
+
+```json Result
+{
+  "delivery": "share_sheet",
+  "shared": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cancelled`? | boolean | True only when the user closed the share sheet without choosing. |
+| `delivery` | "share_sheet" \\| "download" | How the file reached the user: share_sheet, or download in a browser that cannot share files. |
+| `path`? | string | The device path that was shared; it is only returned when you passed a path. |
+| `shared` | boolean | True when the user picked a destination, false when they closed the sheet. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `download_failed` | Could not download the file. Check the connection and try again. |
+| `download_too_large` | The file exceeds the 64 MB native download limit. |
+| `invalid_url` | Only valid HTTPS download URLs are allowed. |
+| `missing_param` | Pass the file as `path` (a Core/Files path) or `url`. |
+| `no_presenter` | Could not find a screen to share from. |
+| `not_found` | There is no file at that path. |
+| `share_failed` | The share could not be completed. |
+| `unsupported_platform` | This browser cannot hand a file to the user. |
+| `write_failed` | Could not save the file. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

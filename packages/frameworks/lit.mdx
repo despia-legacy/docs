@@ -1,0 +1,87 @@
+---
+title: "Lit and web components"
+sidebarTitle: "Lit"
+description: "Call Despia V4 packages from Lit and web components through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
+icon: "puzzle-piece"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+import TestIt from '/snippets/test-it.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+## Where dsx code runs
+
+Only in the browser: the client web view of your app, never during server rendering.
+
+- Custom elements run in the browser. `connectedCallback` is the place to read `window.dsx`, and `disconnectedCallback` stops listening.
+- With Lit server rendering, keep the check in `connectedCallback`, not in `render()`.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
+
+```javascript done-button.js
+import { LitElement, html, nothing } from 'lit'
+
+class DoneButton extends LitElement {
+  static properties = { env: { state: true }, busy: { state: true }, error: { state: true } }
+
+  constructor() {
+    super()
+    this.env = 'web'
+    this.busy = false
+    this.error = null
+  }
+
+  connectedCallback() {
+    super.connectedCallback()
+    this.env = window.dsx ? 'v4' : 'web'
+    this.off = window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    this.off?.()
+  }
+
+  async done() {
+    this.busy = true
+    this.error = null
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      this.error = e.code
+    } finally {
+      this.busy = false
+    }
+  }
+
+  render() {
+    if (this.env !== 'v4') return nothing
+    return html`<button ?disabled=${this.busy} @click=${this.done}>Done${this.error ? ` (${this.error})` : ''}</button>`
+  }
+}
+
+customElements.define('done-button', DoneButton)
+```
+
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
+
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+{/* TODO-VERIFY: Lit SSR (@lit-labs/ssr) behaviour of connectedCallback was not run. */}
+
+## TypeScript
+
+Save the declaration as `src/dsx.d.ts`:
+
+<DsxTypes />
+
+## Test it
+
+<TestIt />

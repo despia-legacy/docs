@@ -2,10 +2,12 @@
 title: "FileUpload"
 description: "Make file inputs in your web pages open the camera, photo library, scanner or file picker."
 icon: "upload"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -40,6 +42,60 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.fileupload.captureInfo()` | `accept`?: string<br/>`capture`?: string |  | iOS, Android | Passes the accept and capture settings of the file input that was tapped, so the next pick opens the matching source. |
 | `dsx.module.fileupload.nativeOverwrite()` | `native_overwrite`?: boolean | `native_overwrite` | iOS, Android | Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="captureInfo">
+
+Passes the accept and capture settings of the file input that was tapped, so the next pick opens the matching source.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `accept`? | string | The accept attribute of the tapped file input, such as image/*. |
+| `capture`? | string | The capture attribute of the tapped file input, such as environment for the rear camera. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.fileupload.captureInfo({ accept: "image/*", capture: "environment" })
+```
+
+**Result:** `object`: shape not declared yet.
+
+</Accordion>
+<Accordion title="nativeOverwrite">
+
+Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `native_overwrite`? | boolean | True to narrow each input to the source its attributes ask for, false to always show the generic source sheet. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.fileupload.nativeOverwrite({ native_overwrite: false })
+```
+
+```json Result
+{
+  "native_overwrite": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `native_overwrite` | boolean | Whether native handling of file inputs is on right now. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -48,4 +104,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Camera permission description (`camera_usage_description`) | Turns on the camera in file uploads and says why the app asks for it, for example: Use the camera to capture a photo you choose to upload. Empty (the default): file inputs offer the photo library and files only, and the app declares no camera permission. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

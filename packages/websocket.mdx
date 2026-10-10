@@ -47,6 +47,256 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.websocket.status()` | `id`: string | `id`<br/>`ok`<br/>`pendingOutbound`<br/>`reconnectAttempt`<br/>`state`<br/>`unacked` | iOS, Android | Returns the connection's state and how many messages are waiting, at the moment you ask. |
 | `dsx.module.websocket.subscribe()` | `frame`?: string<br/>`id`: string | `id`<br/>`ok` | iOS, Android | Stores one message that is sent first on every connect and reconnect, for example a login or channel-join frame. An empty frame clears it. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="ack">
+
+Confirms that one received message was handled, so it is not delivered again.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+| `message_id` | string | The id of the received message to confirm, taken from the message event. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.ack({ id: "feed", message_id: "feed:7" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "message_id": "feed:7",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `message_id` | string | The id of the message that was confirmed. |
+| `ok` | boolean | True when the call was accepted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | ack needs both an id and a message_id. |
+| `not_found` | There is no open connection with that id. |
+
+</Accordion>
+<Accordion title="connect">
+
+Opens a named connection to a ws:// or wss:// address, or updates it if it is already open, and reconnects automatically if it drops.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `headers`? | object | Extra headers to send when connecting. The web version ignores them, because browsers do not allow it. |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+| `protocols`? | string | The WebSocket subprotocols to offer to the server. |
+| `reconnect`? | boolean | Set to false to turn off automatic reconnecting. It is on by default. |
+| `url` | string | The server address, starting with ws:// or wss://. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.connect({ id: "feed", url: "wss://example.com/socket" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `ok` | boolean | True when the call was accepted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_param` | A WebSocket url must be ws:// or wss://. |
+| `missing_param` | connect needs both an id and a url. |
+
+</Accordion>
+<Accordion title="disconnect">
+
+Closes the connection and stops it reconnecting. The queues are kept, so connecting again under the same id carries on where it left off.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.disconnect({ id: "feed" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `ok` | boolean | True when the call was accepted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | disconnect needs an id. |
+| `not_found` | There is no open connection with that id. |
+
+</Accordion>
+<Accordion title="send">
+
+Adds a text message to the outgoing queue. Messages survive a drop and a relaunch and are sent in order once the connection is open.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+| `payload` | string | The text of the message to send. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.send({ id: "feed", payload: "{\"op\":\"ping\"}" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `ok` | boolean | True when the call was accepted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | send needs both an id and a payload. |
+| `not_found` | There is no open connection with that id. |
+
+</Accordion>
+<Accordion title="status">
+
+Returns the connection's state and how many messages are waiting, at the moment you ask.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.status({ id: "feed" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "ok": true,
+  "pendingOutbound": 0,
+  "reconnectAttempt": 0,
+  "state": "open",
+  "unacked": 0
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `ok` | boolean | True when the call was accepted. |
+| `pendingOutbound` | number | How many outgoing messages are still waiting to be sent. |
+| `reconnectAttempt` | number | How many reconnect attempts have been made since the last open connection. |
+| `state` | string | The connection state: idle, connecting, open, closing, closed or waitingReconnect. |
+| `unacked` | number | How many received messages have not been confirmed yet. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | status needs an id. |
+| `not_found` | There is no open connection with that id. |
+
+</Accordion>
+<Accordion title="subscribe">
+
+Stores one message that is sent first on every connect and reconnect, for example a login or channel-join frame. An empty frame clears it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `frame`? | string | The text message to send first on every connect. Leave it out or empty to clear the stored one. |
+| `id` | string | The name you give this connection; use the same name in every later call. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.websocket.subscribe({ frame: "{\"op\":\"subscribe\",\"channel\":\"orders\"}", id: "feed" })
+```
+
+```json Result
+{
+  "id": "feed",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The name of the connection the call applied to. |
+| `ok` | boolean | True when the call was accepted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | subscribe needs an id. |
+| `not_found` | There is no open connection with that id. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.websocket.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -55,4 +305,4 @@ Listen with `window.dsx.module.websocket.on('<broadcast>', (data) => { ... })`. 
 | :-- | :-- |
 | `event` | Sent for everything that happens on a connection: it connects, opens, receives a message, waits to reconnect, closes, fails or drops messages. Check the type field to tell them apart. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

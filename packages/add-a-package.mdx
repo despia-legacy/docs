@@ -71,5 +71,5 @@ The CLI is the npm package `@despia-native/cli`. Inside a project, run it with `
 `npx despia remove <package>` takes a package out again (also with `--plan`). If you pass a capability instead of a package name, for example `npx despia add analytics`, nothing is written: the CLI lists the packages that provide that capability so you can choose one. A typo gets a "Did you mean" suggestion.
 
 <Note>
-  Starting from a website? `npx despia new --web https://your-site.com` checks everything and writes nothing; add `--apply` to create the app. Web App to Mobile App is the template offered in 0.1.0.
+  To start from a website, `npx despia new --template web-view --set url=https://app.your.site` checks the inputs and writes nothing; `--apply` creates the app. Web App to Mobile App is the template offered in 0.1.0.
 </Note>

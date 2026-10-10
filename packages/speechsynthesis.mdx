@@ -2,10 +2,12 @@
 title: "SpeechSynthesis"
 description: "Speaks text aloud with the device voices, or turns text into audio files."
 icon: "volume-high"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -50,6 +52,178 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.speechsynthesis.stop()` | `id`?: string | `id`<br/>`ok` | iOS, Android | Stops a speech session, or the one currently playing if you give no id. Stopping one that already ended is fine. |
 | `dsx.module.speechsynthesis.voices()` | `gender`?: string | `voices` | iOS, Android | Lists the voices installed on the device, with their language and quality. You can filter them by gender, which is guessed from the voice name on Android and the web. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="render">
+
+Turns text into audio files that your app owns and does not play aloud. Each finished piece arrives as a chunk event, and the result gives the final file.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id`? | string | A name for this render; one is made if you leave it out. |
+| `language`? | string | The language to speak in, such as en-US. |
+| `pitch`? | number | How high or low the voice sounds, where 1 is normal. |
+| `rate`? | number | How fast to speak, where 1 is the normal system rate. |
+| `text` | string | The text to turn into audio. |
+| `to`? | string | The file path to save the finished audio to. |
+| `voice`? | string | The identifier of the voice to use, from the voices list. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechsynthesis.render({ text: "Hello there", to: "documents:take.wav" })
+```
+
+```json Result
+{
+  "chunks": 3,
+  "duration": 1.2,
+  "id": "utterance-2",
+  "path": "documents:take.wav"
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `audio_session_failed` | The speech engine could not be started. |
+| `duplicate_id` | A speech session with that id already exists. |
+| `file_write_failed` | The speech audio file could not be written. |
+| `no_text` | No text was provided to speak. |
+| `unsupported_platform` | This runtime cannot do that: the browser has no audio sink to render into. |
+
+</Accordion>
+<Accordion title="start">
+
+Speaks one piece of text, or saves the speech to a file. Progress arrives as events while it speaks.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id`? | string | A name for this speech session; one is made if you leave it out. |
+| `lang`? | string | The language to speak in, such as en-US. |
+| `output`? | "stream" \\| "file" | Where the speech goes: stream plays it aloud, file saves it as an audio file. |
+| `pitch`? | number | How high or low the voice sounds, where 1 is normal. |
+| `speed`? | number | How fast to speak, where 1 is the normal system rate. |
+| `text` | string | The words you want the device to speak aloud. |
+| `voice`? | string | The identifier of the voice to use, from the voices list. |
+| `volume`? | number | How loud to speak, from 0 to 1. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechsynthesis.start({ speed: 1, text: "Hello there" })
+```
+
+```json Result
+{
+  "id": "utterance-1"
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `already_started` | A speech stream is already playing. |
+| `audio_session_failed` | The speech session could not be started or failed part way through. |
+| `duplicate_id` | A speech session with that id already exists. |
+| `file_write_failed` | The speech audio file could not be written. |
+| `no_text` | No text was provided to speak. |
+| `unsupported_platform` | This runtime cannot do that: the browser has no file sink for synthesized speech. |
+
+</Accordion>
+<Accordion title="stop">
+
+Stops a speech session, or the one currently playing if you give no id. Stopping one that already ended is fine.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id`? | string | The session to stop; leave it out to stop the one playing. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechsynthesis.stop({ id: "utterance-1" })
+```
+
+```json Result
+{
+  "id": "utterance-1",
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id of the session that was stopped. |
+| `ok` | boolean | True once the session is stopped. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unsupported_platform` | This runtime exposes no speech synthesizer. |
+
+</Accordion>
+<Accordion title="voices">
+
+Lists the voices installed on the device, with their language and quality. You can filter them by gender, which is guessed from the voice name on Android and the web.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `gender`? | string | Only return voices of this gender, such as female or male. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechsynthesis.voices({ gender: "female" })
+```
+
+```json Result
+{
+  "voices": [
+    {
+      "gender": "female",
+      "identifier": "com.apple.voice.compact.en-US.Samantha",
+      "language": "en-US",
+      "name": "Samantha",
+      "quality": "default"
+    }
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `voices` | object[] | The installed voices, each with an identifier, name, language, quality and gender. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unsupported_platform` | This runtime exposes no speech synthesizer. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.speechsynthesis.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -66,4 +240,4 @@ Listen with `window.dsx.module.speechsynthesis.on('<broadcast>', (data) => { ...
 | `resume` | The stream continued after a pause, on iOS and the web. |
 | `start` | The stream has begun speaking the text aloud. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

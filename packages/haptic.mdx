@@ -47,4 +47,189 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.haptic.success()` | none | `ok` | iOS, Android | Plays an upbeat double tap that signals something finished cleanly. |
 | `dsx.module.haptic.warning()` | none | `ok` | iOS, Android | Plays two heavy taps that signal a problem the person can recover from. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="error">
+
+Plays a sharp triple tap that signals that an action failed.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.error()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+<Accordion title="heavy">
+
+Plays a firm single tap.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.heavy()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+<Accordion title="light">
+
+Plays a light single tap.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.light()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+<Accordion title="medium">
+
+Plays a medium-firm single tap.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.medium()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+<Accordion title="pattern">
+
+Plays a custom sequence of vibrations that you describe event by event.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `events` | object[] | The vibrations to play in order, each with an optional delay, duration, intensity from 0 to 1 and sharpness from 0 to 1. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.pattern({ events: [{"duration": 0.2, "intensity": 1, "sharpness": 0.5}] })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `fallback`? | "impact" \\| "pattern" \\| "none" | Set when the device could not play the full pattern: impact means a series of simple taps was used, none means the device cannot vibrate. |
+| `ok` | boolean | True once the pattern was requested. |
+
+</Accordion>
+<Accordion title="success">
+
+Plays an upbeat double tap that signals something finished cleanly.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.success()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+<Accordion title="warning">
+
+Plays two heavy taps that signal a problem the person can recover from.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.haptic.warning()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True once the vibration was requested. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

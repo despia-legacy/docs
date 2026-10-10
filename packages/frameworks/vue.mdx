@@ -1,90 +1,73 @@
 ---
-title: "Vue and Nuxt"
-description: "Call Despia V4 packages from Vue 3 and Nuxt through the global dsx, with two small composables, loading and error state, broadcasts with cleanup, SSR and TypeScript."
+title: "Vue 3 (Vite)"
+sidebarTitle: "Vue"
+description: "Call Despia V4 packages from Vue 3 (Vite) through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "vuejs"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two composables into your project.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## The composables
+- A Vue app built with Vite renders in the browser; `onMounted` and event handlers run there.
+- Read `window.dsx` in `onMounted` or a handler, not at the top of `setup`.
 
-```javascript useDespia.js
-import { onMounted, onUnmounted, ref } from 'vue'
-
-const getDsx = () => window.dsx
-
-// useDsxCall('revenuecat', 'purchase') -> { call, data, error, loading }
-export function useDsxCall(pkg, action) {
-  const data = ref(null)
-  const error = ref(null)
-  const loading = ref(false)
-  async function call(args) {
-    const dsx = getDsx()
-    if (!dsx) throw (error.value = { code: 'no_dsx' }) // our own code: not in Despia V4
-    loading.value = true
-    error.value = null
-    try {
-      const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
-      return (data.value = await fn(args))
-    } catch (e) {
-      error.value = e
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-  return { call, data, error, loading }
-}
-
-// useDsxBroadcast('focus', 'change', (data) => ...), removed on unmount
-export function useDsxBroadcast(pkg, name, handler) {
-  let off = null
-  onMounted(() => { const dsx = getDsx(); if (dsx) off = dsx.module[pkg].on(name, handler) })
-  onUnmounted(() => off && off())
-}
-```
-
-A failed call rejects with an object that has a `code`; `no_dsx` is the composable's own code for "not in Despia V4".
+<EnvNew />
 
 ## Call a package and listen to a broadcast
 
-```vue BuyButton.vue
+```vue DoneButton.vue
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useDsxBroadcast, useDsxCall } from './useDespia'
+import { onMounted, onUnmounted, ref } from 'vue'
 
-const props = defineProps({ userId: String })
-const ready = ref(false)
-const { call, loading, error } = useDsxCall('revenuecat', 'purchase')
-onMounted(() => { ready.value = !!window.dsx?.has('revenuecat') })
-useDsxBroadcast('revenuecat', 'customerInfo', ({ customerInfo }) => console.log(customerInfo))
+const env = ref('web')
+const busy = ref(false)
+const error = ref(null)
+let off
 
-const buy = () => call({ external_id: props.userId, product: ['coins_100'] }).catch(() => {})
+onMounted(() => {
+  env.value = window.dsx ? 'v4' : 'web'
+  off = window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+})
+onUnmounted(() => off?.())
+
+async function done() {
+  busy.value = true
+  error.value = null
+  try {
+    await window.dsx.module.haptic.success()
+  } catch (e) {
+    error.value = e.code
+  } finally {
+    busy.value = false
+  }
+}
 </script>
 
 <template>
-  <button v-if="ready" :disabled="loading" @click="buy">
-    {{ loading ? 'Buying…' : 'Buy 100 coins' }}
-    <small v-if="error"> ({{ error.code }})</small>
-  </button>
+  <button v-if="env === 'v4'" :disabled="busy" @click="done">Done<span v-if="error"> ({{ error }})</span></button>
 </template>
 ```
 
-## Nuxt
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-`onMounted` runs only in the browser, so these composables are safe in Nuxt pages and components. Never read `window.dsx` directly in `setup()` or in a server plugin. Wrap parts that only make sense in the app in `<ClientOnly>`.
+More in [How calls, results and broadcasts work](/packages/concepts).
 
 ## TypeScript
 
+Save the declaration as `src/env.d.ts`:
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

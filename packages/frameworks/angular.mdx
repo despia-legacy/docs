@@ -1,117 +1,83 @@
 ---
 title: "Angular"
-description: "Call Despia V4 packages from Angular through the global dsx, with a small service, zone handling, loading and error state, broadcasts with cleanup, SSR and TypeScript."
+sidebarTitle: "Angular"
+description: "Call Despia V4 packages from Angular through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "angular"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-The Modern API is the global `window.dsx`, so there is nothing to install. Copy this service into your project.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## The service
+- With Angular SSR, lifecycle hooks also run on the server, so the component checks `isPlatformBrowser` before it touches `window`.
+- Answers and broadcasts come from native code outside Angular's zone; the component updates its state in `NgZone.run`.
 
-Answers and broadcasts come from native code, outside Angular's zone. The service re-enters the zone with `NgZone.run`, so change detection sees them.
-
-```typescript despia.service.ts
-import { Injectable, NgZone, inject } from '@angular/core'
-
-@Injectable({ providedIn: 'root' })
-export class DespiaService {
-  private zone = inject(NgZone)
-
-  has(pkg: string): boolean {
-    return !!window.dsx?.has(pkg)
-  }
-
-  // call('revenuecat', 'purchase', args): resolves with the result, rejects with { code, message }
-  call<T = unknown>(pkg: string, action: string, args: object = {}): Promise<T> {
-    const dsx = window.dsx
-    if (!dsx) return Promise.reject({ code: 'no_dsx' }) // our own code: not in Despia V4
-    const fn = action.split('.').reduce((m: any, key) => m[key], dsx.module[pkg])
-    return new Promise<T>((resolve, reject) => {
-      fn(args).then(
-        (value: T) => this.zone.run(() => resolve(value)),
-        (error: unknown) => this.zone.run(() => reject(error)),
-      )
-    })
-  }
-
-  // on('focus', 'change', handler): returns the function that stops listening
-  on(pkg: string, name: string, handler: (data: any) => void): () => void {
-    const dsx = window.dsx
-    return dsx ? dsx.module[pkg].on(name, (data: any) => this.zone.run(() => handler(data))) : () => {}
-  }
-}
-```
-
-{/* TODO-VERIFY: the Angular service and component were type-checked (tsc, Angular 18.2) but not run in an Angular app; the zone claim (native answers arrive outside NgZone) is not measured on device. */}
+<EnvNew />
 
 ## Call a package and listen to a broadcast
 
-```typescript buy-button.component.ts
-import { Component, Input, OnDestroy, afterNextRender, inject } from '@angular/core'
-import { DespiaService } from './despia.service'
+```typescript done-button.component.ts
+import { AfterViewInit, Component, NgZone, OnDestroy, PLATFORM_ID, inject, signal } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
 
 @Component({
-  selector: 'app-buy-button',
+  selector: 'app-done-button',
   standalone: true,
-  template: `
-    @if (ready) {
-      <button [disabled]="loading" (click)="buy()">
-        {{ loading ? 'Buying…' : 'Buy 100 coins' }}
-        @if (error) { <small> ({{ error.code }})</small> }
-      </button>
-    }
-  `,
+  template: `@if (env() === 'v4') { <button [disabled]="busy()" (click)="done()">Done @if (error()) { ({{ error() }}) }</button> }`,
 })
-export class BuyButtonComponent implements OnDestroy {
-  @Input() userId = ''
-  private despia = inject(DespiaService)
-  private off: () => void = () => {}
-  ready = false
-  loading = false
-  error: { code: string } | null = null
+export class DoneButtonComponent implements AfterViewInit, OnDestroy {
+  private zone = inject(NgZone)
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID))
+  private off?: () => void
+  env = signal<'v4' | 'web'>('web')
+  busy = signal(false)
+  error = signal<string | null>(null)
 
-  constructor() {
-    afterNextRender(() => { // runs only in the browser
-      this.ready = this.despia.has('revenuecat')
-      this.off = this.despia.on('focus', 'change', ({ focused }) => {
-        if (!focused) console.log('app went to the background')
-      })
-    })
+  ngAfterViewInit() {
+    if (!this.isBrowser) return // Angular SSR: the server never touches window
+    this.env.set(window.dsx ? 'v4' : 'web')
+    this.off = window.dsx?.module.revenuecat.on('customerInfo', (data: unknown) => this.zone.run(() => console.log(data)))
   }
 
   ngOnDestroy() {
-    this.off()
+    this.off?.()
   }
 
-  async buy() {
-    this.loading = true
-    this.error = null
+  async done() {
+    this.busy.set(true)
+    this.error.set(null)
     try {
-      await this.despia.call('revenuecat', 'purchase', { external_id: this.userId, product: ['coins_100'] })
+      await window.dsx!.module.haptic.success()
     } catch (e: any) {
-      this.error = e
+      this.zone.run(() => this.error.set(e.code))
     } finally {
-      this.loading = false
+      this.zone.run(() => this.busy.set(false))
     }
   }
 }
 ```
 
-## Angular SSR
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-Despia code runs in the browser only. With Angular SSR, use the service from event handlers or from `afterNextRender`, which only run in the browser, not from code that also runs on the server.
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+{/* TODO-VERIFY: the Angular component was type-checked, not run in an Angular app; the zone claim is not measured on device. */}
 
 ## TypeScript
 
+Save the declaration as `src/dsx.d.ts` (included by tsconfig.app.json):
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

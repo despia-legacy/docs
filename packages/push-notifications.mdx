@@ -76,7 +76,7 @@ if (window.dsx) {
 
 {/* TODO-VERIFY: whether notify.opened also fires for OneSignal taps (doc 25 follow-up F4). onNotificationEvent is verified for OneSignal taps. */}
 
-## Is push allowed? (`nativePushEnabled`)
+## Push permission (`nativePushEnabled`)
 
 On Despia V3 you read the `nativePushEnabled` global after `despia('checknativepushpermissions://', ['nativePushEnabled'])`. On Despia V4 that still works (the Legacy polyfill sets it to `true` when the permission is granted or provisional). The modern call gives you the full state:
 

@@ -35,6 +35,41 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.actionsheet.show()` | `items`?: object[]<br/>`message`?: string<br/>`title`?: string | `nullable`<br/>`type` | iOS, Android | Shows the action sheet and waits. You get the value of the chosen row, or nothing when the user dismissed it. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="show">
+
+Shows the action sheet and waits. You get the value of the chosen row, or nothing when the user dismissed it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `items`? | object[] | The rows to show, top to bottom, each with a label, a value and an optional role; leave it out and nothing is shown, the call resolves null. |
+| `message`? | string | A line of explanation under the title; leave it out for none. |
+| `title`? | string | The title line shown at the top of the sheet; leave it out for none. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.actionsheet.show({ items: [{"label": "Edit", "value": "edit"}, {"label": "Delete", "role": "destructive", "value": "delete"}], title: "Choose an action" })
+```
+
+```json Result
+"delete"
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `nullable` | any |  |
+| `type` | string |  |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.actionsheet.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -43,4 +78,4 @@ Listen with `window.dsx.module.actionsheet.on('<broadcast>', (data) => { ... })`
 | :-- | :-- |
 | `select` | The user picked a row or dismissed the sheet. Dismissing sends no value. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

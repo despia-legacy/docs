@@ -2,10 +2,12 @@
 title: "Scanner"
 description: "Scan QR codes, barcodes and paper documents with the camera."
 icon: "qrcode"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -35,6 +37,62 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.scanner.scan()` | `facing`?: string<br/>`for`: string<br/>`formats`?: string[] | `cancelled`<br/>`format`<br/>`pages`<br/>`result`<br/>`type`<br/>`value` | iOS, Android | Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="scan">
+
+Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `facing`? | string | On the web code sheet only, which camera to use: back, the default, or front. |
+| `for` | string | What to scan, either code or document. |
+| `formats`? | string[] | For codes only, the code types to read. Left out, QR, EAN-8 and EAN-13 are read on the phone, and everything the reader knows on the web. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.scanner.scan({ for: "code", formats: ["qr"] })
+```
+
+```json Result
+{
+  "format": "qr",
+  "value": "https://despia.com"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cancelled`? | boolean | True when the person backed out without scanning. |
+| `format`? | string | For a code, the type of code that was read, such as qr. |
+| `pages`? | object[] | For a document, the scanned pages, each with a file path and the text read from it. |
+| `result`? | string | The older name for value, kept so existing pages still work. |
+| `type`? | string | The older name for format, kept so existing pages still work. |
+| `value`? | string | For a code, the text the code contains. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | The camera is held by another owner. |
+| `camera_unavailable` | No usable camera is available on this device. |
+| `invalid_param` | `for` is `code` or `document`. |
+| `no_presenter` | Couldn't find a screen to present the scanner from. |
+| `permission_denied` | Camera access was denied. Enable it in Settings to scan. |
+| `scan_in_progress` | A scan is already in progress. |
+| `scanner_failed` | The scanner could not finish. |
+| `scanner_unsupported` | This device has no document scanner. |
+| `unsupported_platform` | This browser has no barcode detector and the bundled decoder did not load. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -43,4 +101,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for camera access to scan a code or a document. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

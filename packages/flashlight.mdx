@@ -2,10 +2,12 @@
 title: "Flashlight"
 description: "Turn the device flashlight on and off."
 icon: "flashlight"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -35,6 +37,53 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.flashlight.set()` | `on`: boolean | `ok`<br/>`on`<br/>`reason` | iOS, Android | Turns the torch on or off. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="set">
+
+Turns the torch on or off.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `on` | boolean | True turns the torch on and false turns it off. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.flashlight.set({ on: true })
+```
+
+```json Result
+{
+  "ok": true,
+  "on": true,
+  "reason": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the torch was set as asked. |
+| `on` | boolean | Whether the torch is on now. |
+| `reason` | string | Why nothing happened when ok is false; disabled means the app was built with the flashlight turned off. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_value` | Pass on: true or false. |
+| `permission_denied` | Camera access was refused, and a browser can only reach the torch through the camera track. |
+| `unavailable` | The torch could not be driven: another app is holding the camera. |
+| `unsupported_device` | This device has no torch. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -43,4 +92,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Flashlight enabled (`enabled`) | Allow the web app to toggle the device torch via dsx.module.flashlight.set(&#123; on &#125;). |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

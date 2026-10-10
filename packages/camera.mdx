@@ -2,10 +2,12 @@
 title: "Camera"
 description: "Capture photos from the camera in code, with no preview screen."
 icon: "camera"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -53,6 +55,679 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.camera.stop()` | none | `stopped` | iOS, Android | Closes the camera session and releases the camera. |
 | `dsx.module.camera.update()` | `analyze`?: object[]<br/>`audio`?: object<br/>`controls`?: object<br/>`devices`?: object[]<br/>`effects`?: object[]<br/>`mirror`?: string<br/>`mode`?: string<br/>`orientation`?: string<br/>`photo`?: object<br/>`video`?: object | `effective`<br/>`refusals` | iOS, Android | Changes a running session by merging your changes into the current description. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="burst">
+
+Takes a number of photos in a row as fast as the hardware allows, with no preview, and returns them as files.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `camera`? | "back" \\| "front" | Which camera to use: back or front. |
+| `count`? | number | How many photos to take, from 1 up to the configured maximum burst length. |
+| `interval`? | number | Minimum milliseconds between photos; 0 means as fast as the sensor delivers. |
+| `prompt`? | boolean | Set false to never show the permission dialog; the call then fails with permission_denied instead. |
+| `quality`? | number | JPEG quality from 0.01 to 1; the default is 0.9. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.burst({ count: 3, interval: 0, quality: 0.8 })
+```
+
+```json Result
+{
+  "count": 3,
+  "durationMs": 240,
+  "photos": [
+    {
+      "bytes": 2411500,
+      "height": 3024,
+      "path": "cache:despia-burst/0.jpg",
+      "timestamp": 1700000000000,
+      "width": 4032
+    },
+    {
+      "bytes": 2409800,
+      "height": 3024,
+      "path": "cache:despia-burst/1.jpg",
+      "timestamp": 1700000000120,
+      "width": 4032
+    },
+    {
+      "bytes": 2412100,
+      "height": 3024,
+      "path": "cache:despia-burst/2.jpg",
+      "timestamp": 1700000000240,
+      "width": 4032
+    }
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `count` | number | How many photos were really captured; compare it with what you asked for. |
+| `durationMs` | number | How long the burst itself took in milliseconds, not counting camera warm-up. |
+| `photos` | object[] | The photos in capture order, each with a Files path, size, byte count and timestamp. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A burst is already running. |
+| `capture_failed` | The capture session could not be started. |
+| `permission_denied` | Camera access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `unavailable` | No camera on this device. |
+| `unsupported_device` | This device has no camera to take a burst with. |
+
+</Accordion>
+<Accordion title="capabilities">
+
+Reports the limits of burst capture on this device.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.capabilities()
+```
+
+```json Result
+{
+  "maxBurst": 60
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `maxBurst` | number | The largest number of photos one burst may take. |
+
+</Accordion>
+<Accordion title="clear">
+
+Deletes every photo file that earlier bursts wrote.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.clear()
+```
+
+```json Result
+{
+  "deleted": 3
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `deleted` | number | How many files were deleted; 0 when there was nothing to delete. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the person change a limited selection where the system offers one; otherwise returns the current state unchanged.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the user has refused it. |
+| `changed` | boolean | True when the person changed the selection; always false for the camera. |
+| `level`? | string | Access level where the platform has more than all-or-nothing; empty for the camera. |
+| `status` | string | Current camera permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the person can change the camera permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Shows the system camera permission dialog when it can still be shown, and returns the resulting state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the user has refused it. |
+| `level`? | string | Access level where the platform has more than all-or-nothing; empty for the camera. |
+| `status` | string | Current camera permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the camera permission without ever showing a dialog.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the user has refused it. |
+| `level`? | string | Access level where the platform has more than all-or-nothing; empty for the camera. |
+| `status` | string | Current camera permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="photo">
+
+Takes one or more photos, opening the camera by itself if no session is running.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `count`? | number | How many photos to take; more than one makes a burst, up to 60. |
+| `interval`? | number | Minimum number of milliseconds between two photos. |
+| `prompt`? | boolean | Set false to never show the permission dialog. |
+| `to`? | string | Folder in a writable Files root to save to; defaults to a cache folder. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.photo({ count: 3, interval: 100, to: "documents:shots" })
+```
+
+```json Result
+{
+  "photos": [
+    {
+      "bytes": 31244,
+      "height": 480,
+      "path": "documents:shots/photo-lq2w8x01.jpg",
+      "timestamp": 1700000000000,
+      "width": 640
+    },
+    {
+      "bytes": 31101,
+      "height": 480,
+      "path": "documents:shots/photo-lq2w8x02.jpg",
+      "timestamp": 1700000000104,
+      "width": 640
+    },
+    {
+      "bytes": 31310,
+      "height": 480,
+      "path": "documents:shots/photo-lq2w8x03.jpg",
+      "timestamp": 1700000000207,
+      "width": 640
+    }
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `photos` | object[] | The photos taken, each with a Files path, size, byte count and timestamp. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A capture of the same kind is already running. |
+| `capture_failed` | The camera produced no frame, or the file could not be stored. |
+| `invalid_config` | An argument is unknown or has the wrong type. The data names it. |
+| `permission_denied` | Camera access is not granted, or `to` is a read-only root. The data says which. |
+| `unavailable` | No camera, no running session, or a capability this platform lacks. The data names the field. |
+| `unsupported_device` | This device has no camera to take a photo with. |
+| `unsupported_root` | `to` is not a Files directory. |
+
+</Accordion>
+<Accordion title="record.start">
+
+Starts recording a video take from the running session.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `maxBytes`? | number | Stop by itself after the file reaches this many bytes. |
+| `maxDuration`? | number | Stop by itself after this many milliseconds. |
+| `prompt`? | boolean | Set false to never show the permission dialog. |
+| `to`? | string | Folder in a writable Files root to save the take to; defaults to a cache folder. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.record.start({ to: "documents:takes" })
+```
+
+```json Result
+{
+  "started": true,
+  "to": "documents:takes/take-lq2w8x01.webm"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `started` | boolean | True once recording has begun. |
+| `to` | string | The Files path the take is being written to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | A capture of the same kind is already running. |
+| `invalid_config` | An argument is unknown or has the wrong type. The data names it. |
+| `permission_denied` | Camera access is not granted, or `to` is a read-only root. The data says which. |
+| `unavailable` | No camera, no running session, or a capability this platform lacks. The data names the field. |
+| `unsupported_config` | The session is in photo mode. |
+| `unsupported_device` | This device has no camera to record with. |
+| `unsupported_root` | `to` is not a Files directory. |
+
+</Accordion>
+<Accordion title="record.stop">
+
+Stops the recording and returns the finished take.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.record.stop()
+```
+
+```json Result
+{
+  "bytes": 412339,
+  "codec": "vp8",
+  "duration": 2034,
+  "fellBack": true,
+  "fps": 30,
+  "hdr": "off",
+  "height": 480,
+  "path": "documents:takes/take-lq2w8x01.webm",
+  "width": 640
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `bytes` | number | Size of the recorded file in bytes. |
+| `codec` | string | Codec the video was encoded with. |
+| `duration` | number | Length of the take in milliseconds. |
+| `ended`? | string | Why the take ended by itself: maxDuration or maxBytes; absent when you stopped it. |
+| `fellBack`? | boolean | True on the web when the browser could not encode the codec you asked for and used another. |
+| `fps` | number | Frame rate of the recorded video. |
+| `hdr` | string | HDR format of the video, or off. |
+| `height` | number | Height of the recorded video in pixels. |
+| `interrupted`? | boolean | True when the take was cut short by an interruption. |
+| `path` | string | The Files path of the recorded video. |
+| `width` | number | Width of the recorded video in pixels. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `capture_failed` | The camera produced no frame, or the file could not be stored. |
+| `permission_denied` | Camera access is not granted, or `to` is a read-only root. The data says which. |
+| `unavailable` | No camera, no running session, or a capability this platform lacks. The data names the field. |
+| `unsupported_root` | `to` is not a Files directory. |
+
+</Accordion>
+<Accordion title="start">
+
+Opens a camera session from one description of what you want and keeps it open for photos, recording and a preview.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `analyze`? | object[] | Recognition passes to run on the camera frames, such as codes or a histogram; results appear in context.analysis. |
+| `audio`? | object | Sound settings for takes; sound is on by default for video. |
+| `controls`? | object | Live camera controls: zoom, focus, exposure, white balance, torch, low light and system extensions. |
+| `devices`? | object[] | Which cameras to open, each by lens (for example back.wide) or by id; the first is the main one. |
+| `effects`? | object[] | Effects applied to the picture, such as color adjustments, a LUT, blur, chroma key, overlays and guides. |
+| `mirror`? | string | Whether the picture is mirrored; the front camera is mirrored by default. |
+| `mode`? | string | What the session produces: photo, video or both. |
+| `orientation`? | string | Which way the picture is rotated, for example following the device or locked. |
+| `photo`? | object | Photo settings: format, RAW, Live Photo, depth, quality, flash and maximum size. |
+| `video`? | object | Video settings: size, frame rate, codec, HDR, log, stabilization and bitrate. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.start()
+```
+
+```json Result
+{
+  "devices": [
+    {
+      "bias": null,
+      "deferred": false,
+      "depth": false,
+      "exposureModes": [
+        "continuous"
+      ],
+      "extensions": [],
+      "flash": false,
+      "focusModes": [
+        "continuous"
+      ],
+      "formats": [
+        {
+          "codecs": [
+            "h264"
+          ],
+          "fpsMax": 30,
+          "hdr": [],
+          "height": 720,
+          "log": false,
+          "stabilization": [
+            "off"
+          ],
+          "width": 1280
+        }
+      ],
+      "id": "webcam-1",
+      "iso": null,
+      "kelvin": null,
+      "lens": "unknown",
+      "livePhoto": false,
+      "photoFormats": [
+        "jpeg"
+      ],
+      "position": "front",
+      "raw": false,
+      "shutter": null,
+      "torch": false,
+      "whiteBalanceModes": [
+        "continuous"
+      ],
+      "zoom": {
+        "max": 1,
+        "min": 1,
+        "switchOvers": []
+      }
+    }
+  ],
+  "effective": {
+    "analyze": [],
+    "audio": {
+      "enabled": false,
+      "input": null
+    },
+    "controls": {
+      "exposure": {
+        "bias": 0,
+        "iso": null,
+        "mode": "continuous",
+        "point": null,
+        "shutter": null
+      },
+      "extension": null,
+      "focus": {
+        "lens": null,
+        "mode": "continuous",
+        "point": null
+      },
+      "lowLight": "auto",
+      "torch": 0,
+      "whiteBalance": {
+        "kelvin": null,
+        "mode": "continuous",
+        "tint": null
+      },
+      "zoom": {
+      
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `devices` | object[] | Every camera the device offers with its formats, zoom range and supported features. |
+| `effective` | object | The settings the camera really applied after clamping each value to what the device supports. |
+| `refusals`? | object[] | Features that were asked for but not applied, each with a code and the field concerned. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | The camera is held by another owner. |
+| `capture_failed` | The capture session could not be started. |
+| `invalid_config` | The session document has an unknown key, a wrong type or an unknown word. The data names the first offending field. |
+| `permission_denied` | Camera access is not granted. The data carries the contract state: &#123; permission, status, canAsk &#125;. |
+| `unavailable` | No camera on this device. |
+| `unsupported_config` | This camera or platform cannot run the session as asked. The data names the field. |
+| `unsupported_device` | This device has no camera to start a session with. |
+
+</Accordion>
+<Accordion title="stop">
+
+Closes the camera session and releases the camera.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.stop()
+```
+
+```json Result
+{
+  "stopped": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `stopped` | boolean | True once the camera is released; calling stop again is not an error. |
+
+</Accordion>
+<Accordion title="update">
+
+Changes a running session by merging your changes into the current description.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `analyze`? | object[] | Recognition passes to run on the camera frames, such as codes or a histogram; results appear in context.analysis. |
+| `audio`? | object | Sound settings for takes; sound is on by default for video. |
+| `controls`? | object | Live camera controls: zoom, focus, exposure, white balance, torch, low light and system extensions. |
+| `devices`? | object[] | Which cameras to open, each by lens (for example back.wide) or by id; the first is the main one. |
+| `effects`? | object[] | Effects applied to the picture, such as color adjustments, a LUT, blur, chroma key, overlays and guides. |
+| `mirror`? | string | Whether the picture is mirrored; the front camera is mirrored by default. |
+| `mode`? | string | What the session produces: photo, video or both. |
+| `orientation`? | string | Which way the picture is rotated, for example following the device or locked. |
+| `photo`? | object | Photo settings: format, RAW, Live Photo, depth, quality, flash and maximum size. |
+| `video`? | object | Video settings: size, frame rate, codec, HDR, log, stabilization and bitrate. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.camera.update({ controls: {"zoom": {"to": 2}} })
+```
+
+```json Result
+{
+  "effective": {
+    "analyze": [],
+    "audio": {
+      "enabled": false,
+      "input": null
+    },
+    "controls": {
+      "exposure": {
+        "bias": 0,
+        "iso": null,
+        "mode": "continuous",
+        "point": null,
+        "shutter": null
+      },
+      "extension": null,
+      "focus": {
+        "lens": null,
+        "mode": "continuous",
+        "point": null
+      },
+      "lowLight": "auto",
+      "torch": 0,
+      "whiteBalance": {
+        "kelvin": null,
+        "mode": "continuous",
+        "tint": null
+      },
+      "zoom": {
+        "rate": null,
+        "to": 1
+      }
+    },
+    "devices": [
+      {
+        "id": "webcam-1",
+        "lens": "unknown"
+      }
+    ],
+    "effects": [],
+    "mirror": "auto",
+    "mode": "photo",
+    "orientation": "auto",
+    "photo": {
+      "deferred": false,
+      "depth": false,
+      "flash": "off",
+      "format": "jpeg",
+      "livePhoto": false,
+      "maxDimensions": null,
+      "quality": "balanced",
+      "raw": false
+    },
+    "video": {
+      "bakeEffects": true,
+      "bitrate": null,
+      "codec": "h264",
+      "fps": 30,
+      "hdr": "off",
+      "height": 720,
+      "log": false,
+      "stabilization": "off",
+      "width": 1280
+    }
+  },
+  "refusals": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `effective` | object | The settings the camera really applied after clamping each value to what the device supports. |
+| `refusals`? | object[] | Features that were asked for but not applied, each with a code and the field concerned. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `busy` | The camera is held by another owner. |
+| `capture_failed` | The capture session could not be started. |
+| `invalid_config` | The session document has an unknown key, a wrong type or an unknown word. The data names the first offending field. |
+| `unavailable` | No camera on this device. |
+| `unsupported_config` | This camera or platform cannot run the session as asked. The data names the field. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -63,4 +738,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Camera prompt (`usage_camera`) | The message shown when iOS asks for camera access. |
 | Microphone prompt (`usage_microphone`) | The message shown when iOS asks for microphone access. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

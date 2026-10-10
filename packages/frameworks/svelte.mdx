@@ -1,82 +1,71 @@
 ---
-title: "Svelte and SvelteKit"
-description: "Call Despia V4 packages from Svelte and SvelteKit through the global dsx, with two small helpers, loading and error state, broadcasts with cleanup, SSR and TypeScript."
+title: "Svelte 5 (Vite)"
+sidebarTitle: "Svelte"
+description: "Call Despia V4 packages from Svelte 5 (Vite) through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "s"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two helpers into your project.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## The helpers
+- A Svelte app built with Vite renders in the browser; `onMount` and event handlers run there.
+- Read `window.dsx` in `onMount` or a handler, not at the top level of the script.
 
-```javascript despia.js
-import { onMount } from 'svelte'
-
-export const getDsx = () => window.dsx
-
-// dsxCall('revenuecat', 'purchase', args): the result, or throws { code, message }
-export async function dsxCall(pkg, action, args) {
-  const dsx = getDsx()
-  if (!dsx) throw { code: 'no_dsx' } // our own code: not in Despia V4
-  const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
-  return fn(args)
-}
-
-// onDsxBroadcast('focus', 'change', (data) => ...), removed when the component is destroyed
-export function onDsxBroadcast(pkg, name, handler) {
-  onMount(() => {
-    const dsx = getDsx()
-    return dsx ? dsx.module[pkg].on(name, handler) : undefined
-  })
-}
-```
+<EnvNew />
 
 ## Call a package and listen to a broadcast
 
-```svelte BuyButton.svelte
+```svelte DoneButton.svelte
 <script>
   import { onMount } from 'svelte'
-  import { dsxCall, onDsxBroadcast } from './despia'
 
-  export let userId
-  let ready = false, loading = false, error = null
+  let env = $state('web')
+  let busy = $state(false)
+  let error = $state(null)
 
-  onMount(() => { ready = !!window.dsx?.has('revenuecat') })
-  onDsxBroadcast('focus', 'change', ({ focused }) => { if (!focused) console.log('app went to the background') })
+  onMount(() => {
+    env = window.dsx ? 'v4' : 'web'
+    return window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+  })
 
-  async function buy() {
-    loading = true
+  async function done() {
+    busy = true
     error = null
-    try { await dsxCall('revenuecat', 'purchase', { external_id: userId, product: ['coins_100'] }) }
-    catch (e) { error = e }
-    finally { loading = false }
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      error = e.code
+    } finally {
+      busy = false
+    }
   }
 </script>
 
-{#if ready}
-  <button disabled={loading} on:click={buy}>
-    {loading ? 'Buying…' : 'Buy 100 coins'}
-    {#if error}<small> ({error.code})</small>{/if}
-  </button>
+{#if env === 'v4'}
+  <button disabled={busy} onclick={done}>Done{#if error} ({error}){/if}</button>
 {/if}
 ```
 
-This uses the Svelte 4 syntax, which Svelte 5 still accepts. With runes, keep the helpers as they are and hold `ready`, `loading` and `error` in `$state`.
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-## SvelteKit
-
-`onMount` runs only in the browser, so the helpers are safe in SvelteKit pages and layouts. Never read `window.dsx` at the top level of a component script or in `load` functions: they also run on the server.
+More in [How calls, results and broadcasts work](/packages/concepts).
 
 ## TypeScript
 
+Save the declaration as `src/vite-env.d.ts`:
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

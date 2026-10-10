@@ -2,10 +2,12 @@
 title: "AppsFlyer"
 description: "Attribute installs and purchases to ad campaigns with AppsFlyer."
 icon: "chart-pie-simple"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -50,6 +52,382 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.appsflyer.setPhone()` | `phone`: string | `ok` | iOS, Android | Gives AppsFlyer the person's phone number, hashed, to improve matching of their activity. |
 | `dsx.module.appsflyer.setUserId()` | `customer_user_id`: string | `ok` | iOS, Android | Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="get_attribution">
+
+Returns where this install came from: the ad network, campaign, ad and deep link details AppsFlyer recorded.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.get_attribution()
+```
+
+```json Result
+{
+  "attribution": {
+    "is_organic": true,
+    "media_source": "organic"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `attribution` | object | The attribution record. Fields AppsFlyer did not report are missing. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="get_uid">
+
+Returns the AppsFlyer id of this install, which you can send to your server to match it with AppsFlyer reports.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.get_uid()
+```
+
+```json Result
+{
+  "uid": "1700000000000-1234567"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `uid` | string | The AppsFlyer id of this install. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="install">
+
+Gives the growth package this install's attribution as a normalised record, or nothing for organic installs.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `token`? | string | Ignored. It exists only so the growth package can call every attribution source the same way. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.install()
+```
+
+```json Result
+{
+  "method": "deterministic",
+  "referrer": "tiktokglobal_int",
+  "source": "appsflyer"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `adGroup`? | string | The ad set that referred the install. |
+| `campaign`? | string | The campaign that referred the install. |
+| `creative`? | string | The ad that referred the install. |
+| `method` | string | How the install was matched, always deterministic. |
+| `referrer`? | string | The media source that referred the install. |
+| `source` | string | The attribution source, always appsflyer. |
+
+</Accordion>
+<Accordion title="logAdRevenue">
+
+Reports the money earned from showing one ad, so AppsFlyer can include ad revenue in your campaign return.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ad_platform` | string | The ad network that paid, for example admob. |
+| `ad_type`? | string | The kind of ad, for example banner or interstitial. |
+| `ad_unit_id`? | string | The id of the ad unit that was shown. |
+| `currency`? | string | The currency code of the revenue, such as USD. |
+| `revenue` | number | The amount earned for the impression. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.logAdRevenue({ ad_platform: "admob", currency: "USD", revenue: 0.05 })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the revenue was reported. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_param` | An argument has an invalid value. |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+
+</Accordion>
+<Accordion title="logEvent">
+
+Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `event_name` | string | The name of the in-app event, such as purchase or sign_up. |
+| `event_values`? | object | Extra details about the event, such as price or item, sent along with it. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.logEvent({ event_name: "purchase", event_values: {"value": 9.99} })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the event was handed to AppsFlyer. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+
+</Accordion>
+<Accordion title="logout">
+
+Clears your user id from AppsFlyer when the person signs out.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.logout()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the id was cleared. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="setConsent">
+
+Records the person's privacy consent with AppsFlyer, and makes sure it is applied before the install is reported.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ads_personalization`? | boolean | True if the person agreed to personalised ads. |
+| `has_consent`? | boolean | True if the person agreed to data collection. |
+| `is_gdpr`? | boolean | True if the person is subject to GDPR. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.setConsent({ has_consent: true, is_gdpr: true })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the consent was recorded. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="setEmail">
+
+Gives AppsFlyer the person's email address, hashed, to improve matching of their activity.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email` | string | The person's email address. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.setEmail({ email: "user@example.com" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the email was set. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="setPhone">
+
+Gives AppsFlyer the person's phone number, hashed, to improve matching of their activity.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `phone` | string | The person's phone number. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.setPhone({ phone: "+15551234567" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the number was set. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+| `unsupported_platform` | AppsFlyer's browser product exposes no such call. |
+
+</Accordion>
+<Accordion title="setUserId">
+
+Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `customer_user_id` | string | Your own id for the person, such as their account id. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.appsflyer.setUserId({ customer_user_id: "u_12345" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the id was set. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | A required argument is missing. |
+| `not_configured` | AppsFlyer is not running in this build, set config.dev_key, or install the PBA tag on the web. |
+| `sdk_error` | The AppsFlyer SDK refused the call. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.appsflyer.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -69,4 +447,10 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Dev key (`dev_key`) | Your AppsFlyer developer key from the AppsFlyer dashboard. |
 | OneLink domains (`onelink_domains`) | Your OneLink domains, so those links go to AppsFlyer instead of opening in the app. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- An AppsFlyer account: the **dev key** and your **Apple app id** in the package settings.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

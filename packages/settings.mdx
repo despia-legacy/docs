@@ -49,4 +49,295 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.settings.overlay()` | none | `ok` | iOS, Android | Opens the Android page where the user allows drawing over other apps; on iOS it fails with unsupported_platform. |
 | `dsx.module.settings.wifi()` | none | `ok` | iOS, Android | Opens the Wi-Fi settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="app">
+
+Opens this app's own page in the system Settings, where the user can change its permissions.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.app()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+
+</Accordion>
+<Accordion title="battery">
+
+On Android, asks the system to let the app ignore battery optimization; on iOS it fails with unsupported_platform.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.battery()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+<Accordion title="bluetooth">
+
+Opens the Bluetooth settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.bluetooth()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+<Accordion title="defaults">
+
+Opens the system default apps page, which needs iOS 18.2 or later on iPhone.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.defaults()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_os` | Default Apps settings requires iOS 18.3+ |
+
+</Accordion>
+<Accordion title="locale">
+
+Opens the Android per-app language settings on Android 13 and later; on iOS it fails with unsupported_platform.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.locale()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+<Accordion title="location">
+
+Opens the location settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.location()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+<Accordion title="notifications">
+
+Opens this app's notification settings page, which needs iOS 15.4 or later on iPhone.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.notifications()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+
+</Accordion>
+<Accordion title="overlay">
+
+Opens the Android page where the user allows drawing over other apps; on iOS it fails with unsupported_platform.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.overlay()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+<Accordion title="wifi">
+
+Opens the Wi-Fi settings on Android; on iOS it fails with unsupported_platform because Apple allows no such link.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.settings.wifi()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Settings URL can't be opened |
+| `unsupported_platform` | That settings page is Android-only; iOS ships no public equivalent. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

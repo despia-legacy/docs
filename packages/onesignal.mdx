@@ -55,6 +55,554 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.onesignal.tags.set()` | `tags`: object | `tags` | iOS, Android | Adds tags to this user or replaces tags with the same key. |
 | `dsx.module.onesignal.user.get()` | none | `externalId`<br/>`onesignalId` | iOS, Android | Reads the current user: your external id and OneSignal's own id. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="aliases.remove">
+
+Removes aliases from this user by label.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `labels` | string[] | The labels of the aliases to remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.aliases.remove({ labels: ["crm"] })
+```
+
+```json Result
+{
+  "labels": [
+    "crm"
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `labels` | string[] | The labels that were removed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | labels must be an array of non-empty strings. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="aliases.set">
+
+Adds ids from your other systems to this user, or replaces them.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `aliases` | object | The aliases to write, as label and id pairs. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.aliases.set({ aliases: {"crm": "c_42"} })
+```
+
+```json Result
+{
+  "labels": [
+    "crm"
+  ]
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `labels` | string[] | The labels that were written. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | aliases must be an object of non-empty string labels to non-empty string ids. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="email.add">
+
+Adds an email address to this user so you can message them by email through OneSignal.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email` | string | The email address to add. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.email.add({ email: "a@b.co" })
+```
+
+```json Result
+{
+  "email": "a@b.co"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email` | string | The email address that was added. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: email. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="email.remove">
+
+Removes an email address from this user.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email` | string | The email address to remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.email.remove({ email: "a@b.co" })
+```
+
+```json Result
+{
+  "email": "a@b.co"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `email` | string | The email address that was removed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: email. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="language.set">
+
+Sets the language OneSignal uses for this user's localized messages.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `language` | string | A two letter language code such as fr. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.language.set({ language: "fr" })
+```
+
+```json Result
+{
+  "language": "fr"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `language` | string | The language code now in use. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: language. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="login">
+
+Links this device to your own user id so you can send pushes to a person instead of a device.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your own id for the signed-in person. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.login({ externalId: "u_12345" })
+```
+
+```json Result
+{
+  "externalId": "u_12345",
+  "onesignalId": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your own id for the person; empty when the user is anonymous. |
+| `onesignalId` | string | OneSignal's own id for the user; empty until OneSignal has created the user. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: externalId. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="logout">
+
+Unlinks your user id from this device, which then continues as an anonymous user.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.logout()
+```
+
+```json Result
+{
+  "externalId": "",
+  "onesignalId": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your own id for the person; empty when the user is anonymous. |
+| `onesignalId` | string | OneSignal's own id for the user; empty until OneSignal has created the user. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="sms.add">
+
+Adds a phone number to this user so you can message them by text through OneSignal.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `number` | string | The phone number in international format. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.sms.add({ number: "+15555550100" })
+```
+
+```json Result
+{
+  "number": "+15555550100"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `number` | string | The phone number that was added. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: number. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="sms.remove">
+
+Removes a phone number from this user.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `number` | string | The phone number to remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.sms.remove({ number: "+15555550100" })
+```
+
+```json Result
+{
+  "number": "+15555550100"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `number` | string | The phone number that was removed. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: number. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="subscription.get">
+
+Reads this device's push subscription: its id, token and whether it is opted in.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.subscription.get()
+```
+
+```json Result
+{
+  "id": "0f8e2c1a-1111-4222-8333-944455556666",
+  "optedIn": true,
+  "token": "apns-token"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id OneSignal gave this device's push subscription; empty before registration finishes. |
+| `optedIn` | boolean | True when this device is opted in to push for this app. |
+| `token` | string | The push token of this device; empty before the system provides one. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="subscription.set">
+
+Opts this device in or out of push for this app without changing the system permission.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `optedIn` | boolean | True to receive push, false to stop. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.subscription.set({ optedIn: false })
+```
+
+```json Result
+{
+  "id": "0f8e2c1a-1111-4222-8333-944455556666",
+  "optedIn": false,
+  "token": "apns-token"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id OneSignal gave this device's push subscription; empty before registration finishes. |
+| `optedIn` | boolean | True when this device is opted in to push for this app. |
+| `token` | string | The push token of this device; empty before the system provides one. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: optedIn (boolean). |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="tags.get">
+
+Reads the tags stored on this user.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.tags.get()
+```
+
+```json Result
+{
+  "tags": {
+    "plan": "pro"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | The tags as key and text value pairs. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="tags.remove">
+
+Removes tags from this user by key.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `keys` | string[] | The keys of the tags to remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.tags.remove({ keys: ["plan"] })
+```
+
+```json Result
+{
+  "tags": {}
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | All tags left on the user after the change. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | keys must be an array of non-empty strings. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="tags.set">
+
+Adds tags to this user or replaces tags with the same key.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | The tags to write as key and value pairs; values are kept as text. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.tags.set({ tags: {"level": 3, "plan": "pro"} })
+```
+
+```json Result
+{
+  "tags": {
+    "level": "3",
+    "plan": "pro"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | All tags on the user after the change. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | tags must be an object of string, number or boolean values. |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+<Accordion title="user.get">
+
+Reads the current user: your external id and OneSignal's own id.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.onesignal.user.get()
+```
+
+```json Result
+{
+  "externalId": "u_12345",
+  "onesignalId": "5e0f0000-aaaa-4bbb-8ccc-dddddddddddd"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your own id for the person; empty when the user is anonymous. |
+| `onesignalId` | string | OneSignal's own id for the user; empty until OneSignal has created the user. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | OneSignal is not running in this build: set config.app_id and config.enabled. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -66,4 +614,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Open deeplink in browser (`open_deeplink_in_browser`) | Open a tapped notification's deeplink in Safari instead of the in-app web view. |
 | Reload on subscription ID (`reload_on_user_id`) | Reload the web view once OneSignal returns the push subscription ID. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- A OneSignal app and its **App ID** in the package settings (the App ID is public).
+- Send pushes from the OneSignal dashboard or from your server with OneSignal's REST API. The REST API key is a secret: keep it on your server, never in the app.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

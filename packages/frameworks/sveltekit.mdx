@@ -1,0 +1,71 @@
+---
+title: "SvelteKit"
+sidebarTitle: "SvelteKit"
+description: "Call Despia V4 packages from SvelteKit through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
+icon: "s"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+import TestIt from '/snippets/test-it.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+## Where dsx code runs
+
+Only in the browser: the client web view of your app, never during server rendering.
+
+- `+page.server.js`, `+layout.server.js` and `hooks.server.js` run on the server, and a universal `load` runs there too: never read `window.dsx` in them.
+- `onMount` and event handlers run only in the browser.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
+
+```svelte src/lib/DoneButton.svelte
+<script>
+  import { onMount } from 'svelte'
+
+  let env = $state('web')
+  let busy = $state(false)
+  let error = $state(null)
+
+  onMount(() => {
+    env = window.dsx ? 'v4' : 'web'
+    return window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+  })
+
+  async function done() {
+    busy = true
+    error = null
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      error = e.code
+    } finally {
+      busy = false
+    }
+  }
+</script>
+
+{#if env === 'v4'}
+  <button disabled={busy} onclick={done}>Done{#if error} ({error}){/if}</button>
+{/if}
+```
+
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
+
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+## TypeScript
+
+Save the declaration as `src/app.d.ts` (inside its `declare global`):
+
+<DsxTypes />
+
+## Test it
+
+<TestIt />

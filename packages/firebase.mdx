@@ -2,10 +2,12 @@
 title: "Firebase"
 description: "Send push notifications to your app's users through Firebase Cloud Messaging."
 icon: "fire"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -45,6 +47,200 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.firebase.topics.subscribe()` | `topic`: string | `topic` | iOS, Android | Subscribes this install to an FCM topic so you can send one message to everyone on it. |
 | `dsx.module.firebase.topics.unsubscribe()` | `topic`: string | `topic` | iOS, Android | Removes this install from an FCM topic so it stops receiving that topic's messages. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="app">
+
+Starts the shared Firebase app once and reports its identity. Other Firebase packages call it so initialisation happens in one place.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.firebase.app()
+```
+
+```json Result
+{
+  "appId": "1:1234567890:ios:abc123",
+  "configured": true,
+  "projectId": "despia-demo"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `appId` | string | The Firebase app ID of this build. |
+| `configured` | boolean | True when this build carries a usable Firebase identity. |
+| `projectId` | string | The Firebase project ID of this build. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | This build carries no Firebase identity. Add GoogleService-Info.plist (Apple) or the android_app_id / android_api_key config keys (Android). |
+
+</Accordion>
+<Accordion title="subscription.get">
+
+Returns this install's push subscription: its Firebase installation id, the FCM address your server sends to, and whether it is opted in.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.firebase.subscription.get()
+```
+
+```json Result
+{
+  "id": "fid_abc",
+  "optedIn": true,
+  "token": "fcm_registration_abc"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The Firebase installation id. Empty until Firebase has started. |
+| `optedIn` | boolean | True when this app has push turned on with Firebase, which is separate from the system notification permission. |
+| `token` | string | The FCM registration value your server uses to reach this device. Empty until Firebase has started. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Firebase push is not enabled in this build: set config.push_enabled (and ship GoogleService-Info.plist or the android_* identity keys). |
+| `unsupported_platform` | There is no FCM registration token on this runtime. |
+
+</Accordion>
+<Accordion title="subscription.set">
+
+Opts this install in or out of Firebase push. Opting out deletes the FCM registration so Firebase stops addressing the device.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `optedIn` | boolean | True to turn push on, false to turn it off and delete the registration. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.firebase.subscription.set({ optedIn: false })
+```
+
+```json Result
+{
+  "id": "fid_abc",
+  "optedIn": false,
+  "token": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The Firebase installation id after the change. |
+| `optedIn` | boolean | Whether this install is now opted in. |
+| `token` | string | The FCM registration value after the change, empty when opted out. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: optedIn (boolean). |
+| `not_configured` | Firebase push is not enabled in this build: set config.push_enabled (and ship GoogleService-Info.plist or the android_* identity keys). |
+| `unavailable` | Firebase could not delete the FCM token; the call can be retried. |
+| `unsupported_platform` | There is no FCM registration token on this runtime. |
+
+</Accordion>
+<Accordion title="topics.subscribe">
+
+Subscribes this install to an FCM topic so you can send one message to everyone on it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `topic` | string | The topic name, using letters, digits and - _ . ~ % only. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.firebase.topics.subscribe({ topic: "news" })
+```
+
+```json Result
+{
+  "topic": "news"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `topic` | string | The topic this install is now subscribed to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | topic must be a non-empty FCM topic name ([a-zA-Z0-9-_.~%]). |
+| `not_configured` | Firebase push is not enabled in this build: set config.push_enabled (and ship GoogleService-Info.plist or the android_* identity keys). |
+| `unavailable` | FCM has not started yet, or could not change the topic; opt in once the notification permission is granted and retry. |
+| `unsupported_platform` | There is no FCM registration token on this runtime. |
+
+</Accordion>
+<Accordion title="topics.unsubscribe">
+
+Removes this install from an FCM topic so it stops receiving that topic's messages.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `topic` | string | The topic name to leave. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.firebase.topics.unsubscribe({ topic: "news" })
+```
+
+```json Result
+{
+  "topic": "news"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `topic` | string | The topic this install has left. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | topic must be a non-empty FCM topic name ([a-zA-Z0-9-_.~%]). |
+| `not_configured` | Firebase push is not enabled in this build: set config.push_enabled (and ship GoogleService-Info.plist or the android_* identity keys). |
+| `unavailable` | FCM has not started yet, or could not change the topic; opt in once the notification permission is granted and retry. |
+| `unsupported_platform` | There is no FCM registration token on this runtime. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.firebase.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -67,4 +263,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | FCM topic (`fcm_topic`) | Optional Firebase topic to subscribe every device to. |
 | Firebase push enabled (`push_enabled`) | Activate Firebase Cloud Messaging push (download and replace GoogleService-Info.plist from the Firebase dashboard first). |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- A Firebase project with your Android app, and its app id, API key, project id and sender id in the package settings.
+- Send pushes from your server through Firebase Cloud Messaging with a service account that stays on your server.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

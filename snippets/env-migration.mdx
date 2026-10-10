@@ -10,7 +10,7 @@ if (window.dsx) {
 }
 ```
 
-Despia code runs in the browser (the app's web view), never on a server. In React, Next.js, Vue, Svelte and Angular, call it in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), which only run in the browser. Code written for Despia V3 keeps running on Despia V4 unchanged: the Legacy polyfill answers its `despia('scheme://...')` calls.
+Despia code runs in the browser (the app's web view), never on a server. In React, Next.js, Vue, Svelte and Angular, call it in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), which only run in the browser. Code written for Despia V3 runs on Despia V4 unchanged: the Legacy polyfill answers its `despia('scheme://...')` calls.
 
 To keep the answer as a value:
 

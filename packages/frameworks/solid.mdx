@@ -1,90 +1,74 @@
 ---
-title: "SolidJS"
-description: "Call Despia V4 packages from SolidJS and SolidStart through the global dsx, with two small primitives, loading and error state, broadcasts with cleanup, SSR and TypeScript."
+title: "SolidJS and SolidStart"
+sidebarTitle: "SolidJS"
+description: "Call Despia V4 packages from SolidJS and SolidStart through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "cube"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two primitives into your project.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## The primitives
+- `onMount` runs only in the browser, so the component is safe with SolidStart.
+- Never read `window.dsx` in a component body or in a `"use server"` function.
 
-```jsx despia.js
-import { createSignal, onCleanup, onMount } from 'solid-js'
-
-// createDsxCall('revenuecat', 'purchase') -> { call, data, error, loading }
-export function createDsxCall(pkg, action) {
-  const [data, setData] = createSignal(null)
-  const [error, setError] = createSignal(null)
-  const [loading, setLoading] = createSignal(false)
-  async function call(args) {
-    const dsx = window.dsx
-    if (!dsx) throw setError({ code: 'no_dsx' }) // our own code: not in Despia V4
-    setLoading(true)
-    setError(null)
-    try {
-      const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
-      const result = await fn(args)
-      setData(() => result)
-      return result
-    } catch (e) {
-      setError(e)
-      throw e
-    } finally {
-      setLoading(false)
-    }
-  }
-  return { call, data, error, loading }
-}
-
-// onDsxBroadcast('focus', 'change', (data) => ...), removed on cleanup
-export function onDsxBroadcast(pkg, name, handler) {
-  onMount(() => {
-    const dsx = window.dsx
-    if (dsx) onCleanup(dsx.module[pkg].on(name, handler))
-  })
-}
-```
+<EnvNew />
 
 ## Call a package and listen to a broadcast
 
-```jsx BuyButton.jsx
-import { createSignal, onMount, Show } from 'solid-js'
-import { createDsxCall, onDsxBroadcast } from './despia'
+```jsx DoneButton.jsx
+import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 
-export function BuyButton(props) {
-  const [ready, setReady] = createSignal(false)
-  const { call, loading, error } = createDsxCall('revenuecat', 'purchase')
-  onMount(() => setReady(!!window.dsx?.has('revenuecat')))
-  onDsxBroadcast('focus', 'change', ({ focused }) => { if (!focused) console.log('app went to the background') })
+export function DoneButton() {
+  const [env, setEnv] = createSignal('web')
+  const [busy, setBusy] = createSignal(false)
+  const [error, setError] = createSignal(null)
 
-  const buy = () => call({ external_id: props.userId, product: ['coins_100'] }).catch(() => {})
+  onMount(() => {
+    setEnv(window.dsx ? 'v4' : 'web')
+    const off = window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+    onCleanup(() => off?.())
+  })
+
+  async function done() {
+    setBusy(true)
+    setError(null)
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      setError(e.code)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
-    <Show when={ready()}>
-      <button disabled={loading()} onClick={buy}>
-        {loading() ? 'Buying…' : 'Buy 100 coins'}
-        <Show when={error()}>{(e) => <small> ({e().code})</small>}</Show>
-      </button>
+    <Show when={env() === 'v4'}>
+      <button disabled={busy()} onClick={done}>Done{error() && ` (${error()})`}</button>
     </Show>
   )
 }
 ```
 
-## SolidStart
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-`onMount` runs only in the browser, so the primitives are safe with SolidStart. Never read `window.dsx` in a component body or a server function.
+More in [How calls, results and broadcasts work](/packages/concepts).
 
 ## TypeScript
 
+Save the declaration as `src/dsx.d.ts`:
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

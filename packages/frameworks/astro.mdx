@@ -1,0 +1,69 @@
+---
+title: "Astro"
+sidebarTitle: "Astro"
+description: "Call Despia V4 packages from Astro through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
+icon: "rocket"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import DsxTypes from '/snippets/dsx-types.mdx';
+import TestIt from '/snippets/test-it.mdx';
+
+<Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+## Where dsx code runs
+
+Only in the browser: the client web view of your app, never during server rendering.
+
+- The frontmatter and endpoints run on the server: never read `window.dsx` there.
+- `<script>` tags run in the browser. For an island built with React, Vue, Svelte or Solid, hydrate it with `client:load` or `client:only` and follow that framework's page.
+
+<EnvNew />
+
+## Call a package and listen to a broadcast
+
+```astro src/components/DoneButton.astro
+---
+// frontmatter runs on the server: never read window.dsx here
+---
+<button id="done" hidden>Done</button>
+
+<script>
+  const button = document.getElementById('done') as HTMLButtonElement
+  const dsx = window.dsx
+  if (dsx) {
+    button.hidden = false
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      try {
+        await dsx.module.haptic.success()
+      } catch (e: any) {
+        button.textContent = `Done (${e.code})`
+      } finally {
+        button.disabled = false
+      }
+    })
+    const off = dsx.module.revenuecat.on('customerInfo', (data: unknown) => console.log(data))
+    document.addEventListener('astro:before-swap', off, { once: true })
+  }
+</script>
+```
+
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
+
+More in [How calls, results and broadcasts work](/packages/concepts).
+
+{/* TODO-VERIFY: the <script> was type-checked with tsc; an Astro build was not run. */}
+
+## TypeScript
+
+Save the declaration as `src/env.d.ts`:
+
+<DsxTypes />
+
+## Test it
+
+<TestIt />

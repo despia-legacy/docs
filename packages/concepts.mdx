@@ -1,0 +1,66 @@
+---
+title: "How calls, results and broadcasts work"
+sidebarTitle: "Calls and broadcasts"
+description: "The four things your page does with a Despia V4 package: call it and get a result, call it without waiting, catch a typed error, and listen to a broadcast."
+icon: "arrows-left-right"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+## Call: wait for the result
+
+`dsx.module.<package>.<action>(args)` returns a promise. It resolves with the action's result, as listed on the package page.
+
+```javascript
+const info = await window.dsx.module.device.info()
+```
+
+## Fire and forget: don't wait
+
+Without `await`, the call runs and the result is ignored:
+
+```javascript
+window.dsx.module.haptic.success()
+```
+
+A failure does not throw into the calling code. The browser raises `unhandledrejection` for the rejected promise, and Despia V4 reports it to the app's error log with the code `uncaught`. Add `.catch()` when the outcome matters.
+
+## Errors: catch the typed rejection
+
+A failed call rejects with an error that carries a `code` (and usually a `message` and `recoverable`). There is no error broadcast to listen for.
+
+```javascript
+try {
+  await window.dsx.module.biometric.authenticate({ reason: "Sign in" })
+} catch (err) {
+  if (err.code === "not_set_up") showPasscodeHint()
+}
+```
+
+Codes many packages share: `unsupported_platform`, `unavailable`, `not_configured`, `missing_param`, `permission_denied`, `busy`, `not_ready`, `network_unavailable`, `cancelled`. A call that gets no answer rejects with `timeout`. Each package page lists the codes of its actions.
+
+## Broadcasts: something changed later
+
+A package also sends broadcasts that are not the answer to a call, for example when a purchase changes the customer's entitlements. Listen on the package; the listener returns a function that stops listening:
+
+```javascript
+const off = window.dsx.module.revenuecat.on("customerInfo", (data) => refresh(data))
+off()
+```
+
+`window.dsx.on("revenuecat", (envelope) => {})` receives every broadcast of that package. See [Broadcasts](/packages/broadcasts).
+
+## Which one to use
+
+| You want to | Use |
+| :-- | :-- |
+| Get an answer | `await dsx.module.<package>.<action>(args)` |
+| Do something, no answer needed | The same call without `await` |
+| Hear about something that changes later | A broadcast: `dsx.module.<package>.on("<name>", cb)` |
+| Handle a failure | `try` / `catch` and the error's `code` |
+| Follow a stream (speech, motion) | Pass a handler as the second argument; call `stop()` when done |
+
+For package authors, the native side (resolve, broadcast and calls between packages) is described in [cross-module calls](https://github.com/despia-legacy/despia/blob/main/Skills/cross-module-calls.md).

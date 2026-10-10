@@ -44,6 +44,155 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.oauth.session()` | `ephemeral`?: boolean<br/>`host`?: string<br/>`path`?: string<br/>`pkce`?: boolean<br/>`proofs`?: boolean<br/>`url`: string | `url` | iOS, Android | Runs the same sign-in sheet as start but hands back only the raw redirect address, for packages that read the callback themselves. |
 | `dsx.module.oauth.start()` | `callback`?: string<br/>`ephemeral`?: boolean<br/>`host`?: string<br/>`path`?: string<br/>`pkce`?: boolean<br/>`url`: string | `params`<br/>`url` | iOS, Android | Opens the provider's authorize address in the system sign-in sheet and waits for the user to finish. You get back the redirect address and every parameter it carried, or a clear refusal such as cancelled. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="capabilities">
+
+Tells you whether this device can return a sign-in through your own https host and through the custom URL scheme right now.
+
+**Arguments:** none.
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `customScheme` | boolean | True when the app has a custom URL scheme set up for sign-in returns. |
+| `httpsCallback` | boolean | True when this device can return a sign-in through your own https host. |
+
+</Accordion>
+<Accordion title="exchange">
+
+Swaps an authorization code for tokens at your token endpoint, using the PKCE verifier created by a start or session call with pkce set. The verifier is only ever sent to an address you listed in the token endpoints setting.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `client_id`? | string | Your client id at the provider, if it expects one. |
+| `code` | string | The authorization code returned by start. |
+| `redirect_uri`? | string | The redirect address used in the authorize request, if the provider expects it again. |
+| `token_url` | string | The https address of the provider's token endpoint; it must be listed in the token endpoints setting. |
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `access_token`? | string | The access token issued by the provider. |
+| `expires_in`? | number | How many seconds the access token stays valid. |
+| `id_token`? | string | The signed identity token, when the provider issues one. |
+| `refresh_token`? | string | A token you can use to get a new access token, when the provider issues one. |
+| `scope`? | string | The permissions the provider actually granted. |
+| `token_type`? | string | The kind of token, usually Bearer. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `auth_failed` | The token exchange did not complete. |
+| `missing_param` | A required parameter is missing. |
+| `not_configured` | The token URL is not an https origin listed in token_endpoints. |
+| `pkce_unsupported` | No PKCE verifier is held for this exchange. |
+
+</Accordion>
+<Accordion title="session">
+
+Runs the same sign-in sheet as start but hands back only the raw redirect address, for packages that read the callback themselves.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ephemeral`? | boolean | Set true to run the sheet without the browser's saved sessions. |
+| `host`? | string | An https domain to return through instead of the custom scheme; iOS 17.4 and later only. |
+| `path`? | string | The path prefix of the https callback when you use host. |
+| `pkce`? | boolean | Set true to create a PKCE challenge you can redeem with exchange. |
+| `proofs`? | boolean | Set true to attach the proof checks the calling package needs. |
+| `url` | string | The full authorize address of the provider. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.oauth.session({ url: "https://idp.example/authorize?client_id=app&state=s1" })
+```
+
+```json Result
+{
+  "url": "myapp://oauth?code=abc&state=s1"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `url` | string | The full redirect address the provider sent the user to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `auth_failed` | Sign-in did not complete. |
+| `blocked` | The browser blocked the sign-in window. Start sign-in from a tap. |
+| `cancelled` | Sign-in was cancelled. |
+| `missing_param` | A required parameter is missing. |
+| `nonce_mismatch` | The sign-in response did not match this request. |
+| `not_configured` | No app callback URL scheme is configured. |
+| `state_mismatch` | The sign-in response did not belong to this sign-in request. |
+
+</Accordion>
+<Accordion title="start">
+
+Opens the provider's authorize address in the system sign-in sheet and waits for the user to finish. You get back the redirect address and every parameter it carried, or a clear refusal such as cancelled.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `callback`? | string | Set to https to return through your own https host instead of the custom URL scheme. |
+| `ephemeral`? | boolean | Set true to run the sheet without the browser's saved sessions, so the user always signs in fresh. |
+| `host`? | string | An https domain to return through instead of the custom scheme; iOS 17.4 and later only. |
+| `path`? | string | The path prefix of the https callback when you use host; defaults to /. |
+| `pkce`? | boolean | Set true to create a PKCE challenge now and redeem it later with exchange. |
+| `url` | string | The full authorize address of your provider, including client id and redirect address. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.oauth.start({ url: "https://idp.example/authorize?client_id=app&state=s1" })
+```
+
+```json Result
+{
+  "params": {
+    "code": "abc",
+    "state": "s1"
+  },
+  "url": "myapp://oauth?code=abc&state=s1"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `params` | object | Every query and fragment parameter of that address, by name, such as code, state or access_token. |
+| `url` | string | The full redirect address the provider sent the user to. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `auth_failed` | Sign-in did not complete. |
+| `blocked` | The browser blocked the sign-in window. Start sign-in from a tap. |
+| `cancelled` | Sign-in was cancelled. |
+| `missing_param` | A required parameter is missing. |
+| `nonce_mismatch` | The sign-in response did not match this request. |
+| `state_mismatch` | The sign-in response did not belong to this sign-in request. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.oauth.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -63,4 +212,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Extra origins for native Apple sign-in (`native_apple_signin_origins`) | Additional https origins of your own that may use the native Apple sheet. |
 | Token endpoints allowed to receive the PKCE verifier (`token_endpoints`) | The https origins this app may redeem an authorization code at, for example https://oauth2.googleapis.com. Leave it empty if the app does not use device-held PKCE. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- An app registered with each sign-in provider (Google, Apple and so on), with your redirect address.
+- If the app redeems the authorization code itself, list the provider's token origin under **token endpoints**; otherwise your backend exchanges the code.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

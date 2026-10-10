@@ -2,10 +2,12 @@
 title: "QuickActions"
 description: "Add shortcuts to your app icon's long-press menu on the Home screen."
 icon: "bolt"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -42,6 +44,92 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.quickactions.clear()` | none | `ok` | iOS, Android | Removes all the shortcuts from the app icon's menu. |
 | `dsx.module.quickactions.get()` | none | `count`<br/>`items` | iOS, Android | Reads the shortcuts that are currently set, including the ones kept from an earlier launch. |
 | `dsx.module.quickactions.set()` | `items`?: object[] | `count` | iOS, Android | Sets the shortcuts shown when the app icon is long pressed, replacing the ones set before. |
+
+## Action reference
+
+<AccordionGroup>
+<Accordion title="clear">
+
+Removes all the shortcuts from the app icon's menu.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.quickactions.clear()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the shortcuts were removed. |
+
+</Accordion>
+<Accordion title="get">
+
+Reads the shortcuts that are currently set, including the ones kept from an earlier launch.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.quickactions.get()
+```
+
+```json Result
+{
+  "count": 0,
+  "items": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `count` | number | How many shortcuts are set. |
+| `items` | object[] | The shortcuts that are set. |
+
+</Accordion>
+<Accordion title="set">
+
+Sets the shortcuts shown when the app icon is long pressed, replacing the ones set before.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `items`? | object[] | The shortcuts to show. An item without a title or a value is dropped. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.quickactions.set({ items: [{"symbol": "magnifyingglass", "title": "Search", "value": "search"}] })
+```
+
+```json Result
+{
+  "count": 1
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `count` | number | How many shortcuts were set. |
+
+</Accordion>
+</AccordionGroup>
 
 ## Broadcasts
 

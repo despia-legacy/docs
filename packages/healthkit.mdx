@@ -7,6 +7,8 @@ tag: "V4"
 
 import EnvNew from '/snippets/env-new.mdx';
 
+<Note>Verified on iOS. The Android implementation (Health Connect) is Alpha: an early implementation that may change and is provided without a service level guarantee. Report bugs to bugs@despia.com.</Note>
+
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
 Reads steps, heart rate, sleep and workouts, saves measurements, and can send new samples to your server in the background. The same type names work on iOS and Android, and the first read of a type asks the person for permission. Needs a health usage description for iOS; iPads and some Android phones have no health store.
@@ -50,6 +52,330 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.healthkit.workouts()` | `days`?: number<br/>`included`?: array | array | iOS, Android | Lists the person's workouts for the last days, with the totals you ask for. |
 | `dsx.module.healthkit.write()` | `type`: string<br/>`unit`?: string<br/>`value`: number | `type`<br/>`value`<br/>`written` | iOS, Android | Saves one health value, such as a weight, to Apple Health or Health Connect. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="observe">
+
+Watches health types in the background and sends new samples to your server over HTTPS.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `frequency`? | string | How often to deliver: immediate, hourly, daily or weekly; defaults to immediate. |
+| `server`? | string | The absolute HTTPS address that receives the data; it is remembered across launches. |
+| `types` | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+| `userId`? | string | Your id for the person, sent with the data; a random app-installation id is used when you leave it out. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.observe({ frequency: "immediate", server: "https://example.com/hook", types: ["HKQuantityTypeIdentifierStepCount"], userId: "account-fixture-123" })
+```
+
+**Result:** nothing.
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the person change a limited selection where the system has one; otherwise returns the current state unchanged.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `types`? | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `changed` | boolean | True when the selection was changed; false where the platform has no limited selection. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the person can change the health data permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Shows the system health data permission dialog when it can still be shown, and returns the resulting state.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `types`? | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `requested`? | boolean | True when the system sheet was shown by this call. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the health data permission without ever showing a dialog.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `types`? | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system dialog can still be shown; false once the person has refused it. |
+| `level`? | string | Access level where the platform offers more than all-or-nothing; empty otherwise. |
+| `status` | string | Current permission: undetermined, granted, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="read">
+
+Reads health data for the types you list, as daily totals or as individual samples.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `days`? | number | How many days back to read; defaults to 1. |
+| `raw`? | boolean | True returns each stored sample with its source instead of one daily total. |
+| `types`? | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.read({ days: 2, types: ["HKQuantityTypeIdentifierStepCount"] })
+```
+
+```json Result
+{
+  "HKQuantityTypeIdentifierStepCount": [
+    {
+      "date": "2026-08-21T00:00:00Z",
+      "unit": "count",
+      "value": 7640
+    }
+  ]
+}
+```
+
+**Result:** `object`: shape not declared yet.
+
+</Accordion>
+<Accordion title="status">
+
+Reports whether health data exists on this device and which types are allowed.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `types`? | array | Health type identifiers such as HKQuantityTypeIdentifierStepCount; the same names are used on iOS and Android. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.status({ types: ["HKQuantityTypeIdentifierStepCount"] })
+```
+
+```json Result
+{
+  "available": true,
+  "requested": true,
+  "types": {
+    "HKQuantityTypeIdentifierStepCount": {
+      "read": "unknown",
+      "write": "undetermined"
+    }
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `available` | boolean | True when Health data can be used on this device. |
+| `reason`? | string | Why Health is unavailable, set only when available is false. |
+| `requested` | boolean | True when the user has already been asked for the types, so the permission prompt will not show again. |
+| `types` | object | The permission state of each type you asked about, keyed by the health type identifier. |
+
+</Accordion>
+<Accordion title="unobserve">
+
+Stops watching health types for background delivery.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `types`? | array | The types to stop watching, or all to stop everything. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.unobserve({ types: ["HKQuantityTypeIdentifierStepCount"] })
+```
+
+**Result:** nothing.
+
+</Accordion>
+<Accordion title="workouts">
+
+Lists the person's workouts for the last days, with the totals you ask for.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `days`? | number | How many days back to list; defaults to 1. |
+| `included`? | array | Totals to add to each workout, such as HKQuantityTypeIdentifierActiveEnergyBurnedSum. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.workouts({ days: 7, included: ["HKQuantityTypeIdentifierHeartRateAverage"] })
+```
+
+```json Result
+[
+  {
+    "activityType": "running",
+    "calories": 250,
+    "duration": 1800
+  }
+]
+```
+
+**Result:** `array`: shape not declared yet.
+
+</Accordion>
+<Accordion title="write">
+
+Saves one health value, such as a weight, to Apple Health or Health Connect.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `type` | string | The health type identifier to save, for example HKQuantityTypeIdentifierBodyMass. |
+| `unit`? | string | The unit of the value, for example kg; leave out to use the type's default unit. |
+| `value` | number | The number to save, in the unit of the type or the unit you give. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.healthkit.write({ type: "HKQuantityTypeIdentifierBodyMass", value: 75.5 })
+```
+
+```json Result
+{
+  "type": "HKQuantityTypeIdentifierBodyMass",
+  "value": 75.5,
+  "written": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `type` | string | The health type that was written. |
+| `value` | number | The number that was saved. |
+| `written` | boolean | True when the value was saved. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `healthkit_unavailable` | Health data is not available on this device. |
+| `invalid_argument` | Pass a type identifier and a numeric value. |
+| `invalid_type` | That type cannot be written on this device. |
+| `permission_denied` | The user has not allowed this app to write that type. |
+| `write_failed` | The health store refused the value. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.healthkit.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -67,4 +393,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Health read prompt (`usage_share_description`) | The message shown when iOS asks permission to read Health data. |
 | Health write prompt (`usage_update_description`) | The message shown when iOS asks permission to save data to Health. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

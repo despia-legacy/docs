@@ -2,10 +2,12 @@
 title: "AppRating"
 description: "Ask the system to show its in-app rating prompt."
 icon: "star"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -35,4 +37,34 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.apprating.request()` | none | `requested` | iOS, Android | Asks the system to show its rating sheet. It reports that the system was asked, not that the sheet appeared, because the system decides. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="request">
+
+Asks the system to show its rating sheet. It reports that the system was asked, not that the sheet appeared, because the system decides.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.apprating.request()
+```
+
+```json Result
+{
+  "requested": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `requested` | boolean | True when the system was asked to show the sheet; false when it could not be asked, for example when no screen was in front. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

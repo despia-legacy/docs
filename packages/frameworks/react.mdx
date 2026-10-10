@@ -1,116 +1,70 @@
 ---
-title: "React and Next.js"
-description: "Call Despia V4 packages from React and Next.js through the global dsx: calls with loading and error state, broadcasts with cleanup, SSR and TypeScript."
+title: "React (Vite)"
+sidebarTitle: "React"
+description: "Call Despia V4 packages from React (Vite) through window.dsx: where the code runs, a call with loading and error state, a broadcast with cleanup, TypeScript."
 icon: "react"
 tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
-import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
-
-<EnvNew />
+import TestIt from '/snippets/test-it.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<SsrRule />
+## Where dsx code runs
 
-The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two hooks into your project.
+Only in the browser: the client web view of your app, never during server rendering.
 
-## The hooks
+- A React app built with Vite renders in the browser, so `useEffect` and click handlers always run there.
+- Read `window.dsx` in `useEffect` or an event handler, never during render.
 
-```jsx despia-hooks.js
-import { useCallback, useEffect, useRef, useState } from 'react'
+<EnvNew />
 
-const getDsx = () => window.dsx
+## Call a package and listen to a broadcast
 
-// useDsxCall('revenuecat', 'purchase') -> { call, data, error, loading }
-export function useDsxCall(pkg, action) {
-  const [state, setState] = useState({ data: null, error: null, loading: false })
-  const call = useCallback(async (args) => {
-    const dsx = getDsx()
-    if (!dsx) throw { code: 'no_dsx' } // our own code: not in Despia V4
-    setState((s) => ({ ...s, error: null, loading: true }))
-    try {
-      const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
-      const data = await fn(args)
-      setState({ data, error: null, loading: false })
-      return data
-    } catch (error) {
-      setState({ data: null, error, loading: false })
-      throw error
-    }
-  }, [pkg, action])
-  return { ...state, call }
-}
-
-// useDsxBroadcast('focus', 'change', (data) => ...), removed on unmount
-export function useDsxBroadcast(pkg, name, handler) {
-  const latest = useRef(handler)
-  latest.current = handler
-  useEffect(() => {
-    const dsx = getDsx()
-    return dsx ? dsx.module[pkg].on(name, (data) => latest.current(data)) : undefined
-  }, [pkg, name])
-}
-```
-
-A failed call rejects with an object that has a `code` (for RevenueCat, for example `user_cancelled` or `not_ready`); `no_dsx` is the hook's own code for "not in Despia V4". `action` may contain dots, for example `'permission.request'` on `notify`.
-
-## Call a package
-
-```jsx BuyButton.jsx
+```jsx DoneButton.jsx
 import { useEffect, useState } from 'react'
-import { useDsxCall } from './despia-hooks'
 
-export function BuyButton({ userId }) {
-  const [ready, setReady] = useState(false)
-  const { call, loading, error } = useDsxCall('revenuecat', 'purchase')
-  useEffect(() => setReady(!!window.dsx?.has('revenuecat')), [])
+export function DoneButton() {
+  const [env, setEnv] = useState('web')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
 
-  if (!ready) return null // web checkout goes here
+  useEffect(() => {
+    setEnv(window.dsx ? 'v4' : 'web')
+    return window.dsx?.module.revenuecat.on('customerInfo', (data) => console.log(data))
+  }, [])
 
-  return (
-    <button disabled={loading} onClick={() => call({ external_id: userId, product: ['coins_100'] }).catch(() => {})}>
-      {loading ? 'Buying…' : 'Buy 100 coins'}
-      {error && <small> ({error.code})</small>}
-    </button>
-  )
+  async function done() {
+    setBusy(true)
+    setError(null)
+    try {
+      await window.dsx.module.haptic.success()
+    } catch (e) {
+      setError(e.code)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (env !== 'v4') return null // normal browser: web code
+  return <button disabled={busy} onClick={done}>Done{error && ` (${error})`}</button>
 }
 ```
 
-`ready` is read in an effect, so the server render and the first client render are the same.
+- **Environment check:** the component sets `env` in the browser only, so the server and the first browser render match.
+- **Call:** `dsx.module.haptic.success()` with a busy state; a failed call rejects with an error that has a `code`.
+- **Broadcast:** `dsx.module.revenuecat.on('customerInfo', ...)` returns a function that stops listening; it runs when the component goes away.
 
-## Listen to a broadcast
-
-```jsx
-useDsxBroadcast('focus', 'change', ({ focused }) => { if (!focused) saveDraft() })
-useDsxBroadcast('revenuecat', 'customerInfo', ({ customerInfo }) => refresh(customerInfo))
-```
-
-For a stream, return its `stop` from an effect:
-
-```jsx
-useEffect(() => {
-  if (!window.dsx?.has('speechrecognition')) return undefined
-  const sub = window.dsx.module.speechrecognition.start({ interim: true }, (e) => setText(e.data?.transcript))
-  return () => sub.stop()
-}, [])
-```
-
-## Next.js
-
-Use the hooks in client components (`'use client'` in the App Router). They read `window.dsx` only inside effects and handlers, never during render.
-
-```jsx app/buy/page.jsx
-'use client'
-import { BuyButton } from '../../components/BuyButton'
-
-export default function Page() {
-  return <BuyButton userId="user_123" />
-}
-```
+More in [How calls, results and broadcasts work](/packages/concepts).
 
 ## TypeScript
 
+Save the declaration as `src/vite-env.d.ts`:
+
 <DsxTypes />
+
+## Test it
+
+<TestIt />

@@ -2,10 +2,12 @@
 title: "Pushwoosh"
 description: "Send push notifications to your app's users through Pushwoosh."
 icon: "bell"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -49,6 +51,334 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.pushwoosh.tags.set()` | `tags`: object | `tags` | iOS, Android | Adds or replaces tags on this device and returns the tags afterward. A value is a string, a number, a boolean or a list of strings. |
 | `dsx.module.pushwoosh.user.get()` | none | `externalId` | iOS, Android | Returns the user id this device is currently linked to, or an empty value when anonymous. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="language.set">
+
+Sets the language Pushwoosh uses to pick localized messages for this device; the device language is used by default.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `language` | string | A two-letter ISO 639-1 language code such as de. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.language.set({ language: "fr" })
+```
+
+```json Result
+{
+  "language": "fr"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `language` | string | The language code now in use. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: language. |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+
+</Accordion>
+<Accordion title="login">
+
+Links this device to your own user id so you can send to the person rather than to one device.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your own id for the signed-in user. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.login({ externalId: "u_12345" })
+```
+
+```json Result
+{
+  "externalId": "u_12345"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your user id for this device, or empty when anonymous. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: externalId. |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not set the user id; the call can be retried. |
+
+</Accordion>
+<Accordion title="logout">
+
+Unlinks your user id so the device becomes an anonymous Pushwoosh user again. Calling it when nobody is logged in is not an error.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.logout()
+```
+
+```json Result
+{
+  "externalId": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your user id for this device, or empty when anonymous. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not clear the user id; the call can be retried. |
+
+</Accordion>
+<Accordion title="subscription.get">
+
+Returns this device's Pushwoosh id, its push token and whether it is registered with Pushwoosh.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.subscription.get()
+```
+
+```json Result
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "optedIn": true,
+  "token": "apns-token"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The Pushwoosh hardware id for this device. |
+| `optedIn` | boolean | True when the device is registered with Pushwoosh. |
+| `token` | string | The push token Pushwoosh holds; empty until registration finishes. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+
+</Accordion>
+<Accordion title="subscription.set">
+
+Registers this device with Pushwoosh or unregisters it, without changing the system notification permission.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `optedIn` | boolean | True to register this device with Pushwoosh, false to unregister it. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.subscription.set({ optedIn: false })
+```
+
+```json Result
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "optedIn": false,
+  "token": ""
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The Pushwoosh hardware id for this device. |
+| `optedIn` | boolean | True when the device is registered with Pushwoosh. |
+| `token` | string | The push token Pushwoosh holds; empty until registration finishes. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | Missing required parameter: optedIn (boolean). |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not register or unregister this device; the call can be retried. |
+
+</Accordion>
+<Accordion title="tags.get">
+
+Returns the tags Pushwoosh holds for this device.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.tags.get()
+```
+
+```json Result
+{
+  "tags": {
+    "plan": "pro"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | The device's tags after the call. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not read the tags; the call can be retried. |
+
+</Accordion>
+<Accordion title="tags.remove">
+
+Removes tags from this device by name and returns the tags afterward.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `keys` | string[] | The names of the tags to remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.tags.remove({ keys: ["plan"] })
+```
+
+```json Result
+{
+  "tags": {}
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | The device's tags after the call. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | keys must be an array of non-empty strings. |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not remove the tags; the call can be retried. |
+
+</Accordion>
+<Accordion title="tags.set">
+
+Adds or replaces tags on this device and returns the tags afterward. A value is a string, a number, a boolean or a list of strings.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | An object of tag names and values; each value is a string, number, boolean or list of strings. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.tags.set({ tags: {"level": 3, "plan": "pro"} })
+```
+
+```json Result
+{
+  "tags": {
+    "level": 3,
+    "plan": "pro"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `tags` | object | The device's tags after the call. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `missing_param` | tags must be an object of string, number, boolean or string-array values. |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+| `unavailable` | Pushwoosh could not set the tags; the call can be retried. |
+
+</Accordion>
+<Accordion title="user.get">
+
+Returns the user id this device is currently linked to, or an empty value when anonymous.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.pushwoosh.user.get()
+```
+
+```json Result
+{
+  "externalId": "u_12345"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `externalId` | string | Your user id for this device, or empty when anonymous. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `not_configured` | Pushwoosh is not running in this build: set config.app_id and config.api_token. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Configuration
 
 Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
@@ -58,4 +388,11 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | API token (`api_token`) | Your Pushwoosh device API token from the Pushwoosh control panel. |
 | App ID (`app_id`) | Your Pushwoosh application id, shown in the Pushwoosh dashboard, used to register devices. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## What you need on your side
+
+- A Pushwoosh application: its **application id** and **device API token** in the package settings.
+- Send pushes from the Pushwoosh control panel or your server.
+
+Despia never hosts your app, your backend or your users' content: the accounts and servers above are your own.
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

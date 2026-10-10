@@ -17,7 +17,9 @@
           {
             "group": "Get started",
             "pages": [
+              "introduction",
               "packages/overview",
+              "packages/concepts",
               "packages/add-a-package",
               "packages/broadcasts",
               "packages/push-notifications",
@@ -30,10 +32,19 @@
             "pages": [
               "packages/frameworks/overview",
               "packages/frameworks/react",
+              "packages/frameworks/nextjs",
+              "packages/frameworks/tanstack",
+              "packages/frameworks/react-router",
+              "packages/frameworks/preact",
               "packages/frameworks/vue",
+              "packages/frameworks/nuxt",
               "packages/frameworks/svelte",
-              "packages/frameworks/angular",
+              "packages/frameworks/sveltekit",
               "packages/frameworks/solid",
+              "packages/frameworks/angular",
+              "packages/frameworks/astro",
+              "packages/frameworks/qwik",
+              "packages/frameworks/lit",
               "packages/frameworks/html"
             ]
           },
@@ -99,7 +110,6 @@
                 "pages": [
                   "packages/camera",
                   "packages/scanner",
-                  "packages/player",
                   "packages/print",
                   "packages/filesharing",
                   "packages/fileupload",
@@ -152,7 +162,7 @@
         "tab": "Legacy",
         "icon": "box-archive",
         "pages": [
-          "introduction",
+          "despia-v3",
           "mcp-server",
           "changelog",
           {

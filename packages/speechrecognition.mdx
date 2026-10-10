@@ -2,10 +2,12 @@
 title: "SpeechRecognition"
 description: "Turn the user's speech into text with the standard web speech API."
 icon: "microphone"
-tag: "V4"
+tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -51,6 +53,234 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.speechrecognition.start()` | `continuous`?: boolean<br/>`interim`?: boolean<br/>`language`?: string<br/>`max`?: number | stream (sends `start`, `result`) | iOS, Android | Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed. |
 | `dsx.module.speechrecognition.stop()` | none | `ok` | iOS, Android | Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="abort">
+
+Stops listening and throws away what was heard; it is safe to call when nothing is running.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.abort()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the recognizer is stopped. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the user change which items this app can see when speech recognition and the microphone is limited, without leaving the app; elsewhere it only reports the current state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for speech recognition and the microphone; false means only Settings can change it. |
+| `changed` | boolean | True when the user changed the selection in the system picker. |
+| `level`? | string | Not used here; this permission has no separate levels, so it is normally empty. |
+| `status` | string | The current state of speech recognition and the microphone: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the user can change a denied permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Asks for speech recognition and the microphone with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for speech recognition and the microphone; false means only Settings can change it. |
+| `level`? | string | Not used here; this permission has no separate levels, so it is normally empty. |
+| `status` | string | The current state of speech recognition and the microphone: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the current state of speech recognition and the microphone without ever showing a dialog, so a settings screen can call it every time it appears.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for speech recognition and the microphone; false means only Settings can change it. |
+| `level`? | string | Not used here; this permission has no separate levels, so it is normally empty. |
+| `status` | string | The current state of speech recognition and the microphone: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="polyfill">
+
+The internal route the SpeechRecognition polyfill uses to talk to the phone; you do not call it by hand.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `action` | string | What the polyfill asks for, such as start, stop or abort. |
+| `config`? | object | The settings of the recognizer, copied from the page. |
+| `recognizerId` | string | Identifies which recognizer object on the page the request belongs to. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.polyfill({ action: "start", config: {"lang": "en-US"}, recognizerId: "speech_1_abc" })
+```
+
+**Result:** `object`: shape not declared yet.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unsupported_platform` | A browser needs no SpeechRecognition polyfill because it already owns that constructor. |
+
+</Accordion>
+<Accordion title="start">
+
+Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `continuous`? | boolean | True to keep listening after the user pauses. |
+| `interim`? | boolean | True to receive partial transcripts while the user is still speaking. |
+| `language`? | string | The language to listen for, such as en-US. |
+| `max`? | number | How many alternative transcripts to return for each result. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.start({ continuous: false, interim: true, language: "en-US", max: 1 })
+```
+
+```json Result
+{
+  "type": "end"
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+</Accordion>
+<Accordion title="stop">
+
+Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.speechrecognition.stop()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the recognizer is stopped. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.speechrecognition.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -69,4 +299,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for speech recognition. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

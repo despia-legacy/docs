@@ -49,6 +49,392 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.storage.remove()` | `key`: string | `ok` | iOS, Android | Deletes one saved key. Removing a key that is not there does nothing. |
 | `dsx.module.storage.set()` | `key`: string<br/>`value`: any | `ok` | iOS, Android | Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type. |
 
+## Action reference
+
+<AccordionGroup>
+<Accordion title="clear">
+
+Deletes every key in this app's store and says how many were removed.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.clear()
+```
+
+```json Result
+{
+  "ok": true,
+  "removed": 2
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the change was made. |
+| `removed` | number | How many keys were actually deleted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+<Accordion title="get">
+
+Reads one saved value by its key, with its original type, and says whether the key was found.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The name the value is saved under; it must be a non-empty string. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.get({ key: "theme" })
+```
+
+```json Result
+{
+  "found": true,
+  "value": "dark"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `found` | boolean | True when the key is saved, which tells a saved null from a missing key. For multiGet, the number of keys found. |
+| `value` | any | The saved value with its original type, or null when the key is not saved. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_key` | key must be a non-empty string. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+
+</Accordion>
+<Accordion title="list">
+
+Returns one page of saved keys, optionally filtered by prefix or range and optionally with their values.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `after`? | string | The cursor from the previous page, to continue after it. |
+| `end`? | string | Only return keys before this one, alphabetically (exclusive). |
+| `limit`? | number | How many keys to return at most; the default is 100 and the largest is 1000. |
+| `prefix`? | string | Only return keys that start with this text. |
+| `reverse`? | boolean | Set to true to walk the keys from last to first. |
+| `start`? | string | Only return keys from this one onward, alphabetically (inclusive). |
+| `values`? | boolean | Set to true to include each key's value in the results. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.list({ prefix: "draft." })
+```
+
+```json Result
+{
+  "cursor": "",
+  "items": [
+    {
+      "key": "draft.1"
+    },
+    {
+      "key": "draft.2"
+    }
+  ],
+  "more": false
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `cursor` | string | Pass this back as after to get the next page. |
+| `items` | object[] | The keys in this page, each with its key and, if asked for, its value. |
+| `more` | boolean | True when there are more keys after this page. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_query` | prefix, start, end and after must be strings, reverse and values booleans, and limit a whole number of at least 1. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+
+</Accordion>
+<Accordion title="multiGet">
+
+Reads several keys in one call. Keys that are not saved are left out of the answer.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `keys` | string[] | The list of key names to read or remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.multiGet({ keys: ["k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"] })
+```
+
+```json Result
+{
+  "found": 12,
+  "values": {
+    "k1": "1",
+    "k10": "10",
+    "k11": "11",
+    "k12": "12",
+    "k2": "2",
+    "k3": "3",
+    "k4": "4",
+    "k5": "5",
+    "k6": "6",
+    "k7": "7",
+    "k8": "8",
+    "k9": "9"
+  }
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `found` | number | True when the key is saved, which tells a saved null from a missing key. For multiGet, the number of keys found. |
+| `values` | object | The values found, keyed by name; missing keys are left out. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_keys` | keys must be an array of non-empty strings. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+
+</Accordion>
+<Accordion title="multiRemove">
+
+Deletes several keys in one call, written together. Keys that are not there are ignored.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `keys` | string[] | The list of key names to read or remove. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.multiRemove({ keys: ["a", "b", "missing"] })
+```
+
+```json Result
+{
+  "ok": true,
+  "removed": 2
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the change was made. |
+| `removed` | number | How many keys were actually deleted. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_keys` | keys must be an array of non-empty strings. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+<Accordion title="multiSet">
+
+Saves several values in one call, written together.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `values` | object | Set to true to include each key's value in the results. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.multiSet({ values: {"locale": "en", "theme": "dark"} })
+```
+
+```json Result
+{
+  "ok": true,
+  "written": 2
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the change was made. |
+| `written` | number | How many values were saved. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_values` | values must be an object of non-empty string keys. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `unstorable_value` | That value has no JSON text, so there is nothing this store could keep for it. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+<Accordion title="open">
+
+Brings the store up to the version your app declares by running your declared upgrade steps, and refuses a store written by a newer app.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.open()
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `from` | number | The storage version the store was at before. |
+| `migrated` | number | How many upgrade steps were run. |
+| `version` | number | The storage version the store is now at. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `store_ahead` | The stored data was written by a NEWER version of this app. There is no migration backwards, so nothing was read. |
+| `store_declaration_invalid` | The app's `storage` declaration does not parse, so the stored data was not opened. |
+| `store_migration_missing` | The app declares no migration for every version between the stored data and its own. Nothing was read. |
+| `store_unreadable` | The stored data carries a storage version this app cannot read. Nothing was read. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+<Accordion title="remove">
+
+Deletes one saved key. Removing a key that is not there does nothing.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The name the value is saved under; it must be a non-empty string. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.remove({ key: "theme" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the change was made. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_key` | key must be a non-empty string. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+<Accordion title="set">
+
+Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `key` | string | The name the value is saved under; it must be a non-empty string. |
+| `value` | any | The value to save: a string, number, boolean, null, list or object. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.storage.set({ key: "theme", value: "dark" })
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the change was made. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using persistent values. |
+| `invalid_key` | key must be a non-empty string. |
+| `persistence_unavailable` | The app-scoped desktop value store is unavailable. |
+| `storage_unavailable` | The key/value store is not available on this device yet. |
+| `unstorable_value` | That value has no JSON text, so there is nothing this store could keep for it. |
+| `value_too_large` | The value exceeds the desktop store's UTF-8 byte limit. |
+
+</Accordion>
+</AccordionGroup>
+
 ## Broadcasts
 
 Listen with `window.dsx.module.storage.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
@@ -57,4 +443,4 @@ Listen with `window.dsx.module.storage.on('<broadcast>', (data) => { ... })`. It
 | :-- | :-- |
 | `change` | Sent after any write to the store: set, remove, clear, their multi versions, and an open that upgraded the store. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -39,4 +39,98 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.fileviewer.preview()` | `src`: any<br/>`theme`?: "dark" \\| "light" | `file`<br/>`files`<br/>`status` | iOS, Android | Opens one or more files in a full screen preview, downloading https addresses first. |
 | `dsx.module.fileviewer.thumbnail()` | `height`?: number<br/>`src`: string<br/>`width`?: number | `height`<br/>`path`<br/>`src`<br/>`width` | iOS, Android | Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="preview">
+
+Opens one or more files in a full screen preview, downloading https addresses first.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `src` | any | What to show: a files path, an https address, a File or Blob, or a list mixing them, which opens as swipeable pages. |
+| `theme`? | "dark" \\| "light" | Pass dark or light to choose the look of the viewer; it follows the system if left out. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.fileviewer.preview({ src: "https://files.app/invoice.pdf" })
+```
+
+```json Result
+{
+  "status": "presented"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `file`? | string | The name of the file that was previewed, when it was a single file. |
+| `files`? | string[] | The names of the files that were previewed, when there were several. |
+| `status` | string | How the preview ended, such as presented. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `download_failed` | Couldn't download the file. Check the connection and try again. |
+| `download_too_large` | The file exceeds the 64 MB native download limit. |
+| `invalid_src` | No file to preview, `src` is missing, or none of the sources is a Core/Files path or an HTTPS URL that resolved. |
+| `no_presenter` | Couldn't find a screen to present the file viewer. |
+| `no_previewer` | No installed app can preview this file type. |
+| `too_many_files` | Too many files in one request, the native file-transfer policy caps a single preview. |
+| `write_failed` | Couldn't save the downloaded file for preview. |
+
+</Accordion>
+<Accordion title="thumbnail">
+
+Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `height`? | number | The picture height in pixels; it defaults to the width. |
+| `src` | string | The file to draw, as a files path or an https address. |
+| `width`? | number | The picture width in pixels; it defaults to 256 and is kept between 16 and 2048. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.fileviewer.thumbnail({ src: "documents:invoice.pdf", width: 256 })
+```
+
+```json Result
+{
+  "height": 256,
+  "path": "cache:despia-fileviewer/thumb-1.jpg",
+  "src": "file:///var/mobile/Containers/Data/Application/X/Library/Caches/despia-fileviewer/thumb-1.jpg",
+  "width": 181
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `height` | number | The height of the thumbnail in pixels. |
+| `path` | string | The cache path of the saved thumbnail picture. |
+| `src` | string | The address to give an image element so it can draw the thumbnail. |
+| `width` | number | The width of the thumbnail in pixels. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `invalid_src` | No file at that path: use a Core/Files path or an HTTPS URL. |
+| `no_previewer` | No installed app can preview this file type. |
+| `write_failed` | Couldn't save the preview image. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

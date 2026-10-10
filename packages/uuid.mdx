@@ -35,4 +35,41 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.uuid.get()` | none | `uuid` | iOS, Android | Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again. |
 
-Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).
+## Action reference
+
+<AccordionGroup>
+<Accordion title="get">
+
+Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.uuid.get()
+```
+
+```json Result
+{
+  "uuid": "1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `uuid` | string | The identifier for this install, or an empty value on iOS before the first unlock. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `app_identity_missing` | Configure a stable DSX desktop app id before using uuid. |
+| `persistence_unavailable` | The identifier store is unavailable. |
+
+</Accordion>
+</AccordionGroup>
+
+For apps built on Despia V3, see [Migrate from Despia V3](/packages/migrate-from-v3).

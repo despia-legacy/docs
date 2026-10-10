@@ -1,9 +1,9 @@
-Despia V4 has no package to install, so declare the global once and your editor autocompletes it. This block describes exactly what `window.dsx` has in a Despia V4 web view:
+Despia V4 has no package to install, so declare the global once and your editor autocompletes it. This block describes the members of `window.dsx` in 0.0.2; later releases add members.
 
 ```typescript despia-dsx.d.ts
 // The window.dsx surface of Despia V4 (pre-release 0.0.2)
 export interface DsxEnvelope {
-  event?: string          // the broadcast's name, or 'error'
+  event?: string          // the broadcast's name, or 'error' when a stream update failed
   data?: unknown          // its payload
   scheme?: string         // the package that sent it
   final?: boolean
@@ -31,20 +31,19 @@ declare global {
 }
 ```
 
-`module` is typed `any` on purpose: every package adds its own actions. To type a call, write its arguments and result from the package page. For example, from [RevenueCat](/packages/revenuecat) `purchase`:
+`module` is typed `any` on purpose: every package adds its own actions. To type a call, write its result from the package page. For example, from [Device](/packages/device) `info`:
 
 ```typescript
-interface PurchaseArgs { product: string[]; external_id?: string }
-interface PurchaseResult {
-  status: string
-  product_id: string
-  plan_id?: string
-  active_entitlements: string[]
-  customer_info: Record<string, unknown>
-  transaction: Record<string, unknown>
+interface DeviceInfo {
+  deviceType: string
+  osName: string
+  osVersion: string
+  brand?: string
+  manufacturer?: string
+  model?: string
 }
 
-async function purchase(args: PurchaseArgs): Promise<PurchaseResult> {
-  return window.dsx!.module.revenuecat.purchase(args)
+async function deviceInfo(): Promise<DeviceInfo> {
+  return window.dsx!.module.device.info()
 }
 ```

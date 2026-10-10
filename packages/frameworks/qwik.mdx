@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - Component bodies render on the server, and `routeLoader$`, `routeAction$` and `server$` always run there: never read `window.dsx` in them.
 - `useVisibleTask$` and event handlers run only in the browser.

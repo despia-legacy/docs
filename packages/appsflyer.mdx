@@ -6,8 +6,11 @@ tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+import MayChange from '/snippets/may-change.mdx';
 
 <Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
+
+<MayChange />
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.0.2), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -434,7 +437,7 @@ Listen with `window.dsx.module.appsflyer.on('<broadcast>', (data) => { ... })`. 
 
 | Broadcast | When it fires |
 | :-- | :-- |
-| `deep_link` | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
+| `deepLink` | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
 
 ## Configuration
 

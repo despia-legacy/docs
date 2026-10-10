@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - The frontmatter and endpoints run on the server: never read `window.dsx` there.
 - `<script>` tags run in the browser. For an island built with React, Vue, Svelte or Solid, hydrate it with `client:load` or `client:only` and follow that framework's page.

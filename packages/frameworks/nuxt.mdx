@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - `setup` runs on the server and in the browser; `onMounted` and event handlers run only in the browser.
 - Never read `window.dsx` in `server/` routes, server plugins or `useAsyncData` / `useFetch` handlers. Wrap UI that only makes sense in the app in `<ClientOnly>`.

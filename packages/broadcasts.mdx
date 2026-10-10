@@ -11,6 +11,8 @@ import EnvMigration from '/snippets/env-migration.mdx';
 
 <EnvMigration />
 
+<Note>Field and action names may change before 0.1.0; the V3 Legacy calls keep working.</Note>
+
 ## Listen to a broadcast
 
 Packages also send broadcasts that are not the answer to a call, for example when a purchase changes the customer's entitlements. Listen on the package:
@@ -26,9 +28,9 @@ A package declares its broadcasts under `broadcasts` in its `dsx.json`; each pac
 - `dsx.module.<package>.on((envelope) => {})` and `dsx.on('<package>', (envelope) => {})` receive every broadcast of the package as the whole envelope `{ event, data, scheme, ... }`, where `event` is the broadcast's name.
 - Each returns a function that stops listening.
 
-## Failures are rejections, not broadcasts
+## Failures are rejections
 
-When a call fails, its promise rejects with a typed error that carries a `code`. There is no error broadcast to listen for. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
+When a call fails, its promise rejects with a typed error that carries a `code`; the failure of a call is never sent as a broadcast. Some packages also broadcast conditions no call is waiting for (for example OAuth `error` or HealthKit `unavailable`); they are listed in the table below and on their pages. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
 
 ```javascript
 try {
@@ -54,9 +56,9 @@ The Legacy polyfill listens to the Despia V4 broadcasts and fires the Despia V3 
 | `nativePushEnabled` | `dsx.module.notify.on('permission')` | `status`: string | The notification permission changed, after an ask or when the app comes back to the foreground. |
 | `firebaseplayerid` / push token | `dsx.module.notify.on('token')` | `kind`: string<br/>`token`: string | A push token arrived or changed, on registration and again on each launch. Upload it to your server each time. |
 | `firebaseplayerid` | `dsx.module.firebase.on('subscription')` | `id`: string<br/>`optedIn`: boolean<br/>`token`: string | Fires when the FCM registration arrives, changes or is deleted, or when you change the opt-in. |
-| `onAppsFlyerDeepLink(p)` | `dsx.module.appsflyer.on('deep_link')` (name freezing) | `af_status`: string<br/>`campaign`: string<br/>`deep_link_sub1`: string<br/>`deep_link_sub2`: string<br/>`deep_link_value`: string<br/>`media_source`: string | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
+| `onAppsFlyerDeepLink(p)` | `dsx.module.appsflyer.on('deepLink')` | `af_status`: string<br/>`campaign`: string<br/>`deep_link_sub1`: string<br/>`deep_link_sub2`: string<br/>`deep_link_value`: string<br/>`media_source`: string | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
 | `onSharedDataReceived(v, type)` / `sharedData` | `dsx.module.sharetarget.on('received')` | `count`: int<br/>`first`: object<br/>`id`: string | A new share finished arriving in the inbox. It is a hint to call take, and the shared items themselves come from take. |
-| `onScreenCaptureAttempt()` | `dsx.module.screenshield.on('captureattempt')` (name freezing) | none | Sent when the system reports a screenshot or the start of a screen recording while the app is on screen, so you can blur content or warn the person. |
+| `onScreenCaptureAttempt()` | `dsx.module.screenshield.on('captureAttempt')` | none | Sent when the system reports a screenshot or the start of a screen recording while the app is on screen, so you can blur content or warn the person. |
 | `onSheetEvent(value)` | `dsx.module.actionsheet.on('select')` | `value`: string | The user picked a row or dismissed the sheet. Dismissing sends no value. |
 | `updateRewardedStatus('true')` | `dsx.module.admob.on('earned')` | `amount`: number<br/>`format`: string<br/>`type`: string | The user earned the reward of a rewarded or rewarded interstitial ad. It fires before the ad closes, beside the show result. |
 | `onMotionChange` | `dsx.module.motion.on('change')` | `accelerometer`: object<br/>`attitude`: object<br/>`gravity`: object<br/>`gyroscope`: object<br/>`heading`: object<br/>`magnetometer`: object<br/>`rotationRate`: object<br/>`status`: string<br/>`timestamp`: int<br/>`userAcceleration`: object | Delivers one sample of the sensors you asked for while the app is open. |
@@ -68,7 +70,7 @@ The Legacy polyfill listens to the Despia V4 broadcasts and fires the Despia V3 
 | `onTerraEvent` | `dsx.module.terra.on('ready')` | `available`: boolean<br/>`connected`: boolean<br/>`provider`: string<br/>`sync`: object<br/>`userId`: string | Fires on every page load with the current connection state, so the page needs no setup call. |
 | `onTerraEvent` | `dsx.module.terra.on('connected')` | `alreadyConnected`: boolean<br/>`params`: object<br/>`provider`: string<br/>`referenceId`: string<br/>`resource`: string<br/>`userId`: string<br/>`via`: string | A source was linked; it carries the same values the connect call returns. |
 | `onTerraEvent` | `dsx.module.terra.on('disconnected')` | none | The person was unlinked inside the app. |
-| `onTerraEvent` | `dsx.module.terra.on('sync_started')` (name freezing) | `days`: int<br/>`source`: string | A sync began, whether you asked for it or the app started it. |
+| `onTerraEvent` | `dsx.module.terra.on('syncStarted')` | `days`: int<br/>`source`: string | A sync began, whether you asked for it or the app started it. |
 | `onTerraEvent` | `dsx.module.terra.on('synced')` | `days`: int<br/>`durationMs`: int<br/>`failed`: object[]<br/>`source`: string<br/>`succeeded`: string[] | A sync finished, with how it went. |
 | `onWebSocketEvent(e)` | `dsx.module.websocket.on('event')` | `attempt`: int<br/>`clean`: boolean<br/>`code`: int<br/>`count`: int<br/>`dataType`: string<br/>`delay`: number<br/>`error`: string<br/>`id`: string<br/>`message_id`: string<br/>`oid`: string<br/>`payload`: object<br/>`pendingOutbound`: int<br/>`protocol`: string<br/>`reason`: string<br/>`ts`: number<br/>`type`: string<br/>`unacked`: int | Sent for everything that happens on a connection: it connects, opens, receives a message, waits to reconnect, closes, fails or drops messages. Check the type field to tell them apart. |
 | `onSpeechRecognitionEvent` | `dsx.module.speechrecognition.on('start')` | `type`: string | The recognizer has started listening. |
@@ -82,9 +84,9 @@ The Legacy polyfill listens to the Despia V4 broadcasts and fires the Despia V3 
 | `onNearbyEvent` | `dsx.module.nearby.on('disconnected')` | `peer`: object<br/>`status`: string<br/>`timestamp`: int | A device disconnected, or a connection attempt ended without connecting on iOS. |
 | `onNearbyEvent` | `dsx.module.nearby.on('payload')` | `bytes`: int<br/>`data`: string<br/>`peer`: object<br/>`status`: string<br/>`timestamp`: int | A message arrived from a connected device. |
 | `onAuthCallbackError(host, code)` | `dsx.module.oauth.on('error')` | `code`: int<br/>`host`: string<br/>`reason`: string | A sign-in could not complete because the callback host is not linked to the app; its fields say which host and which system code. |
+| `onClerkEvent` / `clerkJWT` | `dsx.module.clerk.on('authChanged')` | `signedIn`: boolean | The signed-in state changed: a sign-in, a sign-out, or a session token rotation. It never carries the token: call token() for it. |
+| `observingHealthKit` | `dsx.module.healthkit.on('observing')` | `types`: string[] | The list of health types being watched for background delivery changed, after observe or unobserve. |
 | quick action navigate + injected function | `dsx.module.quickactions.on('tap')` | `value`: string | Fires when the person chooses one of your shortcuts, including when it launched the app. |
 | `healthkitResponse` on a device without health data | `dsx.module.healthkit.on('unavailable')` | `code`: string<br/>`error`: string<br/>`message`: string | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
 
 Despia V3 features that live only in the Legacy polyfill (the Despia V3 audio player, location server posts, the local CDN, Siri shortcuts) keep their Despia V3 callbacks and have no Despia V4 broadcast yet.
-
-{/* TODO-VERIFY: names marked (name freezing) may still be renamed before the 0.0.2 tag (lane EVENT-NAMES-FREEZE). */}

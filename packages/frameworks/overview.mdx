@@ -18,7 +18,7 @@ Every framework talks to Despia V4 the same way: through the global `window.dsx`
 
 ## One rule for every stack
 
-`window.dsx` exists only inside a Despia V4 app. Despia code runs in the browser (the app's web view), never on a server, so read `window.dsx` in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), never during render. Then server-rendered frameworks never reach it on the server, and server and browser output match.
+Today, `window.dsx` is present only inside the Despia V4 app. In a web view app it is only in the browser (the app's web view), so read `window.dsx` in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), never during render. Then server-rendered frameworks never reach it on the server, and server and browser output match.
 
 ## Pick your guide
 

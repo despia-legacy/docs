@@ -25,7 +25,7 @@ import EnvMigration from '/snippets/env-migration.mdx';
 | `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://` are kept. | Nothing. |
 | `@despia/powersync` is **discontinued** and not available in Despia V4. Despia is building its own open-source local database. | Stay on your current Despia V3 build until the replacement is available, or move the data to your own backend API or to IndexedDB. |
 | The local server is HTTPS only. | Nothing for most apps. Do not hard-code `http://` addresses to the local server. |
-| Accessibility uses ARIA. | Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0. |
+| Accessibility uses ARIA. | Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read; they will be retired in a later release. |
 
 ## What the conversion warns about
 

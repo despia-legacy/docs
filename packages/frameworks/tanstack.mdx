@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - Route `loader` and `beforeLoad` also run on the server in TanStack Start, and `createServerFn` functions always do: never read `window.dsx` there.
 - Read it in `useEffect` or an event handler. A TanStack Router app without Start renders in the browser only.

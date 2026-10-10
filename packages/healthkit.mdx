@@ -6,6 +6,9 @@ tag: "V4"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+import MayChange from '/snippets/may-change.mdx';
+
+<MayChange />
 
 <Note>Verified on iOS. The Android implementation (Health Connect) is Alpha: an early implementation that may change and is provided without a service level guarantee. Report bugs to bugs@despia.com.</Note>
 
@@ -382,6 +385,7 @@ Listen with `window.dsx.module.healthkit.on('<broadcast>', (data) => { ... })`. 
 
 | Broadcast | When it fires |
 | :-- | :-- |
+| `observing` | The list of health types being watched for background delivery changed, after observe or unobserve. |
 | `unavailable` | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
 
 ## Configuration

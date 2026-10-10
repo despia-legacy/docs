@@ -6,8 +6,11 @@ tag: "Alpha"
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+import MayChange from '/snippets/may-change.mdx';
 
 <Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
+
+<MayChange />
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.0.2), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -896,6 +899,14 @@ Shows Clerk's prebuilt account screen and waits until it closes.
 
 </Accordion>
 </AccordionGroup>
+
+## Broadcasts
+
+Listen with `window.dsx.module.clerk.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
+
+| Broadcast | When it fires |
+| :-- | :-- |
+| `authChanged` | The signed-in state changed: a sign-in, a sign-out, or a session token rotation. It never carries the token: call token() for it. |
 
 ## Configuration
 

@@ -17,7 +17,7 @@ import EnvNew from '/snippets/env-new.mdx';
   These pages cover **web view (hybrid) apps**: your web app runs inside the Despia app and calls native features from JavaScript. Native UI apps are coming soon.
 </Note>
 
-Every Despia V4 app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
+Every Despia V4 web view app puts one global object on the page: `window.dsx`. Every package in your app is reachable from it with the same dot notation:
 
 ```javascript
 const dsx = window.dsx
@@ -31,7 +31,7 @@ There is nothing to install. The global is there before your first script runs, 
 
 ## Detect Despia V4
 
-`window.dsx` exists only inside a Despia V4 app, where the runtime installs it before your first script runs. In a normal browser it is `undefined`. Despia code runs in the browser (the app's web view), never on a server.
+Today, `window.dsx` is present only inside the Despia V4 app, where the runtime installs it before your first script runs. In a normal browser it is `undefined`. To use a feature, check `window.dsx.has('<package>')`. In a web view app, server code never sees `window.dsx`.
 
 **The rule:** check `window.dsx`, then call through it:
 
@@ -96,7 +96,7 @@ sub.stop()
 
 - **Resolve once.** The call returns a promise with the result.
 - **Stream.** Pass a handler as the second argument. It is called for every update with an object that carries `event` (the update's name), `data` and `final`. The call returns an object with `stop()`.
-- **Files.** A `File` or `Blob` you pass in an argument is uploaded for you and travels to the native side as a URL.
+- **Files.** A `File` or `Blob` in an argument is passed to the package for you.
 
 Each package page lists its actions, their arguments and what they return. The full list is in the sidebar under **Packages**.
 
@@ -116,7 +116,7 @@ try {
 }
 ```
 
-The codes each action can return are listed in the package's own reference. A call that gets no answer rejects with the code `timeout`.
+The codes each action can return are listed in the package's own reference. Packages can add codes in later releases; keep a default branch. A call that gets no answer rejects with the code `timeout`.
 
 ### Broadcasts
 
@@ -136,9 +136,10 @@ No package is needed for any framework. See [Which approach for my stack](/packa
 ## Package status
 
 - **Verified:** proven on iOS and Android in an app's web view. These pages have no badge.
+- **Before 0.1.0**, field and action names on some Verified pages may still change; those pages say so.
 - **Alpha:** an early implementation, marked with an **Alpha** tag in the sidebar and a notice at the top of the page. It may change and is provided without a service level guarantee. Report bugs to bugs@despia.com.
 
 ## What changed in Despia V4
 
 - **The local server is HTTPS only.** Apps that serve their web build from the device do so over HTTPS.
-- **Accessibility uses ARIA.** Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0.
+- **Accessibility uses ARIA.** Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read; they will be retired in a later release.

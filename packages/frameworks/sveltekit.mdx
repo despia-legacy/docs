@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - `+page.server.js`, `+layout.server.js` and `hooks.server.js` run on the server, and a universal `load` runs there too: never read `window.dsx` in them.
 - `onMount` and event handlers run only in the browser.

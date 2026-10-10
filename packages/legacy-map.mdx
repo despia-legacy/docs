@@ -11,6 +11,8 @@ import EnvMigration from '/snippets/env-migration.mdx';
 
 Despia V4 (currently a pre-release, 0.0.2) keeps V3 apps working: the Legacy polyfill answers the old `despia('scheme://...')` calls (the Despia V3 API in the Legacy tab, or a raw URL scheme) and runs the modern package call for you. This table is generated from the polyfill's own map, so it lists exactly what is answered.
 
+<Note>Field and action names of the modern calls may change before 0.1.0; the V3 Legacy calls keep working.</Note>
+
 <Warning>Removed in 0.0.2: `inapppurchase://` and `inappsubscription://` are no longer answered. Use [RevenueCat](/packages/revenuecat) (`dsx.module.revenuecat.purchase`). Still answered: `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://`.</Warning>
 
 Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps the V3 behaviour through its own compatibility module.

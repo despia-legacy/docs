@@ -112,11 +112,11 @@ See [Which approach for my stack](/packages/frameworks/overview).
   <Accordion title="Which frameworks work?">
     Any web framework: React, Next.js, Vue, Nuxt, Svelte, SvelteKit, Angular, SolidJS, Astro or plain HTML. See [Frameworks](/packages/frameworks/overview).
   </Accordion>
-  <Accordion title="Does Despia run on a server?">
-    No. Despia code runs only in the app's web view, in the browser. In frameworks that render on the server, call it from an effect or event handler.
+  <Accordion title="Does window.dsx run on a server?">
+    Your web app's calls to `window.dsx` run in the app's web view, in the browser; server code never sees `window.dsx`. In frameworks that render on the server, call it from an effect or event handler.
   </Accordion>
   <Accordion title="What is window.dsx?">
-    The one global object every Despia V4 app puts on the page. Every package in your app answers on `window.dsx.module.<package>.<action>()`. In a normal browser it is `undefined`. See [Modern API](/packages/overview).
+    The one global object every Despia V4 web view app puts on the page today. Every package in your app answers on `window.dsx.module.<package>.<action>()`. In a normal browser it is `undefined` today; check a feature with `window.dsx.has('<package>')`. See [Modern API](/packages/overview).
   </Accordion>
   <Accordion title="How do native features work?">
     Each feature is a package. You call its actions and get a result, or listen to its broadcasts. See [How calls, results and broadcasts work](/packages/concepts).
@@ -128,6 +128,6 @@ See [Which approach for my stack](/packages/frameworks/overview).
     Yes. The Legacy polyfill keeps Despia V3 calls working on Despia V4. See [Migrate from Despia V3](/packages/migrate-from-v3).
   </Accordion>
   <Accordion title="Where does my data live?">
-    In your own services. Despia never hosts your app, your backend or your users' content. The web app stays on your own hosting.
+    Your web app and your backend stay on your own hosting, and your users' content stays in your own services, with your own keys. Despia does not store your users' content unless you use a Despia service that says so.
   </Accordion>
 </AccordionGroup>

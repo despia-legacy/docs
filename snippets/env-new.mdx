@@ -2,15 +2,15 @@
 
 ```javascript
 if (window.dsx) {
-  // Despia V4: Modern API (dsx.module...)
+  // inside the Despia V4 app today: Modern API (dsx.module...)
 } else {
   // normal browser: web code
 }
 ```
 
-Despia code runs in the browser (the app's web view), never on a server. In React, Next.js, Vue, Svelte and Angular, call it in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), which only run in the browser.
+To use a feature, check it: `window.dsx.has('<package>')` is true when the package is in the app. In a web view app, `window.dsx` is only in the browser (the app's web view); server code (SSR, API routes) never sees it. In React, Next.js, Vue, Svelte and Angular, read it in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), which only run in the browser.
 
-To keep the answer as a value:
+To keep the answer as a value (`"v4"` means inside the Despia V4 app today):
 
 ```javascript
 const env = window.dsx ? "v4" : "web"

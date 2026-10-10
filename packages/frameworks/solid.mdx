@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - `onMount` runs only in the browser, so the component is safe with SolidStart.
 - Never read `window.dsx` in a component body or in a `"use server"` function.

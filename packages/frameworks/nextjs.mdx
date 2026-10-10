@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - **App Router:** put Despia code in a `'use client'` component and call it from `useEffect` or a handler. Server Components, Server Actions, route handlers, middleware and `generateMetadata` run on the server and never touch `window.dsx`.
 - **Pages Router:** the same component works as is. `getServerSideProps`, `getStaticProps` and API routes run on the server and never touch `window.dsx`.

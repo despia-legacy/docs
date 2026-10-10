@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - Custom elements run in the browser. `connectedCallback` is the place to read `window.dsx`, and `disconnectedCallback` stops listening.
 - With Lit server rendering, keep the check in `connectedCallback`, not in `render()`.

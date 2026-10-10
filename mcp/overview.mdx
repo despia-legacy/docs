@@ -9,7 +9,7 @@ import EnvNew from '/snippets/env-new.mdx';
 
 <EnvNew />
 
-The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) lets an AI tool (Claude, ChatGPT, Codex, Cursor, Lovable and others) call tools on a server you connect. Despia has two MCP servers.
+The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) lets an AI tool (Claude, ChatGPT, Codex, Cursor, Lovable and others) call tools on a server you connect. Despia currently has two MCP servers.
 
 <Info>
   Checked 2026-10-09. If a guide here disagrees with what you see in your tool, the tool has changed: tell us at [setup@despia.com](mailto:setup@despia.com).
@@ -55,7 +55,7 @@ npx despia mcp
 - **Tools:** one tool per `despia` command, named `despia_` plus the command: `despia_new`, `despia_import`, `despia_template`, `despia_add`, `despia_packages`, `despia_build`, `despia_builds`, `despia_submit`, `despia_docs`, `despia_doctor` and the rest. A command that takes a sub-command takes it as `verb`, for example `despia_builds` with `verb: "logs"`. Run `npx despia mcp --list` to print every tool name it serves.
 - **Sign-in:** the agent uses the credential this computer already holds. A person runs `npx despia login` once (it opens a browser page with a device code). On a CI machine, set `DESPIA_TOKEN` to a workspace token created by a workspace owner in the console instead. Never paste a token into an AI chat.
 - **Project:** the server works on the project in the folder your AI tool starts it in (the nearest folder with `dsx.config.json`), or pass `--dir <path>`. Cloud tools use the project linked in `.despia/project.json`, or the `project` argument.
-- **Errors:** every failure is the same `{ "error": { "code", "message" } }` body the CLI prints with `--json` and the Despia API returns.
+- **Errors:** every failure has an `error` object with at least `code` and `message` (and sometimes `details`), as the CLI prints with `--json` and the Despia API returns.
 
 <Note>`npx despia mcp` runs the CLI installed in your project (`@despia-native/cli` 0.0.2 or later is a dev dependency of every project made from a Despia template). Outside a project, use `npx -y -p @despia-native/cli despia mcp`.</Note>
 

@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - A React app built with Vite renders in the browser, so `useEffect` and click handlers always run there.
 - Read `window.dsx` in `useEffect` or an event handler, never during render.

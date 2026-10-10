@@ -30,7 +30,7 @@ A failure does not throw into the calling code. The browser raises `unhandledrej
 
 ## Errors: catch the typed rejection
 
-A failed call rejects with an error that carries a `code` (and usually a `message` and `recoverable`). There is no error broadcast to listen for.
+A failed call rejects its promise with an error that carries a `code` (and usually a `message` and `recoverable`); the failure of a call is never sent as a broadcast. Some packages also broadcast conditions that no call is waiting for (for example OAuth `error` or HealthKit `unavailable`); those are listed on their pages.
 
 ```javascript
 try {
@@ -40,7 +40,7 @@ try {
 }
 ```
 
-Codes many packages share: `unsupported_platform`, `unavailable`, `not_configured`, `missing_param`, `permission_denied`, `busy`, `not_ready`, `network_unavailable`, `cancelled`. A call that gets no answer rejects with `timeout`. Each package page lists the codes of its actions.
+Codes many packages share: `unsupported_platform`, `unavailable`, `not_configured`, `missing_param`, `permission_denied`, `busy`, `not_ready`, `network_unavailable`, `cancelled`. A call that gets no answer rejects with `timeout`. Each package page lists the codes of its actions; packages can add codes in later releases, so keep a default branch.
 
 ## Broadcasts: something changed later
 

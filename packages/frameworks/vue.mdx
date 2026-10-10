@@ -14,7 +14,7 @@ import TestIt from '/snippets/test-it.mdx';
 
 ## Where dsx code runs
 
-Only in the browser: the client web view of your app, never during server rendering.
+`window.dsx` is only in the browser: the client web view of your app. Server rendering never sees it.
 
 - A Vue app built with Vite renders in the browser; `onMounted` and event handlers run there.
 - Read `window.dsx` in `onMounted` or a handler, not at the top of `setup`.

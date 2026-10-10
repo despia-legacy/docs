@@ -1,13 +1,13 @@
 ---
 title: "Migrate from Despia V3"
-description: "What changes when a Despia V3 app moves to Despia V4 (pre-release 0.1.0), what keeps working, and what the conversion warns about."
+description: "What changes when a Despia V3 app moves to Despia V4 (pre-release 0.0.2), what keeps working, and what the conversion warns about."
 icon: "right-left"
 tag: "V4"
 ---
 
 import EnvMigration from '/snippets/env-migration.mdx';
 
-<Info>Despia V4 is currently a pre-release (0.1.0), stable for web view apps. 0.1.0 is the release that moves apps from Despia V3 to Despia V4.</Info>
+<Info>Despia V4 is currently a pre-release (0.0.2), stable for web view apps. 0.0.2 is the release that moves apps from Despia V3 to Despia V4.</Info>
 
 <EnvMigration />
 
@@ -38,7 +38,7 @@ When a Despia V3 app is converted to Despia V4, the conversion reads your pages 
 
 Despia V3 custom web paywalls set `window.onRevenueCatOfferings`, called `despia('revenuecat://offerings?offering=<id>')`, and read `offeringsData` (or `offeringsError`) in the callback. Despia V4 answers this on iOS and Android with the same entries: `packageId`, `packageType`, `productId`, `title`, `priceString`, `price`, `currency`, `period { unit, value, iso8601 }`, `pricePerUnitString` and `introOffer`.
 
-{/* TODO-VERIFY: revenuecat://offerings support is on framework branch wip/claude/rc-offerings c4585fd6c9 and must land before the 0.1.0 tag. */}
+{/* TODO-VERIFY: revenuecat://offerings support is on framework branch wip/claude/rc-offerings c4585fd6c9 and must land before the 0.0.2 tag. */}
 
 The modern call is `dsx.module.revenuecat.offerings()`:
 

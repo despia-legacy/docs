@@ -172,20 +172,19 @@ shows you the exact lines to add.
 npx despia package check Modules/Hello
 ```
 
-The check is free and runs on your machine. It catches a misspelled key, a missing platform and a name a
+The check is free. It catches a misspelled key, a missing platform and a name a
 Despia package already uses. Run it after every change.
 
-## Build and run
+## Build
 
-| Your package | Where it builds |
+| Your package | Cloud build |
 | :-- | :-- |
-| Page scripts only, or plain Swift and Kotlin in `swift/` and `kotlin/` | In the cloud, like any Despia build, and on your own machine |
-| Build scripts, `Package.swift`, Gradle files or CMake | On your own machine for now |
+| Page scripts only, or plain Swift and Kotlin in `swift/` and `kotlin/` | Yes, like any Despia build |
+| Build scripts, `Package.swift`, Gradle files or CMake | Not supported in cloud builds yet |
 
-| What you want | Command | Where it runs |
-| :-- | :-- | :-- |
-| Check the package | `npx despia package check Modules/Hello` | your machine |
-| Run on a simulator or emulator | `npx despia run --target ios` / `npx despia run --target android` | your Mac (Xcode) or your machine (Android SDK) |
+Check the package before every build with `npx despia package check Modules/Hello`. Then build the app in the console (**Builds**) or with a cloud build.
+
+{/* HIDDEN for 1.0.0 (owner 2026-10-10: local builds are not advertised yet): "Run on a simulator or emulator: npx despia run --target ios / android (your Mac with Xcode, or your machine with the Android SDK)"; build scripts, Package.swift, Gradle and CMake build on your own machine; "A build on your own machine without a Despia license shows the Despia evaluation watermark." */}
 
 {/* TODO-VERIFY: cloud build of plain Swift/Kotlin custom packages per coordinator 2026-10-10 (bundle); terms wording from the owner. */}
 
@@ -194,8 +193,6 @@ This build includes code written by you or your team. Despia maintains and secur
 You confirm this once per set of custom packages; the console, CLI and MCP ask you before the first build.
 
 Failures caused by Despia are refunded; the first failure of a newly added package is refunded once.
-
-The app shell for web view apps is a commercial Despia package. A build on your own machine without a Despia license shows the Despia evaluation watermark.
 
 ## Your code is yours
 

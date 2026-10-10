@@ -45,8 +45,8 @@ Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps
 | `registerpush://` | [`dsx.module.notify.permission.request()`](/packages/notify) |
 | `getpushwooshid://` | [`dsx.module.pushwoosh.subscription.get()`](/packages/pushwoosh) |
 | `getfirebaseplayerid://` | [`dsx.module.firebase.subscription.get()`](/packages/firebase) |
-| `readhealthkit://` | [`dsx.module.healthkit.read()`](/packages/healthkit) |
-| `writehealthkit://` | [`dsx.module.healthkit.write()`](/packages/healthkit) |
+| `readhealthkit://` | [`dsx.module.health.read()`](/packages/health) |
+| `writehealthkit://` | [`dsx.module.health.write()`](/packages/health) |
 | `get-uuid://` | [`dsx.module.uuid.get()`](/packages/uuid) |
 | `getappversion://` | [`dsx.module.device.app()`](/packages/device) |
 | `getstorelocation://` | [`dsx.module.store.storefront()`](/packages/store) |
@@ -83,7 +83,7 @@ Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps
 | `readcontacts://` | [`dsx.module.contacts.read()`](/packages/contacts) |
 | `contacts://read` | [`dsx.module.contacts.read()`](/packages/contacts) |
 | `requestcontactpermission://` | [`dsx.module.contacts.permission.request()`](/packages/contacts) |
-| `healthkit://state` | [`dsx.module.healthkit.status()`](/packages/healthkit) |
+| `healthkit://state` | [`dsx.module.health.status()`](/packages/health) |
 | `setvault://` | [`dsx.module.identityvault.write()`](/packages/identityvault) |
 | `readvault://` | [`dsx.module.identityvault.read()`](/packages/identityvault) |
 | `sendlocalpushmsg://push.send.cancel` | Legacy polyfill |
@@ -164,9 +164,9 @@ Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps
 | `appsflyer://set_consent` | [`dsx.module.appsflyer.setConsent()`](/packages/appsflyer) |
 | `nfc://read` | [`dsx.module.nfc.read()`](/packages/nfc) |
 | `nfc://write` | [`dsx.module.nfc.write()`](/packages/nfc) |
-| `healthkit://observe` | [`dsx.module.healthkit.observe()`](/packages/healthkit) |
-| `healthkit://unobserve` | [`dsx.module.healthkit.unobserve()`](/packages/healthkit) |
-| `healthkit://workouts` | [`dsx.module.healthkit.workouts()`](/packages/healthkit) |
+| `healthkit://observe` | [`dsx.module.health.observe()`](/packages/health) |
+| `healthkit://unobserve` | [`dsx.module.health.unobserve()`](/packages/health) |
+| `healthkit://workouts` | [`dsx.module.health.workouts()`](/packages/health) |
 | `pagesheet://open` | Legacy polyfill |
 | `fileviewer://` | [`dsx.module.fileviewer.preview()`](/packages/fileviewer) |
 | `ageassurance://check` | [`dsx.module.ageassurance.check()`](/packages/ageassurance) |
@@ -186,7 +186,7 @@ Rows marked *Legacy polyfill* have no one-to-one modern call: the polyfill keeps
 | `terra://disconnect` | [`dsx.module.terra.disconnect()`](/packages/terra) |
 | `terra://settings` | [`dsx.module.terra.permission.openSettings()`](/packages/terra) |
 | `preventdefault://autoscroll` | [`dsx.module.preventdefault.autoscroll()`](/packages/preventdefault) |
-| `healthkit://read` | [`dsx.module.healthkit.read()`](/packages/healthkit) |
+| `healthkit://read` | [`dsx.module.health.read()`](/packages/health) |
 | `localcdn://write` | Legacy polyfill |
 | `localcdn://read` | Legacy polyfill |
 | `localcdn://query` | Legacy polyfill |

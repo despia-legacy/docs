@@ -157,7 +157,7 @@
               {
                 "group": "Health",
                 "pages": [
-                  "packages/healthkit",
+                  "packages/health",
                   "packages/terra"
                 ]
               },
@@ -769,6 +769,10 @@
     {
       "source": "/packages/events",
       "destination": "/packages/broadcasts"
+    },
+    {
+      "source": "/packages/healthkit",
+      "destination": "/packages/health"
     }
   ],
   "logo": {

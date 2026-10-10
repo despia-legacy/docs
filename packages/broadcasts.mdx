@@ -33,7 +33,7 @@ A package declares its broadcasts under `broadcasts` in its `dsx.json`; each pac
 
 ## Failures are rejections
 
-When a call fails, its promise rejects with a typed error that carries a `code`; the failure of a call is never sent as a broadcast. Some packages also broadcast conditions no call is waiting for (for example OAuth `error` or HealthKit `unavailable`); they are listed in the table below and on their pages. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
+When a call fails, its promise rejects with a typed error that carries a `code`; the failure of a call is never sent as a broadcast. Some packages also broadcast conditions no call is waiting for (for example OAuth `error` or Health `unavailable`); they are listed in the table below and on their pages. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
 
 ```javascript
 try {
@@ -88,8 +88,8 @@ The Legacy polyfill listens to the Despia V4 broadcasts and fires the Despia V3 
 | `onNearbyEvent` | `dsx.module.nearby.on('payload')` | `bytes`: int<br/>`data`: string<br/>`peer`: object<br/>`status`: string<br/>`timestamp`: int | A message arrived from a connected device. |
 | `onAuthCallbackError(host, code)` | `dsx.module.oauth.on('error')` | `code`: int<br/>`host`: string<br/>`reason`: string | A sign-in could not complete because the callback host is not linked to the app; its fields say which host and which system code. |
 | `onClerkEvent` / `clerkJWT` | `dsx.module.clerk.on('authChanged')` | `signedIn`: boolean | The signed-in state changed: a sign-in, a sign-out, or a session token rotation. It never carries the token: call token() for it. |
-| `observingHealthKit` | `dsx.module.healthkit.on('observing')` | `types`: string[] | The list of health types being watched for background delivery changed, after observe or unobserve. |
+| `observingHealthKit` | `dsx.module.health.on('observing')` | `types`: string[] | The list of health types being watched for background delivery changed, after observe or unobserve. |
 | quick action navigate + injected function | `dsx.module.quickactions.on('tap')` | `value`: string | Fires when the person chooses one of your shortcuts, including when it launched the app. |
-| `healthkitResponse` on a device without health data | `dsx.module.healthkit.on('unavailable')` | `code`: string<br/>`error`: string<br/>`message`: string | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
+| `healthkitResponse` on a device without health data | `dsx.module.health.on('unavailable')` | `code`: string<br/>`error`: string<br/>`message`: string | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
 
 Despia V3 features that live only in the Legacy polyfill (the Despia V3 audio player, location server posts, the local CDN, Siri shortcuts) keep their Despia V3 callbacks and have no Despia V4 broadcast yet.

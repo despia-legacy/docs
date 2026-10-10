@@ -53,27 +53,13 @@ The full list is in the sidebar under **Packages**. Start with [Modern API](/pac
 
 ## Quick start
 
-<Tabs>
-  <Tab title="Console">
-    1. Create a new app with the **Web App to Mobile App** template and your web app's address.
-    2. In the app, open **Packages**, click **Add Packages** and add what you need.
-    3. Open **Builds** and build for iOS and Android.
+1. In the Despia console, create a new app with the **Web App to Mobile App** template and your web app's address.
+2. In the app, open **Packages**, click **Add Packages** and add what you need.
+3. Open **Builds** and build for iOS and Android.
 
-    See [Add a package](/packages/add-a-package) for every step.
-  </Tab>
-  <Tab title="CLI">
-    ```bash
-    npx despia login
-    npx despia new "My App" --template web-view --set url=https://app.your.site --apply
-    npx despia add haptic
-    npx despia build ios --cloud --plan
-    ```
+See [Add a package](/packages/add-a-package) for every step.
 
-    `new` and `build --cloud` without `--apply` / with `--plan` only check and show what would happen. See [Add a package](/packages/add-a-package).
-  </Tab>
-</Tabs>
-
-{/* TODO-VERIFY: the console label for starting a build was not read from the console source. Template name and CLI line: OpenSource/Templates/web-view/README.md. */}
+{/* TODO-VERIFY: the console label for starting a build was not read from the console source. Template name: OpenSource/Templates/web-view/README.md. */}
 
 ## Works with every framework
 

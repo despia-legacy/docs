@@ -1,0 +1,63 @@
+---
+title: "Use Despia from your AI tool"
+sidebarTitle: "Use from your AI tool"
+description: "Connect Claude Code, Codex, Cursor, Lovable, Base44, Replit, Bolt, ChatGPT and other AI tools to Despia: the Docs MCP, the CLI and the toolchain MCP."
+icon: "robot"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+Two things connect an AI tool to Despia:
+
+| | Despia Docs MCP | Despia CLI and toolchain MCP |
+| :-- | :-- | :-- |
+| What the AI gets | Search and read the Despia documentation | Your Despia project and account: create a web view app, add packages, build |
+| Where it runs | Remote: `https://setup.despia.com/mcp` | On your computer: `npx despia` and `npx despia mcp` |
+| Sign-in | None (public, read-only) | `npx despia login` once on the computer |
+| Works in | Every tool that accepts an MCP URL, including Lovable, Base44, Replit, Bolt and ChatGPT | Local tools: Claude Code, Codex, Cursor, VS Code, Windsurf, Claude Desktop |
+
+## Browser-based builders: the Docs MCP
+
+Add this URL as a custom MCP server in Lovable, Base44, Replit, Bolt, ChatGPT or claude.ai. No authentication is needed.
+
+```text
+https://setup.despia.com/mcp
+```
+
+Step-by-step guides: [Lovable](/mcp/lovable), [Base44](/mcp/base44), [Replit](/mcp/replit), [Bolt](/mcp/bolt), [ChatGPT](/mcp/chatgpt), [Claude](/mcp/claude).
+
+## Local coding agents: the CLI and the toolchain MCP
+
+<Steps>
+  <Step title="Install the CLI">
+    The CLI is the npm package `@despia-native/cli` (0.1.0 or later). Every project made from a Despia template already has it; elsewhere use `npx -y -p @despia-native/cli despia`.
+  </Step>
+  <Step title="Sign in once">
+    ```bash
+    npx despia login
+    ```
+    It shows a code and opens a Despia page in your browser where you approve this computer. The agent uses that sign-in; never paste a token into an AI chat.
+  </Step>
+  <Step title="Add the toolchain MCP to your tool">
+    For Claude Code, in your Despia project's folder:
+    ```bash
+    claude mcp add --transport stdio --scope project despia -- npx despia mcp
+    ```
+    Guides for [Claude Code](/mcp/claude-code), [Codex](/mcp/codex), [Cursor](/mcp/cursor), [VS Code](/mcp/vscode), [Windsurf](/mcp/windsurf) and [other tools](/mcp/other-tools).
+  </Step>
+</Steps>
+
+The toolchain MCP serves one tool per CLI command (`despia_new`, `despia_add`, `despia_packages`, `despia_build` and the rest). The agent can read and plan freely. Steps that cannot be taken back, such as creating the app, starting a paid cloud build or submitting to a store, are handed back as a command for you to run in your terminal.
+
+These tools are for building a **web view app**: your site in the Despia app, with native features through `window.dsx`.
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [MCP overview](/mcp/overview) and [troubleshooting](/mcp/troubleshooting)
+- [Modern API](/packages/overview) and [Frameworks](/packages/frameworks/overview)
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before the CLI steps work outside a template project. Device-code login: CLI account.ts (POST /v1/auth/device) and Cloud/api licensing/auth.ts; the browser-opening behaviour of despia login was not run. Hosted MCP with OAuth: not deployed (wip/claude/remote-mcp-design, parked); not shown. */}

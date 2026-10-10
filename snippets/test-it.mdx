@@ -1,4 +1,5 @@
 1. **In a normal browser.** Run your dev server as usual and open it: `window.dsx` is `undefined`, so you see the web branch.
-2. **In the app.** Build the app in the Despia console (**Builds**) and open it on a device: the app's web view loads your site and the Despia V4 branch runs.
+2. **In the app, from the console.** Build the app in the Despia console (**Builds**) and open it on a device: the app's web view loads your site and the Despia V4 branch runs.
+3. **In the app, from the CLI.** Your Despia app is a small project whose web view opens your site (`Components/App.dsx`, `<DSXWebView origin="..." />`). Point `origin` at the address of your dev server, install a development build on a simulator or emulator with `npx despia run --target ios` (or `android`; this builds on your computer and needs Xcode or the Android SDK), then keep it in sync with `npx despia dev --target ios` (or `android`): every save reaches the app.
 
-{/* TODO-VERIFY: the console flow for a development build that points at a local dev server was not verified. */}
+{/* TODO-VERIFY: pointing DSXWebView origin at a local dev server (http on the LAN vs HTTPS, App Transport Security), the despia run / despia dev --target loop for a web view app, and the console flow for a development build were not run end to end. */}

@@ -1,0 +1,189 @@
+---
+title: "Build a web view app with MCP"
+sidebarTitle: "Build a web view app"
+icon: "mobile-screen"
+description: "Turn a website or a web app into an iOS and Android app from your AI tool, using the Despia MCP servers: create the project, add native features, build and ship."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+This guide walks an AI agent, and you, from a web address to an app in TestFlight and Google Play. It has three parts:
+
+1. [Turn a website into a mobile app](#1-turn-a-website-into-a-mobile-app)
+2. [Turn a web app into a mobile app](#2-turn-a-web-app-into-a-mobile-app)
+3. [Add native features, build and ship](#3-add-native-features-build-and-ship)
+
+<Note>
+  **This is a web view (hybrid) app:** your site runs inside a native app shell, with native features (push, biometrics, purchases, share sheet and more) called from your web code. **Native UI apps are coming soon**; nothing on this page renders native UI.
+</Note>
+
+<Info>
+  Checked 2026-10-09. Tool names below are the tools the Despia toolchain MCP serves (`npx despia mcp --list` prints them all). See [Despia MCP](/mcp/overview) for which server your tool can use.
+</Info>
+
+## Before you start
+
+- **A Despia account**, signed in on your computer once: run `npx despia login` in a terminal (a browser page opens with a code). Agents cannot sign in for you, by design.
+- **A GitHub connection** in your Despia workspace. Your app's files live in your own GitHub repository; Despia writes them with the Despia GitHub App.
+- **An AI tool with the toolchain MCP** added: [Claude Code](/mcp/claude-code), [Codex](/mcp/codex), [Cursor](/mcp/cursor), [VS Code](/mcp/vscode), [Windsurf](/mcp/windsurf) or [Claude Desktop](/mcp/claude#claude-desktop-local-servers).
+- **For store builds:** an Apple Developer account and a Google Play Console account, connected to your project in the Despia console.
+
+<Tip>
+  Working in Lovable, Base44, Bolt, Replit, v0, ChatGPT or claude.ai? Those tools can only reach remote MCP servers: add the [Despia Docs MCP](/mcp/overview#despia-docs-mcp) there so your builder adds native features to your web code correctly, and create the app in the Despia console with **New App** then **Web App to Mobile App**. Everything else on this page still applies.
+</Tip>
+
+### How the agent and you split the work
+
+The agent reads, checks and plans. Anything that creates something outside your project, spends credits or puts an app in front of users comes back as `effect_refused` with the exact `despia ...` command for **you** to run. That is on purpose: a tool call cannot prove a person agreed. Each step below says who does what.
+
+---
+
+## 1. Turn a website into a mobile app
+
+Use this when you have a public site at an address, and no repository to share.
+
+<Warning>
+  **Wrap the app, not the marketing site.** A landing page inside an app shell is not a good app, and Apple rejects it for minimum functionality (App Store Review Guideline 4.2). Point the app at the part people sign in to and use, or at content that works like an app (accounts, saved items, notifications).
+</Warning>
+
+<Steps>
+  <Step title="Find the template">
+    Ask the agent: "List the Despia templates and show the inputs of the web app template."
+
+    The agent calls `despia_template` with `verb: "list"`, then `verb: "show"` and `target: "web-view"`. The **Web App to Mobile App** template (`web-view`) takes:
+
+    | Input | What it is |
+    |---|---|
+    | `url` (required) | The https address the app opens |
+    | `app_name` | Up to 30 characters; empty uses your site's name |
+    | `icon` | A square PNG of at least 1024 x 1024; empty uses your site's icon |
+    | `accent` | The colour of native controls around your site |
+    | `splash` | The launch screen colour |
+    | `swipe_back`, `prevent_zoom`, `refresh_on_open`, `status_bar_follows_page`, `orientation` | Behaviour switches with app-like defaults |
+  </Step>
+
+  <Step title="Pick the GitHub connection">
+    The agent calls `despia_connections` (`verb: "list"`) and picks the GitHub connection that will hold the new repository. If there is none, you add one in the Despia console (or run `npx despia connections add github`, which prints the GitHub App install link).
+  </Step>
+
+  <Step title="Plan the app">
+    Ask: "Plan a Despia web app for https://app.example.com called Example, in a new repository example-app."
+
+    The agent calls `despia_new` with `template: "web-view"`, `set: ["url=https://app.example.com"]`, `name: "Example"`, `connection` and `repo-create: "example-app"` (or `repo: "owner/name"` for an existing empty repository). Without `apply`, this checks every input, the repository and the identifiers, and writes nothing. Add `bundle-id` and `package-name` if you already know your store identifiers.
+  </Step>
+
+  <Step title="Create it (you)">
+    When the plan is clean, create the app yourself. The agent can give you the exact line; it looks like:
+
+    ```bash
+    npx despia new "Example" --template web-view --set url=https://app.example.com --connection <connection-id> --repo-create example-app --apply
+    ```
+
+    Despia writes the project into the repository and returns the project id. On a personal GitHub account, Despia gives you a link to create the repository instead of creating it.
+  </Step>
+</Steps>
+
+Continue with [part 3](#3-add-native-features-build-and-ship).
+
+---
+
+## 2. Turn a web app into a mobile app
+
+Use this for the signed-in product your customers use, built with React, Next.js, Vue, Svelte or any web framework, deployed at an https address. If its code is on GitHub, let Despia look at it first.
+
+<Steps>
+  <Step title="Let Despia detect the repository">
+    Ask: "What does Despia make of my repository acme/web?"
+
+    The agent calls `despia_import` with `repo: "acme/web"` (and `connection` if you have more than one). Despia reads the repository, read-only, and answers what it is and what it offers:
+
+    | Detected | Offer |
+    |---|---|
+    | A web app (React, Vue, Next.js and other frameworks) or a static site | **Web App to Mobile App** |
+    | Capacitor or Cordova | **Web App to Mobile App** |
+    | A Despia (DSX) project | Import as it is |
+    | React Native, Expo, Flutter, Swift or Kotlin | No automatic conversion; start from a template |
+
+    A web view app opens your **deployed** web app, not the repository's code, so you need its https address for the next step.
+  </Step>
+
+  <Step title="Plan and create the app">
+    Same as part 1: `despia_template` to read the inputs, `despia_connections` for the connection, `despia_new` with `template: "web-view"` and `set: ["url=https://app.acme.com"]` to plan. Then you run the `npx despia new ... --apply` line it gives you.
+
+    Point `url` at the page people land on after signing in, or your sign-in page. Your web app keeps its own sign-in; the app shell does not replace it.
+  </Step>
+
+  <Step title="Keep your existing Despia code working">
+    Every web view app comes with three packages: `dom` (the web view shell: swipe back, zoom, orientation, links), `systembars` (status bar and real `env(safe-area-inset-*)` values in your page), and `legacy` (the `window.despia` page API, so existing `despia()` and `despia-native` calls keep working). A new web app that never calls `window.despia` can drop `legacy`.
+  </Step>
+</Steps>
+
+---
+
+## 3. Add native features, build and ship
+
+<Steps>
+  <Step title="Find the features you need">
+    Ask: "Which Despia packages give me push notifications and Face ID?"
+
+    The agent calls `despia_search` with a `query`, and `despia_docs` to read a package's documentation. With the [Docs MCP](/mcp/overview#despia-docs-mcp) connected too, it can also read these docs pages for the web code side.
+  </Step>
+
+  <Step title="Add them">
+    In your project's folder, the agent calls `despia_add` with the `package` name `despia_search` returned. It pins the package in your project, together with what it needs. `despia_packages` lists what the project has, and `despia_remove` takes one out. You can also add packages in the Despia console's package browser.
+
+    {/* TODO-VERIFY: how a package pinned locally with `despia add` reaches the hosted project that cloud builds read (GitHub import-on-push via `despia project backup link --import-on-push`, or a sync verb). Link the DOCS-MODERN-API package import guide here when it lands. */}
+
+    For a project already in the Despia cloud, `despia_features` (with `project`) reviews every feature the app ships, what each adds (permissions, entitlements, SDKs) and whether your web code uses it, and plans removing the ones it does not.
+  </Step>
+
+  <Step title="Call them from your web code">
+    Your pages call the features through the global `window.dsx` (see [Modern API](/packages/overview)). Ask the agent with the Docs MCP: "Add push notification sign-up after login using the Despia V4 Modern API (`window.dsx`)."
+  </Step>
+
+  <Step title="Check the cloud build">
+    Ask: "Run a Despia Cloud build dry run for iOS."
+
+    The agent calls `despia_build` with `target: "ios"`, `cloud: true`, `plan: true` and your `project` id (`despia_account` with `verb: "projects"` lists them). The dry run runs every check, shows the cost in credits and your balance, and starts and charges nothing. Use `profile: "debug"` for a build without store signing.
+  </Step>
+
+  <Step title="Start the build (you)">
+    A cloud build spends credits, so you start it:
+
+    ```bash
+    npx despia build ios --cloud --project <project-id> --wait
+    ```
+
+    Add `--publish testflight` (iOS) or `--publish internal` (Android) to upload the build with your store connection when it finishes. A failed build is refunded.
+  </Step>
+
+  <Step title="Follow the build">
+    The agent calls `despia_builds`: `verb: "list"` for the project's builds, `verb: "show"` with the build `id` for its steps, and `verb: "logs"` for the redacted log and the diagnosis of a failure. `verb: "download"` with `out` saves the artefacts, each checked against its recorded hash.
+  </Step>
+
+  <Step title="Submit for review (you)">
+    The agent calls `despia_submit` with `target: "ios"` (or `"android"`) and `project`: it returns the store checklist and changes nothing. When it is clean, you submit:
+
+    ```bash
+    npx despia submit ios --project <project-id> --declare-lawful-app --apply
+    ```
+
+    On Android, choose the track with `--track` (`internal`, `alpha`, `beta` or `production`) and a staged rollout with `--rollout 0.1`.
+  </Step>
+</Steps>
+
+## Prompts for the whole flow
+
+- "Plan a Despia web app for https://app.example.com, check the inputs, and give me the one command to create it."
+- "Look at my repository acme/web with Despia and tell me what kind of app it can become."
+- "Add push notifications and biometric sign-in to this Despia project and show me the web code to call them."
+- "Dry-run an Android cloud build for this project, then give me the command to start it with an upload to the internal track."
+- "My last Despia build failed: read the logs and tell me how to fix it."
+
+## Related
+
+- [Despia MCP overview](/mcp/overview)
+- [Troubleshooting](/mcp/troubleshooting)
+- [Apple iOS deployment](/deployment/apple-ios/automatic) and [Google Android deployment](/deployment/google-android/automatic)

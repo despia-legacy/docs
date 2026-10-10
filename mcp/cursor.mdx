@@ -1,0 +1,52 @@
+---
+title: "Cursor"
+icon: "arrow-pointer"
+description: "Add the Despia Docs MCP and the Despia toolchain MCP to Cursor with mcp.json."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against the [Cursor MCP documentation](https://cursor.com/docs/context/mcp). Cursor connects remote servers by URL directly; you no longer need `mcp-remote` for the Despia Docs MCP.
+</Info>
+
+## Add both servers
+
+Create `.cursor/mcp.json` in your Despia project (for this project) or `~/.cursor/mcp.json` (for every project):
+
+```json .cursor/mcp.json
+{
+  "mcpServers": {
+    "despia-docs": {
+      "url": "https://setup.despia.com/mcp"
+    },
+    "despia": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["despia", "mcp"]
+    }
+  }
+}
+```
+
+- `despia-docs` is the remote [Docs MCP](/mcp/overview#despia-docs-mcp): no sign-in.
+- `despia` is the local [toolchain MCP](/mcp/overview#despia-toolchain-mcp-despia-mcp). `npx despia mcp` uses the CLI installed in your project. In the global file, use `["-y", "-p", "@despia-native/cli", "despia", "mcp", "--dir", "${workspaceFolder}"]` instead.
+- Sign in to Despia once in Cursor's terminal: `npx despia login`.
+
+Open Cursor's settings to see both servers and their tools. If one fails, the **Output** panel has **MCP Logs**.
+
+<Note>Requires `@despia-native/cli` 0.1.0 or later.</Note>
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before these steps work outside a template project. */}
+
+## Try
+
+- "Use the despia tools to list this project's packages."
+- "Search the Despia docs and add the native share sheet to the share button."
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

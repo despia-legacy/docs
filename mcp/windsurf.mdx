@@ -1,0 +1,51 @@
+---
+title: "Windsurf"
+icon: "wind"
+description: "Add the Despia Docs MCP and the Despia toolchain MCP to Windsurf (Devin Desktop) Cascade."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against the [Cascade MCP documentation](https://docs.devin.ai/desktop/cascade/mcp). Windsurf's documentation now lives under **Devin Desktop**; the Cascade agent reads `mcp_config.json`.
+</Info>
+
+## Add both servers
+
+<Steps>
+  <Step title="Open the MCP config">
+    In the Cascade panel, open the **…** menu, go to **MCPs** and choose **Open MCP config file**. The file is `~/.config/devin/mcp_config.json` (Windows: `%APPDATA%\devin\mcp_config.json`). Older Windsurf versions use `~/.codeium/windsurf/mcp_config.json`.
+  </Step>
+  <Step title="Add Despia">
+    ```json mcp_config.json
+    {
+      "mcpServers": {
+        "despia-docs": {
+          "serverUrl": "https://setup.despia.com/mcp"
+        },
+        "despia": {
+          "command": "npx",
+          "args": ["-y", "-p", "@despia-native/cli", "despia", "mcp", "--dir", "/path/to/your/project"]
+        }
+      }
+    }
+    ```
+    Replace `/path/to/your/project` with your Despia project's folder.
+  </Step>
+  <Step title="Sign in and refresh">
+    Sign in to Despia once in a terminal (`npx -y -p @despia-native/cli despia login`), then refresh the MCP list in Cascade.
+  </Step>
+</Steps>
+
+On Enterprise plans an admin may have to turn MCP on, and Teams and Enterprise admins can limit which servers are allowed. Cascade uses at most 100 tools across all servers, so you may want to switch off Despia tools you do not use.
+
+<Note>Requires `@despia-native/cli` 0.1.0 or later.</Note>
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before these steps work outside a template project. */}
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

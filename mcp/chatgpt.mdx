@@ -1,0 +1,46 @@
+---
+title: "ChatGPT"
+icon: "comments"
+description: "Add the Despia Docs MCP to ChatGPT as a custom MCP server."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against OpenAI's [Connect from ChatGPT](https://developers.openai.com/plugins/deploy/connect-chatgpt) guide. ChatGPT reaches MCP servers from OpenAI's cloud, so it only connects **remote** servers: use the Despia Docs MCP.
+</Info>
+
+<Note>
+  Which ChatGPT plans can add custom MCP servers, and whether developer mode has to be on first, has changed several times. On Business, Enterprise and Edu workspaces an admin may have to allow custom servers. If you do not see the option below, check your plan and workspace settings in [OpenAI's help center](https://help.openai.com).
+</Note>
+
+{/* TODO-VERIFY: ChatGPT plan matrix and whether the developer-mode toggle is still required (help center article returned 403 on 2026-10-09). Re-check the menu path chatgpt.com/plugins > + > Add custom MCP server on a live account. */}
+
+## Add the Despia Docs MCP
+
+<Steps>
+  <Step title="Open plugins">
+    Go to [chatgpt.com/plugins](https://chatgpt.com/plugins) and click **+**, then **Add custom MCP server**.
+  </Step>
+  <Step title="Describe the server">
+    - **Name:** `Despia Docs`
+    - **Description:** `Search and read the Despia documentation.`
+  </Step>
+  <Step title="Connect">
+    Under **Connection**, enter `https://setup.despia.com/mcp`. Choose **no authentication**: the Docs MCP is public and read-only.
+  </Step>
+  <Step title="Create it">
+    Confirm the warning about custom servers, then create it. Enable **Despia Docs** in a chat from the tools menu and ask: "Using Despia Docs, how do I add in-app purchases to my web app?"
+  </Step>
+</Steps>
+
+## Codex and the ChatGPT desktop app
+
+The ChatGPT desktop app shares its MCP configuration with Codex, which can also run the local Despia toolchain MCP. See [Codex](/mcp/codex).
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

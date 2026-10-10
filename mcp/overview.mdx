@@ -1,0 +1,114 @@
+---
+title: "Despia MCP"
+sidebarTitle: "Overview"
+icon: "plug"
+description: "Connect your AI tool to Despia over the Model Context Protocol: which server to use, how sign-in works, and what each one can do."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) lets an AI tool (Claude, ChatGPT, Codex, Cursor, Lovable and others) call tools on a server you connect. Despia has two MCP servers.
+
+<Info>
+  Checked 2026-10-09. If a guide here disagrees with what you see in your tool, the tool has changed: tell us at [setup@despia.com](mailto:setup@despia.com).
+</Info>
+
+## Which server do I want?
+
+| | Despia Docs MCP | Despia toolchain MCP |
+|---|---|---|
+| **What it gives your AI** | The Despia documentation: search and read every page | Your Despia project and account: templates, packages, builds, store checks, the `despia` command table |
+| **Where it runs** | Remote, `https://setup.despia.com/mcp` | Locally on your computer, `despia mcp` |
+| **Transport** | Streamable HTTP | stdio |
+| **Sign-in** | None (public, read-only) | `despia login` once on your computer |
+| **Works in web builders** (Lovable, Base44, Bolt, Replit, v0, ChatGPT, claude.ai) | Yes, where the builder accepts a custom MCP URL | No: they cannot start a program on your computer |
+| **Requires** | Nothing | `@despia-native/cli` 0.1.0 or later |
+
+**Rule of thumb:**
+
+- Building in a browser-based builder? Add the **Docs MCP**, so the builder writes correct Despia code.
+- Working in a local coding agent (Claude Code, Codex CLI, Cursor, VS Code, Windsurf, Claude Desktop)? Add **both**: the Docs MCP for answers, the toolchain MCP to act on your project.
+
+## Despia Docs MCP
+
+```text
+https://setup.despia.com/mcp
+```
+
+- **Transport:** streamable HTTP. No API key, no OAuth: it serves the same public pages you are reading now.
+- **Tools:** `search_despia_documentation` (search every page) and `query_docs_filesystem_despia_documentation` (read a page in full). Both are read-only.
+- **Use it for:** "how do I add push notifications with Despia?", "which package gives me biometrics?", "write the code to open the native share sheet".
+
+The existing [MCP Server](/mcp-server) page covers this server too.
+
+## Despia toolchain MCP (`despia mcp`)
+
+The `despia` CLI can serve its whole command table as MCP tools to an agent on your computer:
+
+```bash
+npx despia mcp
+```
+
+- **Transport:** stdio (JSON-RPC on stdin and stdout). Your AI tool starts it as a local command; there is no URL and no port.
+- **Tools:** one tool per `despia` command, named `despia_` plus the command: `despia_new`, `despia_import`, `despia_template`, `despia_add`, `despia_packages`, `despia_build`, `despia_builds`, `despia_submit`, `despia_docs`, `despia_doctor` and the rest. A command that takes a sub-command takes it as `verb`, for example `despia_builds` with `verb: "logs"`. Run `npx despia mcp --list` to print every tool name it serves.
+- **Sign-in:** the agent uses the credential this computer already holds. A person runs `npx despia login` once (it opens a browser page with a device code). On a CI machine, set `DESPIA_TOKEN` to a workspace token created by a workspace owner in the console instead. Never paste a token into an AI chat.
+- **Project:** the server works on the project in the folder your AI tool starts it in (the nearest folder with `dsx.config.json`), or pass `--dir <path>`. Cloud tools use the project linked in `.despia/project.json`, or the `project` argument.
+- **Errors:** every failure is the same `{ "error": { "code", "message" } }` body the CLI prints with `--json` and the Despia API returns.
+
+<Note>`npx despia mcp` runs the CLI installed in your project (`@despia-native/cli` 0.1.0 or later is a dev dependency of every project made from a Despia template). Outside a project, use `npx -y -p @despia-native/cli despia mcp`.</Note>
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before these steps work outside a template project. */}
+
+### What the agent may do, and what you confirm
+
+An AI tool call is not a person at a keyboard. So the toolchain MCP lets the agent **read and plan** freely, and hands anything that **cannot be taken back** to you:
+
+| The agent can | You confirm in your terminal |
+|---|---|
+| List templates, read a template's inputs, detect what a GitHub repository is | Creating the app (`despia new ... --apply`, `despia import ... --apply`) |
+| Plan a new app and check every input, the repository and the identifiers | Starting a Despia Cloud build (it spends credits): the agent runs the dry run with the cost |
+| Add, remove and pin packages inside the project | Submitting to the App Store or Google Play |
+| Read builds, follow logs, download artefacts | Signing in or out, buying credits, Apple ID sessions |
+
+When the agent asks for one of these, the tool answers with the error code `effect_refused`, the reason, and `details.run`: the exact `despia ...` line for you to run. Most agents show it to you; copy it into your terminal.
+
+{/* TODO-VERIFY (coming, not deployed 2026-10-10): the hosted Despia MCP with OAuth (design on framework branch wip/claude/remote-mcp-design, parked). Do not show it until it is live. */}
+
+## Install guides
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="terminal" href="/mcp/claude-code">CLI one-liners for both servers.</Card>
+  <Card title="Claude" icon="message-bot" href="/mcp/claude">claude.ai and Claude Desktop connectors.</Card>
+  <Card title="Codex" icon="code" href="/mcp/codex">Codex CLI and IDE extension.</Card>
+  <Card title="ChatGPT" icon="comments" href="/mcp/chatgpt">Developer mode connectors.</Card>
+  <Card title="Cursor" icon="arrow-pointer" href="/mcp/cursor">`mcp.json`, project or global.</Card>
+  <Card title="VS Code" icon="code-compare" href="/mcp/vscode">GitHub Copilot agent mode.</Card>
+  <Card title="Windsurf" icon="wind" href="/mcp/windsurf">Cascade MCP config.</Card>
+  <Card title="Lovable" icon="heart" href="/mcp/lovable">Custom MCP connector.</Card>
+  <Card title="Base44" icon="cube" href="/mcp/base44">MCP connections.</Card>
+  <Card title="Replit" icon="play" href="/mcp/replit">Replit Agent MCP servers.</Card>
+  <Card title="Bolt" icon="bolt" href="/mcp/bolt">bolt.new connectors.</Card>
+  <Card title="v0 and others" icon="grid-2" href="/mcp/other-tools">v0, Zed, Gemini CLI, Cline.</Card>
+</CardGroup>
+
+Then: [Build a web view app with MCP](/mcp/build-web-view-app) and [Troubleshooting](/mcp/troubleshooting).
+
+## What to try first
+
+Paste one of these into your AI tool once Despia is connected.
+
+**With the Docs MCP**
+
+- "Using the Despia docs, add native push notifications to this app with the Despia V4 Modern API (`window.dsx`), and show me where to put my OneSignal ID."
+- "Search the Despia documentation: how do I check whether my web app is running inside the Despia app?"
+- "Which Despia features do I need for Sign in with Apple and in-app purchases? Link the pages."
+
+**With the toolchain MCP**
+
+- "List the Despia templates and show me the inputs of the web app template."
+- "Plan a Despia web view app for https://app.example.com and tell me what each input will be."
+- "Which Despia packages does this project use, and what does each one add to the app?"
+- "Run a Despia Cloud build dry run for iOS and tell me the cost and anything that would fail."
+- "Show the logs of my last failed Despia build and explain the failure."

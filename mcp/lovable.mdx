@@ -1,0 +1,40 @@
+---
+title: "Lovable"
+icon: "heart"
+description: "Add the Despia Docs MCP to Lovable as a custom MCP connector, so Lovable writes correct Despia code."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against Lovable's [custom MCP guide](https://docs.lovable.dev/integrations/custom-mcp) and [chat connectors](https://docs.lovable.dev/integrations/chat-connectors). Lovable only connects **remote** MCP servers by URL, so it uses the Despia Docs MCP.
+</Info>
+
+## Add the Despia Docs MCP
+
+<Steps>
+  <Step title="Open Connectors">
+    In Lovable, open **Connectors** (from your dashboard or from inside a project).
+  </Step>
+  <Step title="Add a custom MCP server">
+    Click **+** at the top right and choose **MCP server**. If the option is greyed out, a workspace admin has turned custom MCP servers off (Business and Enterprise workspaces control this under the connector admin settings).
+  </Step>
+  <Step title="Fill in the server">
+    - **Server name:** `Despia Docs`
+    - **Server URL:** `https://setup.despia.com/mcp`
+    - **Authentication:** none. The Docs MCP is public and read-only, so skip OAuth and API keys.
+  </Step>
+  <Step title="Save and try it">
+    Save the connector, then ask in a project chat: "Using the Despia Docs MCP, add native haptic feedback to the checkout button with the Despia V4 Modern API (`window.dsx`)."
+  </Step>
+</Steps>
+
+Custom connectors are personal to your Lovable account and are available on every Lovable plan. They give the **Lovable chat** tools while it builds; they are never part of the app you publish.
+
+## Next
+
+- Lovable builds React apps: see [React (Vite)](/packages/frameworks/react) and the [Modern API](/packages/overview).
+- Ready to ship? [Build a web view app with MCP](/mcp/build-web-view-app).
+- Something wrong? [Troubleshooting](/mcp/troubleshooting).

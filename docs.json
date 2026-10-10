@@ -21,10 +21,38 @@
               "packages/overview",
               "packages/concepts",
               "packages/add-a-package",
+              "packages/ai-tools",
               "packages/broadcasts",
               "packages/push-notifications",
               "packages/migrate-from-v3",
               "packages/legacy-map"
+            ]
+          },
+          {
+            "group": "MCP",
+            "icon": "plug",
+            "pages": [
+              "mcp/overview",
+              "mcp/build-web-view-app",
+              {
+                "group": "Install guides",
+                "icon": "download",
+                "pages": [
+                  "mcp/claude-code",
+                  "mcp/claude",
+                  "mcp/codex",
+                  "mcp/chatgpt",
+                  "mcp/cursor",
+                  "mcp/vscode",
+                  "mcp/windsurf",
+                  "mcp/lovable",
+                  "mcp/base44",
+                  "mcp/replit",
+                  "mcp/bolt",
+                  "mcp/other-tools"
+                ]
+              },
+              "mcp/troubleshooting"
             ]
           },
           {

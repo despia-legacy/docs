@@ -1,0 +1,77 @@
+---
+title: "Claude Code"
+icon: "terminal"
+description: "Add the Despia Docs MCP and the Despia toolchain MCP to Claude Code with one CLI command each."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against the [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp). Claude Code runs on your computer, so it can use **both** Despia servers. The CLI is the fastest way to add them.
+</Info>
+
+## Add the Despia Docs MCP
+
+```bash
+claude mcp add --transport http despia-docs https://setup.despia.com/mcp
+```
+
+No sign-in is needed: the Docs MCP is public and read-only.
+
+## Add the Despia toolchain MCP
+
+Run this **in your Despia project's folder** (the one with `dsx.config.json`):
+
+```bash
+claude mcp add --transport stdio --scope project despia -- npx despia mcp
+```
+
+- `--scope project` writes the server to `.mcp.json` in the project, so everyone who clones the repository gets it. Claude Code asks each person to approve a project server the first time.
+- Everything after `--` is the command Claude Code starts: `npx despia mcp`, the CLI installed in your project.
+- Sign in once in a normal terminal with `npx despia login`. The agent uses that sign-in; it cannot sign in for you.
+
+To have it in every folder instead, add it for your user with the published package:
+
+```bash
+claude mcp add --transport stdio --scope user despia -- npx -y -p @despia-native/cli despia mcp
+```
+
+<Note>Requires `@despia-native/cli` 0.1.0 or later.</Note>
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before these steps work outside a template project. */}
+
+## Or commit the config
+
+The project command above writes this `.mcp.json`; you can also write it by hand:
+
+```json .mcp.json
+{
+  "mcpServers": {
+    "despia-docs": {
+      "type": "http",
+      "url": "https://setup.despia.com/mcp"
+    },
+    "despia": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["despia", "mcp"]
+    }
+  }
+}
+```
+
+## Check it
+
+Start `claude` in the project and run `/mcp`: both servers should show as connected. Then try:
+
+- "List the Despia templates and show me the inputs of the web app template."
+- "Search the Despia docs for how to add Sign in with Apple."
+
+When a Despia tool answers `effect_refused`, Claude shows you the `despia ...` command to run yourself; see [how the agent and you split the work](/mcp/build-web-view-app#how-the-agent-and-you-split-the-work).
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

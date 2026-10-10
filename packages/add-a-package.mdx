@@ -1,6 +1,6 @@
 ---
 title: "Add a package"
-description: "Add a Despia package to your app from the Despia console."
+description: "Add a Despia package to your web view app from the Despia console or the CLI."
 icon: "square-plus"
 tag: "V4"
 ---
@@ -13,7 +13,7 @@ import EnvNew from '/snippets/env-new.mdx';
 
 A package is a native feature your web app can call, such as payments, push notifications or sign-in. Your app only contains the packages you add. Once a package is added and the app is rebuilt, it answers on `window.dsx.module.<package>` (see [Modern API](/packages/overview)).
 
-Packages are added in the Despia console.
+There are two ways to add one. Both change the same project.
 
 ## In the console
 
@@ -37,3 +37,41 @@ Packages are added in the Despia console.
 </Steps>
 
 To browse every package before choosing an app, click **Packages** in the workspace section of the sidebar. To change a package's settings later, open it from the app's **Packages** page and click **Configure**. **Remove from This App** takes it out again.
+
+## With the CLI
+
+The CLI is the npm package `@despia-native/cli` (0.1.0 or later). Inside a project, run it with `npx despia`, or install it globally with `npm install -g @despia-native/cli`.
+
+<Steps>
+  <Step title="Find the package">
+    ```bash
+    npx despia search camera
+    ```
+    This searches the built-in index of first-party packages and works offline.
+  </Step>
+  <Step title="Preview the change">
+    ```bash
+    npx despia add revenuecat --plan
+    ```
+    `--plan` prints exactly what would change and writes nothing.
+  </Step>
+  <Step title="Add it">
+    ```bash
+    npx despia add revenuecat
+    ```
+    A first-party package is added to the `modules` list in your project's `dsx.config.json`, together with the packages it depends on.
+  </Step>
+  <Step title="Check what is in the app">
+    ```bash
+    npx despia packages
+    ```
+  </Step>
+</Steps>
+
+`npx despia remove <package>` takes a package out again (also with `--plan`). If you pass a capability instead of a package name, for example `npx despia add analytics`, nothing is written: the CLI lists the packages that provide that capability so you can choose one. A typo gets a "Did you mean" suggestion.
+
+<Note>
+  To start from a website, `npx despia new --template web-view --set url=https://app.your.site` checks the inputs and writes nothing; `--apply` creates the app. Web App to Mobile App is the template offered in 0.1.0.
+</Note>
+
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before the CLI steps work outside a template project. */}

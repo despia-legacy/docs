@@ -1,0 +1,39 @@
+---
+title: "Bolt"
+icon: "bolt"
+description: "Add the Despia Docs MCP to bolt.new as a custom connector."
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<EnvNew />
+
+<Info>
+  Checked 2026-10-09 against Bolt's [Connect to MCP servers](https://support.bolt.new/building/using-bolt/connect-mcp) guide. Bolt connects **remote** MCP servers by URL, so it uses the Despia Docs MCP.
+</Info>
+
+## Add the Despia Docs MCP
+
+<Steps>
+  <Step title="Open connectors">
+    On the bolt.new home page, click **+** in the chat box, then **Connectors**, then **Manage connectors**.
+  </Step>
+  <Step title="Add a custom MCP server">
+    Choose **Custom MCP server** and fill in:
+
+    - **Name:** `Despia Docs`
+    - **URL:** `https://setup.despia.com/mcp`
+    - **Transport type:** **HTTP**
+    - **Authentication:** **None** (the Docs MCP is public and read-only)
+
+    Turn on **Auto-enable for all projects** if you want it in every project.
+  </Step>
+  <Step title="Connect">
+    Click **Connect**, then ask: "Using the Despia docs, add native push notifications to this app with the Despia V4 Modern API (`window.dsx`)."
+  </Step>
+</Steps>
+
+## Next
+
+- [Build a web view app with MCP](/mcp/build-web-view-app)
+- [Troubleshooting](/mcp/troubleshooting)

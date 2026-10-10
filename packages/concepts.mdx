@@ -33,7 +33,7 @@ A failure does not throw into the calling code. The browser raises `unhandledrej
 
 ## Errors: catch the typed rejection
 
-A failed call rejects its promise with an error that carries a `code` (and usually a `message` and `recoverable`); the failure of a call is never sent as a broadcast. Some packages also broadcast conditions that no call is waiting for (for example OAuth `error` or Health `unavailable`); those are listed on their pages.
+A failed call rejects its promise with an error that carries a `code` (and usually a `message` and `recoverable`); the failure of a call is never sent as a broadcast. Some packages also broadcast conditions that no call is waiting for (for example OAuth `error` or HealthKit `unavailable`); those are listed on their pages.
 
 ```javascript
 try {

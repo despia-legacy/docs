@@ -1,0 +1,112 @@
+---
+title: "Add the Despia connector to your AI builder"
+sidebarTitle: "Add the Despia connector"
+description: "Add the Despia connector to Lovable, Base44, Bolt, Replit, ChatGPT, Claude Code, Cursor or Codex. Your builder then turns your app into an iPhone and Android app and publishes it for you."
+icon: "plug"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+{/* HIDDEN until the hosted Despia connector is live (owner). Host, tool names and permission names are placeholders: TODO-VERIFY when the lane reports. */}
+
+Add the Despia connector to your AI builder, and the builder turns your web app into an iPhone and Android app and publishes it to the App Store and Google Play for you. It reads this documentation, sets up Despia and runs the builds.
+
+The connector address:
+
+```text
+https://mcp.despia.com/mcp
+```
+
+{/* TODO-VERIFY: host of the hosted connector (placeholder https://mcp.despia.com/mcp). */}
+
+## Add it in one step
+
+<Tabs>
+  <Tab title="Lovable">
+    1. Open **Connectors**, click **+** and choose **MCP server**.
+    2. Name it `Despia` and paste the connector address.
+    3. Save, then sign in to Despia when asked.
+  </Tab>
+  <Tab title="Base44">
+    1. Click your workspace name, then **Account preferences**, then **MCP Connections**.
+    2. Click **Add custom MCP**, name it `Despia` and paste the connector address.
+    3. Click **Test & add**, then sign in to Despia when asked.
+  </Tab>
+  <Tab title="Bolt">
+    1. In the chat box, click **+**, then **Connectors**, then **Manage connectors**.
+    2. Add a custom server named `Despia` with the connector address.
+    3. Click **Connect**, then sign in to Despia when asked.
+  </Tab>
+  <Tab title="Replit">
+    1. Go to [replit.com/integrations](https://replit.com/integrations) and find **MCP Servers**.
+    2. Click **+ Add MCP server**, name it `Despia` and paste the connector address.
+    3. Click **Test & save**, then sign in to Despia when asked.
+  </Tab>
+  <Tab title="ChatGPT">
+    1. Go to [chatgpt.com/plugins](https://chatgpt.com/plugins), click **+**, then **Add custom MCP server**.
+    2. Name it `Despia` and paste the connector address under **Connection**.
+    3. Create it, then sign in to Despia when asked.
+  </Tab>
+  <Tab title="Claude Code">
+    1. In a terminal, run: `claude mcp add --transport http despia https://mcp.despia.com/mcp`
+    2. Start Claude Code and run `/mcp`.
+    3. Choose `despia` and sign in to Despia in your browser.
+  </Tab>
+  <Tab title="Cursor">
+    1. Open `.cursor/mcp.json` (or `~/.cursor/mcp.json`).
+    2. Add `"despia": { "url": "https://mcp.despia.com/mcp" }` under `mcpServers`.
+    3. Open Cursor's settings and sign in to Despia when asked.
+  </Tab>
+  <Tab title="Codex">
+    1. In a terminal, run: `codex mcp add despia --url https://mcp.despia.com/mcp`
+    2. Start Codex.
+    3. Sign in to Despia in your browser when asked.
+  </Tab>
+</Tabs>
+
+Your builder will ask you to sign in to Despia once. Then ask it, for example: "Turn this app into an iPhone and Android app with Despia and publish it to TestFlight."
+
+{/* TODO-VERIFY: each builder's sign-in step for a connector that needs sign-in (OAuth): Lovable, Base44, Bolt, Replit, ChatGPT menus were checked 2026-10-09 for a connector without sign-in (despia-legacy/docs mcp/ guides); Claude Code /mcp authentication and Codex sign-in for remote servers not re-checked. */}
+
+## What it can do
+
+- Read this documentation and answer questions about your app.
+- Add native features (packages) to your app and change its settings.
+- Build your iPhone and Android app.
+- Fill in your store listing and screenshots.
+- Publish to TestFlight and the Play internal test track, and manage testers.
+
+## Keys and files never go through your AI
+
+When your app needs a key or a file from Apple or Google (an App Store Connect key, a Google Play service account, a push notification key) or your screenshots, you get a secure link to upload it yourself. If you paste a secret into the chat, the connector refuses it.
+
+## Costs and limits
+
+Builds use your Despia credits. The connector shows what a build will do before it starts one. There are rate limits on how often it can be called.
+
+## Details
+
+For developers: the Despia connector is an MCP server at `https://mcp.despia.com/mcp` (Streamable HTTP). Sign-in uses OAuth in your browser: you choose the Despia workspace and approve what the builder may do.
+
+| Permission | What it allows |
+| :-- | :-- |
+| Read | Read your projects, builds, packages and this documentation |
+| Change projects | Add packages and change settings in your projects |
+| Builds | Start builds, paid with your credits |
+| Store publishing | Upload builds, set your store listing and manage testers |
+| Account admin | Workspace members and settings |
+
+A refused secret answers with the error code `secret_in_chat`. You can disconnect the builder at any time in the Despia console.
+
+{/* TODO-VERIFY: permission names and their mapping to API scopes (design doc 24-remote-mcp-oauth.md on wip/claude/remote-mcp-design maps OAuth scopes onto workspace token scopes); the secure upload link flow and the secret_in_chat code; rate limits; where the console lists connected apps ("Connected apps" in the design). */}
+
+## Troubleshooting
+
+- **The builder does not ask you to sign in:** remove the connector and add it again.
+- **Sign-in shows the wrong workspace:** sign out of Despia in your browser, then sign in again and choose the workspace.
+- **A build or publish step is refused:** the permission is missing. Sign in again and approve it.
+
+## For developers: window.dsx
+
+<EnvNew />

@@ -1,10 +1,15 @@
 ---
 title: "Claude"
 icon: "message-bot"
-description: "Add the Despia Docs MCP to claude.ai and Claude Desktop as a custom connector, and the toolchain MCP to Claude Desktop as a local server."
+description: "Add the Despia Docs connector to claude.ai and Claude Desktop, so Claude writes correct Despia code; developers can also run the toolchain on Claude Desktop."
 ---
 
 import EnvNew from '/snippets/env-new.mdx';
+import ConnectorCallout from '/snippets/connector-callout.mdx';
+
+<ConnectorCallout />
+
+Add the Despia Docs connector to claude.ai and Claude Desktop. It lets Claude read this documentation, so it writes correct Despia code for your app.
 
 <EnvNew />
 
@@ -12,7 +17,7 @@ import EnvNew from '/snippets/env-new.mdx';
   Checked 2026-10-09 against Claude Help Center: [custom connectors](https://support.claude.com/en/articles/11175166) and [local MCP servers on Claude Desktop](https://modelcontextprotocol.io/docs/develop/connect-local-servers). Custom connectors are in beta and are available on Free (one custom connector), Pro, Max, Team and Enterprise.
 </Info>
 
-## Add the Despia Docs MCP (claude.ai and Claude Desktop)
+## Add the Despia Docs connector (claude.ai and Claude Desktop)
 
 A custom connector added on claude.ai also appears in Claude Desktop and the Claude mobile apps.
 

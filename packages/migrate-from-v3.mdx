@@ -23,7 +23,7 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 | :-- | :-- |
 | `inapppurchase://` and `inappsubscription://` are removed. Nothing answers them in Despia V4. | Buy through RevenueCat: `dsx.module.revenuecat.purchase({ product })` (see [RevenueCat](/packages/revenuecat)), or on a Despia V3 page `despia('revenuecat://purchase?external_id=<user>&product=<id>')`. |
 | `getpurchasehistory://`, `restoreinapppurchases://`, `revenuecat://` and `cancelinapppurchase://` are kept. | Nothing. |
-| The local database of `@despia/powersync` is **not supported in Despia V4 0.1.0**. It is planned for 1.0.0. | Keep the app on its Despia V3 build until 1.0.0, or move the data off the local database first (your backend API through `fetch`, or page storage such as IndexedDB). |
+| `@despia/powersync` is **discontinued** and is not available in Despia V4. Despia is building its own open-source local database solution. | Stay on the current build until it is available, or move the data to your app's own backend API (through `fetch`) or to IndexedDB. |
 | The local server is HTTPS only. | Nothing for most apps. Do not hard-code `http://` addresses to the local server. |
 | Accessibility uses ARIA. | Write standard `aria-*` and `role` attributes. The older `a11y*` attributes are still read until 1.0.0. |
 

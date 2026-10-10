@@ -24,7 +24,7 @@ The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) lets an AI t
 | **Transport** | Streamable HTTP | stdio |
 | **Sign-in** | None (public, read-only) | `despia login` once on your computer |
 | **Works in web builders** (Lovable, Base44, Bolt, Replit, v0, ChatGPT, claude.ai) | Yes, where the builder accepts a custom MCP URL | No: they cannot start a program on your computer |
-| **Requires** | Nothing | `@despia-native/cli` 0.1.0 or later |
+| **Requires** | Nothing | `@despia-native/cli` 0.0.2 or later |
 
 **Rule of thumb:**
 
@@ -57,9 +57,9 @@ npx despia mcp
 - **Project:** the server works on the project in the folder your AI tool starts it in (the nearest folder with `dsx.config.json`), or pass `--dir <path>`. Cloud tools use the project linked in `.despia/project.json`, or the `project` argument.
 - **Errors:** every failure is the same `{ "error": { "code", "message" } }` body the CLI prints with `--json` and the Despia API returns.
 
-<Note>`npx despia mcp` runs the CLI installed in your project (`@despia-native/cli` 0.1.0 or later is a dev dependency of every project made from a Despia template). Outside a project, use `npx -y -p @despia-native/cli despia mcp`.</Note>
+<Note>`npx despia mcp` runs the CLI installed in your project (`@despia-native/cli` 0.0.2 or later is a dev dependency of every project made from a Despia template). Outside a project, use `npx -y -p @despia-native/cli despia mcp`.</Note>
 
-{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before these steps work outside a template project. */}
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.0.2 must be published before these steps work outside a template project. */}
 
 ### What the agent may do, and what you confirm
 

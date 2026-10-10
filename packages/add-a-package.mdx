@@ -40,7 +40,7 @@ To browse every package before choosing an app, click **Packages** in the worksp
 
 ## With the CLI
 
-The CLI is the published npm package `@despia-native/cli`, 0.1.0 or later. Inside a project, run it with `npx despia`, or install it globally with `npm install -g @despia-native/cli`.
+The CLI is the published npm package `@despia-native/cli`, 0.0.2 or later. Inside a project, run it with `npx despia`, or install it globally with `npm install -g @despia-native/cli`.
 
 <Steps>
   <Step title="Find the package">
@@ -71,7 +71,7 @@ The CLI is the published npm package `@despia-native/cli`, 0.1.0 or later. Insid
 `npx despia remove <package>` takes a package out again (also with `--plan`). If you pass a capability instead of a package name, for example `npx despia add analytics`, nothing is written: the CLI lists the packages that provide that capability so you can choose one. A typo gets a "Did you mean" suggestion.
 
 <Note>
-  To start from a website, `npx despia new --template web-view --set url=https://app.your.site` checks the inputs and writes nothing; `--apply` creates the app. Web App to Mobile App is the template offered in 0.1.0.
+  To start from a website, `npx despia new --template web-view --set url=https://app.your.site` checks the inputs and writes nothing; `--apply` creates the app. Web App to Mobile App is the template offered in 0.0.2.
 </Note>
 
-{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.1.0 must be published before the CLI steps work outside a template project. */}
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.0.2 must be published before the CLI steps work outside a template project. */}

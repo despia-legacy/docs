@@ -17,17 +17,23 @@ Two things connect an AI tool to Despia:
 | What the AI gets | Search and read the Despia documentation | Your Despia project and account: create a web view app, add packages, build |
 | Where it runs | Remote: `https://setup.despia.com/mcp` | On your computer: `npx despia` and `npx despia mcp` |
 | Sign-in | None (public, read-only) | `npx despia login` once on the computer |
-| Works in | Every tool that accepts an MCP URL, including Lovable, Base44, Replit, Bolt and ChatGPT | Local tools: Claude Code, Codex, Cursor, VS Code, Windsurf, Claude Desktop |
+| Works in | Every tool that accepts an MCP URL, including Lovable, Base44, Replit, Bolt, ChatGPT and Claude Code | Local tools: Claude Code, Codex, Cursor, VS Code, Windsurf, Claude Desktop |
 
 ## Browser-based builders: the Docs MCP
 
-Add this URL as a custom MCP server in Lovable, Base44, Replit, Bolt, ChatGPT or claude.ai. No authentication is needed.
+Add this URL as a custom MCP server in Lovable, Base44, Replit, Bolt, ChatGPT or Claude Code. No authentication is needed.
 
 ```text
 https://setup.despia.com/mcp
 ```
 
-Step-by-step guides: [Lovable](/mcp/lovable), [Base44](/mcp/base44), [Replit](/mcp/replit), [Bolt](/mcp/bolt), [ChatGPT](/mcp/chatgpt), [Claude](/mcp/claude).
+In Claude Code:
+
+```bash
+claude mcp add --transport http despia-docs https://setup.despia.com/mcp
+```
+
+Step-by-step guides: [Lovable](/mcp/lovable), [Base44](/mcp/base44), [Replit](/mcp/replit), [Bolt](/mcp/bolt), [ChatGPT](/mcp/chatgpt), [Claude Code](/mcp/claude-code).
 
 ## Local coding agents: the CLI and the toolchain MCP
 

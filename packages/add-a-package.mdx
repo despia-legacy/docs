@@ -18,6 +18,13 @@ A package is a native feature your web app can call, such as payments, push noti
 
 There are two ways to add one. Both change the same project.
 
+## Which packages you can add
+
+- Only published packages are listed, in the console and in `npx despia search`. A package that is not published cannot be added.
+- An **Alpha** package shows a short notice and asks you to confirm once per project: in the console you confirm it in the add dialog; with the CLI, `npx despia add <package> --yes` accepts it for the project, and `npx despia project packages add <package> --acknowledge-alpha --apply` does the same for a hosted project.
+
+{/* TODO-VERIFY: console Alpha confirm dialog wording not read from the console source. CLI: despia add --yes records alphaAcknowledged in dsx.config.json; project packages add --acknowledge-alpha (bundle 5ca56d8875). */}
+
 ## In the console
 
 <Steps>

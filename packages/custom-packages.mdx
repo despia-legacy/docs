@@ -186,13 +186,16 @@ Despia package already uses. Run it after every change.
 | :-- | :-- | :-- |
 | Check the package | `npx despia package check Modules/Hello` | your machine |
 | Run on a simulator or emulator | `npx despia run --target ios` / `npx despia run --target android` | your Mac (Xcode) or your machine (Android SDK) |
-| A project to open in Xcode or Android Studio | `npx despia export ios` / `npx despia export android` | your machine |
 
-A cloud build that includes your own code runs that code as you wrote it. Despia checks that the package follows the package rules before the build; if your code makes the build fail, the build counts like any other build.
+{/* TODO-VERIFY: cloud build of plain Swift/Kotlin custom packages per coordinator 2026-10-10 (bundle); terms wording from the owner. */}
+
+This build includes code written by you or your team. Despia maintains and secures its own packages; we can't review or guarantee custom code. If a build fails because of custom code, the compute is still charged.
+
+You confirm this once per set of custom packages; the console, CLI and MCP ask you before the first build.
+
+Failures caused by Despia are refunded; the first failure of a newly added package is refunded once.
 
 The app shell for web view apps is a commercial Despia package. A build on your own machine without a Despia license shows the Despia evaluation watermark.
-
-{/* TODO-VERIFY: replace the paragraph above with the official custom-code build terms wording when it is published (not found in lane-reports on 2026-10-10). Cloud build of plain Swift/Kotlin per coordinator 2026-10-10; despia run takes --target (despia.cli.dsx); export verb form "despia export ios" from the custom-packages lane. */}
 
 ## Your code is yours
 

@@ -1,0 +1,54 @@
+---
+title: "Store connections and testers"
+description: "Connect your App Store Connect key and Google Play service account to Despia, and manage TestFlight testers and Play testing tracks with the CLI."
+icon: "key"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import ConnectorCallout from '/snippets/connector-callout.mdx';
+
+<ConnectorCallout />
+
+<EnvNew />
+
+<Info>Requires the published `@despia-native/cli` package, 0.0.2 or later.</Info>
+
+Despia builds and publishes your app through your own store accounts. `despia stores` connects them; `despia testers` manages who tests the app. Every command that changes something only shows what would happen until you add `--apply`.
+
+## Connect a store account
+
+```bash
+npx despia stores add asc --file AuthKey_ABC123.p8 --issuer-id <issuer-id> --key-id ABC123 --apply
+npx despia stores add play --file service-account.json --apply
+```
+
+- The key file is read from disk and sent straight to Despia. It is never printed.
+- The key is tested first. Nothing is stored if the test fails; a working key is stored encrypted.
+- `--workspace` chooses the workspace (default: `DESPIA_WORKSPACE`, else your personal connections). `--label` names the connection.
+- To upload the key in the console instead, `npx despia stores link asc` (or `play`, `apns`, `fcm`) prints a short-lived link.
+
+| Command | What it does |
+| :-- | :-- |
+| `npx despia stores` | Lists the store connections with their kind, status, key id or service account, and when each was last tested |
+| `npx despia stores test <id>` | Asks the store, read-only, whether the key still works |
+| `npx despia stores details <id>` | What the key can see: the team, its apps, the service account's permissions (cached ten minutes; `--refresh` asks again) |
+| `npx despia stores role <id>` | Checks the key's role at the store (App Manager or Admin; Play release permissions) |
+| `npx despia stores use <id> --apply` | Makes your project build and publish with this connection |
+| `npx despia stores remove <id> --apply` | Disconnects: the key is destroyed in Despia and projects using it are unbound. Nothing changes at the store |
+
+## Testers
+
+```bash
+npx despia testers --target ios
+npx despia testers add ada@example.com --target ios --group "Beta" --apply
+npx despia testers add beta-testers@googlegroups.com --target android --track closed --apply
+```
+
+- **iOS (TestFlight):** `add` invites one tester by email into groups (`--group`, comma separated; default every external group), with optional `--first-name` and `--last-name`. Apple sends the email. `remove` takes a tester out of one group, or out of the app.
+- **Android (Google Play):** `add` opens a testing track (`--track internal`, `closed` or `open`; default `internal`) to a Google Group by its address; `remove` takes the group off the track.
+- `--project` chooses the Despia project (default: `DESPIA_PROJECT_ID`, then `.despia/project.json`).
+
+See also [Store listing and screenshots](/packages/store-listing).
+
+{/* TODO-VERIFY: commands from framework branch wip/claude/release-0.0.2-bundle 5ca56d8875 (despia.cli.dsx); not in release/0.0.2 c12318c4dd. Drop this page if the bundle drops stores/testers. npm placeholder note: 0.0.2 must be published. */}

@@ -46,7 +46,7 @@ Calls that return something give you a promise; calls that stream take a handler
 | Call | Arguments | Returns | Platforms | What it does |
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.revenuecat.attach()` | `view`?: string | `attached`<br/>`status` | iOS, Android | Attaches a paywall face to the open session so it is told the outcome. The paywall component does this itself when it mounts. |
-| `dsx.module.revenuecat.attributes()` | `attributes`?: object<br/>`displayName`?: string<br/>`email`?: string<br/>`phone`?: string<br/>`pushToken`?: string | `set` | iOS, Android | Sets subscriber attributes on the current RevenueCat customer, such as email or a custom key, so the customer can be matched to your own records. |
+| `dsx.module.revenuecat.attributes()` | `attributes`?: object<br/>`collectDeviceIdentifiers`?: boolean<br/>`displayName`?: string<br/>`email`?: string<br/>`phone`?: string<br/>`pushToken`?: string | `set` | iOS, Android | Sets subscriber attributes on the current RevenueCat customer, such as email or a custom key, so the customer can be matched to your own records. |
 | `dsx.module.revenuecat.buy()` | `package`?: string<br/>`view`?: string | `package`<br/>`status` | iOS, Android | Buys a package on the open session from your own paywall button, and settles the same way the overlay paywall does. A second buy while one is running is refused. |
 | `dsx.module.revenuecat.catalog()` | `external_id`?: string<br/>`offering`?: string | `code`<br/>`current`<br/>`offerings`<br/>`ok`<br/>`platform`<br/>`products`<br/>`provider`<br/>`runtime` | iOS, Android | Returns the products, offerings and prices in one shared envelope that is identical on iOS and Android, and also broadcasts it as products. |
 | `dsx.module.revenuecat.center()` | `external_id`?: string | `status` | iOS, Android | Opens the RevenueCat customer center, where people manage or restore their subscription. |
@@ -65,8 +65,9 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.revenuecat.paywall()` | `external_id`?: string<br/>`offering`?: string | `offering`<br/>`status` | iOS, Android | Shows a RevenueCat paywall sheet for an offering so the person can pick and buy. |
 | `dsx.module.revenuecat.placement()` | `placement`: string | `found`<br/>`offering`<br/>`placement` | iOS, Android | Finds the offering that RevenueCat's targeting rules pick for a named placement, so one app can show a different paywall at different moments. |
 | `dsx.module.revenuecat.products()` | `product_ids`?: object[] | object[] | iOS, Android | Lists store products with their store-priced details, either every product in all offerings or a set you name. |
-| `dsx.module.revenuecat.purchase()` | `external_id`?: string<br/>`product`: object[] | `active_entitlements`<br/>`customer_info`<br/>`plan_id`<br/>`product_id`<br/>`status`<br/>`transaction` | iOS, Android | Buys a product through the store's payment sheet and tells you what the person owns afterwards. It tries the products you list in order and stops at the first one the store returns. |
+| `dsx.module.revenuecat.purchase()` | `external_id`?: string<br/>`offer`?: object<br/>`product`: object[]<br/>`replace`?: object | `active_entitlements`<br/>`customer_info`<br/>`plan_id`<br/>`product_id`<br/>`status`<br/>`transaction` | iOS, Android | Buys a product through the store's payment sheet and tells you what the person owns afterwards. It tries the products you list in order and stops at the first one the store returns. |
 | `dsx.module.revenuecat.redeem()` | none | `status` | iOS | Opens Apple's offer-code redemption sheet on iOS. On Android it reports unsupported, since Google Play codes are redeemed in the Play Store app. |
+| `dsx.module.revenuecat.restore()` | none | `anonymous`<br/>`code`<br/>`entitlements`<br/>`new`<br/>`ok`<br/>`platform`<br/>`provider`<br/>`runtime` | iOS, Android | Asks the store to restore the person's earlier purchases and returns the customer the same way login does. |
 | `dsx.module.revenuecat.session()` | `external_id`?: string<br/>`offering`?: string | `offering`<br/>`session`<br/>`status` | iOS, Android | Opens the paywall session that a paywall component on your page binds to. It shows nothing by itself. |
 | `dsx.module.revenuecat.sync()` | none | `entitlements`<br/>`synced` | iOS, Android | Sends the purchases already on this device up to RevenueCat without the store's restore prompt. Use it once after moving an app onto RevenueCat. |
 | `dsx.module.revenuecat.whoami()` | none | `active_entitlement_ids`<br/>`active_subscription_ids`<br/>`all_purchased_product_ids`<br/>`app_user_id`<br/>`first_seen`<br/>`is_anonymous`<br/>`original_app_user_id`<br/>`request_date` | iOS, Android | Reads who the current RevenueCat user is and a summary of their subscriptions, and also broadcasts the user as user. |
@@ -122,6 +123,7 @@ Sets subscriber attributes on the current RevenueCat customer, such as email or 
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `attributes`? | object | Custom attributes by key. A null or empty value clears that attribute. |
+| `collectDeviceIdentifiers`? | boolean | Set true to let RevenueCat collect the device identifiers it can read: the advertising id ($idfa on iOS, $gpsAdId on Android), $idfv and $ip. On iOS call it again after the person answers the tracking prompt. |
 | `displayName`? | string | The customer's display name. |
 | `email`? | string | The customer's email address. |
 | `phone`? | string | The customer's phone number. |
@@ -882,7 +884,9 @@ Buys a product through the store's payment sheet and tells you what the person o
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `external_id`? | string | Your own id for the signed-in person. Leave it out to act as the current, possibly anonymous, RevenueCat user. |
+| `offer`? | object | iOS promotional or win-back offer to apply to this purchase. |
 | `product` | object[] | The product to buy as id or id:plan, or a list of them to try in order. |
+| `replace`? | object | Android plan change: the product being replaced and how Play should bill the switch. |
 
 **Example** (from the package's own test)
 
@@ -920,6 +924,7 @@ const result = await window.dsx.module.revenuecat.purchase({ external_id: "user_
 | `network_unavailable` | RevenueCat could not be reached. Your purchases are safe; try again when you are back online. |
 | `no_activity` | No foreground screen is available to present this. |
 | `not_ready` | RevenueCat is still starting up. Please try again in a moment. |
+| `offer_not_found` | That offer isn't available for this product. |
 | `product_not_found` | We could not find that product in the store. |
 | `purchase_failed` | The purchase could not be completed. |
 | `unknown_error` | An unknown error occurred during the purchase. |
@@ -956,6 +961,46 @@ const result = await window.dsx.module.revenuecat.redeem()
 | :-- | :-- |
 | `not_ready` | RevenueCat is still starting up. Please try again in a moment. |
 | `unsupported` | This feature is not available on this OS version. |
+
+</Accordion>
+<Accordion title="restore">
+
+Asks the store to restore the person's earlier purchases and returns the customer the same way login does.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.revenuecat.restore()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `anonymous` | boolean | True while the current RevenueCat user is anonymous. |
+| `code`? | string | A short error code, set only when the envelope reports a failure. |
+| `entitlements` | object | The entitlements the person holds, as RevenueCat reports them. |
+| `new` | boolean | True when RevenueCat created this user just now. |
+| `ok` | boolean | True when the call succeeded and the envelope carries real data. |
+| `platform` | string | The platform that answered, such as ios or android. |
+| `provider` | string | The name of the billing provider that answered, which is revenuecat. |
+| `runtime` | number | The version of the shared response envelope, the same on iOS and Android. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `network_unavailable` | RevenueCat could not be reached. Your purchases are safe; try again when you are back online. |
+| `not_ready` | RevenueCat is still starting up. Please try again in a moment. |
+| `restore_failed` | The purchase restore couldn't be completed. |
 
 </Accordion>
 <Accordion title="session">
@@ -1101,7 +1146,10 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Android API key (`androidApiKey`) | Your RevenueCat public Google Play API key. |
 | API key (`apiKey`) | Your RevenueCat public API key. |
+| Starting user ID (`app_user_id`) | Your own user id to start RevenueCat with, instead of an anonymous user. Leave empty to start anonymous and call login later. |
+| Log level (`log_level`) | How much the RevenueCat SDK writes to the device log: verbose, debug, info, warn or error. |
 | Project ID (`projectId`) | Your RevenueCat project id, used by the page side and not needed by the SDK. |
+| StoreKit version (`storekit_version`) | Which StoreKit RevenueCat uses on iOS: default lets RevenueCat choose, 1 or 2 forces one. |
 
 ## What you need on your side
 

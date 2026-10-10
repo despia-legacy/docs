@@ -27,14 +27,14 @@ No npm package is needed. Inside a Despia V4 app, the `bluetooth` package is on 
 ```javascript
 const dsx = window.dsx
 if (dsx && dsx.has('bluetooth')) {
-  // Connects to a device found by scanning, waiting for the radio to be on if needed.
-  const connect = await dsx.module.bluetooth.connect({ auto_connect: false, id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
+  // Connects to a device found by scanning, waiting for the radio to be on if needed, and reports the negotiated MTU (null on the web).
+  const connect = await dsx.module.bluetooth.connect({ autoConnect: false, deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
 
   // Disconnects from a device and turns off automatic reconnecting for it.
-  const disconnect = await dsx.module.bluetooth.disconnect({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+  const disconnect = await dsx.module.bluetooth.disconnect({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA" })
 
   // Finds the services and characteristics a connected device offers, which you need before reading or writing.
-  const discover = await dsx.module.bluetooth.discover({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+  const discover = await dsx.module.bluetooth.discover({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA" })
 }
 ```
 
@@ -44,48 +44,49 @@ Calls that return something give you a promise; calls that stream take a handler
 
 | Call | Arguments | Returns | Platforms | What it does |
 | :-- | :-- | :-- | :-- | :-- |
-| `dsx.module.bluetooth.connect()` | `auto_connect`: boolean<br/>`id`: string<br/>`server`: string<br/>`timeout`: number | `id`<br/>`state` | iOS, Android | Connects to a device found by scanning, waiting for the radio to be on if needed. |
-| `dsx.module.bluetooth.disconnect()` | `id`: string | `id`<br/>`state` | iOS, Android | Disconnects from a device and turns off automatic reconnecting for it. |
-| `dsx.module.bluetooth.discover()` | `id`: string | `id`<br/>`services` | iOS, Android | Finds the services and characteristics a connected device offers, which you need before reading or writing. |
+| `dsx.module.bluetooth.connect()` | `autoConnect`?: boolean<br/>`deviceId`: string<br/>`server`?: string<br/>`timeout`?: number | `deviceId`<br/>`mtu`<br/>`state` | iOS, Android | Connects to a device found by scanning, waiting for the radio to be on if needed, and reports the negotiated MTU (null on the web). |
+| `dsx.module.bluetooth.disconnect()` | `deviceId`: string | `deviceId`<br/>`state` | iOS, Android | Disconnects from a device and turns off automatic reconnecting for it. |
+| `dsx.module.bluetooth.discover()` | `deviceId`: string | `deviceId`<br/>`services` | iOS, Android | Finds the services and characteristics a connected device offers, which you need before reading or writing. |
 | `dsx.module.bluetooth.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the user change which items this app can see when Bluetooth is limited, without leaving the app; elsewhere it only reports the current state. |
 | `dsx.module.bluetooth.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the user can change a denied permission. |
 | `dsx.module.bluetooth.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks for Bluetooth with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it. |
 | `dsx.module.bluetooth.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current state of Bluetooth without ever showing a dialog, so a settings screen can call it every time it appears. |
-| `dsx.module.bluetooth.raw()` | `id`: string<br/>`payload`: string | `id`<br/>`meta`<br/>`payload` | iOS, Android | Sends a base64 payload straight to a device and returns what was sent. |
-| `dsx.module.bluetooth.read()` | `char`: string<br/>`id`: string<br/>`service`: string | `char`<br/>`id`<br/>`service`<br/>`value`<br/>`valueHex` | iOS, Android | Reads the current value of one characteristic on a connected device. |
-| `dsx.module.bluetooth.rssi()` | `id`: string | `id`<br/>`rssi` | iOS, Android | Reads the signal strength of a connected device, which tells you roughly how near it is. |
-| `dsx.module.bluetooth.scan()` | `duration`: number<br/>`services`: string[] | stream (sends `device`) | iOS, Android | Scans for nearby Bluetooth Low Energy devices and sends a device event for each one found, until the duration ends or you stop it. |
+| `dsx.module.bluetooth.raw()` | `deviceId`: string<br/>`payload`: string | `deviceId`<br/>`meta`<br/>`payload` | iOS, Android | The documented escape hatch: sends base64 bytes to the first writable characteristic of a connected device when you do not know the GATT layout; prefer write. Resolves &#123; deviceId, payload, meta &#125;, where meta is an always-empty object reserved for future use. |
+| `dsx.module.bluetooth.read()` | `characteristic`: string<br/>`deviceId`: string<br/>`service`: string | `characteristic`<br/>`deviceId`<br/>`service`<br/>`value`<br/>`valueHex` | iOS, Android | Reads the current value of one characteristic on a connected device. |
+| `dsx.module.bluetooth.rssi()` | `deviceId`: string | `deviceId`<br/>`rssi` | iOS, Android | Reads the signal strength of a connected device, which tells you roughly how near it is. |
+| `dsx.module.bluetooth.scan()` | `allowDuplicates`?: boolean<br/>`duration`?: number<br/>`rssiThreshold`?: number<br/>`scanMode`?: "lowLatency" \\| "balanced" \\| "lowPower"<br/>`services`?: string[] | stream (sends `device`) | iOS, Android | Scans for nearby Bluetooth Low Energy devices and sends a device event (with its deviceId) for each one found, until the duration ends or you stop it. On the web, where the browser only offers a device chooser, allowDuplicates and rssiThreshold are ignored and one device event fires for the pick. |
 | `dsx.module.bluetooth.status()` | none | `authorized`<br/>`state` | iOS, Android | Reports whether Bluetooth is on and whether the app is allowed to use it. |
 | `dsx.module.bluetooth.stopScan()` | none | `ok` | iOS, Android | Stops the scan that is currently running, if any. |
-| `dsx.module.bluetooth.subscribe()` | `char`: string<br/>`id`: string<br/>`server`?: string<br/>`service`: string | stream (sends `data`) | iOS, Android | Starts receiving notifications from a characteristic as data events, for as long as the device stays connected. |
-| `dsx.module.bluetooth.unsubscribe()` | `char`: string<br/>`id`: string<br/>`service`: string | `char`<br/>`id`<br/>`service` | iOS, Android | Stops notifications from a characteristic. |
-| `dsx.module.bluetooth.write()` | `char`: string<br/>`hex`?: string<br/>`id`: string<br/>`service`: string<br/>`text`?: string<br/>`value`?: string<br/>`with_response`?: boolean | `char`<br/>`id`<br/>`service`<br/>`success` | iOS, Android | Writes bytes to a characteristic on a connected device, from text, hex or base64. |
+| `dsx.module.bluetooth.subscribe()` | `characteristic`: string<br/>`deviceId`: string<br/>`server`?: string<br/>`service`: string | stream (sends `data`) | iOS, Android | Starts receiving notifications from a characteristic as data events, for as long as the device stays connected. |
+| `dsx.module.bluetooth.unsubscribe()` | `characteristic`: string<br/>`deviceId`: string<br/>`service`: string | `characteristic`<br/>`deviceId`<br/>`service` | iOS, Android | Stops notifications from a characteristic. |
+| `dsx.module.bluetooth.write()` | `characteristic`: string<br/>`deviceId`: string<br/>`hex`?: string<br/>`service`: string<br/>`text`?: string<br/>`value`?: string<br/>`withResponse`?: boolean | `characteristic`<br/>`deviceId`<br/>`service`<br/>`success` | iOS, Android | Writes bytes to a characteristic on a connected device, from text, hex or base64. A write without response larger than mtu - 3 bytes fails with write_failed and a message saying so (native); with a response, up to 512 bytes are sent as a long write. |
 
 ## Action reference
 
 <AccordionGroup>
 <Accordion title="connect">
 
-Connects to a device found by scanning, waiting for the radio to be on if needed.
+Connects to a device found by scanning, waiting for the radio to be on if needed, and reports the negotiated MTU (null on the web).
 
 **Arguments**
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `auto_connect` | boolean | Pass true to reconnect automatically after an unexpected drop; an explicit disconnect turns it off. |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
-| `server` | string | An https address that receives a copy of connection events for your backend. |
-| `timeout` | number | How long to wait for the connection, in milliseconds, before giving up. |
+| `autoConnect`? | boolean | Pass true to reconnect automatically after an unexpected drop; an explicit disconnect turns it off. Defaults to false. Has no effect on the web. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
+| `server`? | string | An https address that receives a copy of connection events for your backend. |
+| `timeout`? | number | How long to wait for the connection, in milliseconds, before giving up. Defaults to 10000. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.connect({ auto_connect: false, id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
+const result = await window.dsx.module.bluetooth.connect({ autoConnect: false, deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
 ```
 
 ```json Result
 {
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "mtu": 185,
   "state": "connected"
 }
 ```
@@ -94,7 +95,8 @@ const result = await window.dsx.module.bluetooth.connect({ auto_connect: false, 
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | The id of the connected device. |
+| `deviceId` | string | The deviceId of the connected device. |
+| `mtu` | number | The negotiated ATT MTU in bytes, so a write without response can carry up to mtu - 3 bytes. Android requests 517 after connecting; iOS reports the maximum write-without-response length plus 3. Always null on the web, which has no MTU API. |
 | `state` | string | The connection state, connected on success. |
 
 **Errors**
@@ -114,17 +116,17 @@ Disconnects from a device and turns off automatic reconnecting for it.
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.disconnect({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+const result = await window.dsx.module.bluetooth.disconnect({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA" })
 ```
 
 ```json Result
 {
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "state": "disconnected"
 }
 ```
@@ -133,7 +135,7 @@ const result = await window.dsx.module.bluetooth.disconnect({ id: "1A2B3C4D-0000
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | Identifies the device that was disconnected, matching the id you passed. |
+| `deviceId` | string | Identifies the device that was disconnected, matching the deviceId you passed. |
 | `state` | string | The connection state, disconnected on success. |
 
 </Accordion>
@@ -145,17 +147,17 @@ Finds the services and characteristics a connected device offers, which you need
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.discover({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+const result = await window.dsx.module.bluetooth.discover({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA" })
 ```
 
 ```json Result
 {
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "services": []
 }
 ```
@@ -164,7 +166,7 @@ const result = await window.dsx.module.bluetooth.discover({ id: "1A2B3C4D-0000-1
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | Identifies the device whose services were found, matching the id you passed. |
+| `deviceId` | string | Identifies the device whose services were found, matching the deviceId you passed. |
 | `services` | object[] | The services on the device, each with its characteristics. |
 
 **Errors**
@@ -295,24 +297,24 @@ const result = await window.dsx.module.bluetooth.permission.status()
 </Accordion>
 <Accordion title="raw">
 
-Sends a base64 payload straight to a device and returns what was sent.
+The documented escape hatch: sends base64 bytes to the first writable characteristic of a connected device when you do not know the GATT layout; prefer write. Resolves &#123; deviceId, payload, meta &#125;, where meta is an always-empty object reserved for future use.
 
 **Arguments**
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 | `payload` | string | The bytes to send, as base64 text. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.raw({ id: "1A2B3C4D-0000-1111-2222-3344556677AA", payload: "AGQ=" })
+const result = await window.dsx.module.bluetooth.raw({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", payload: "AGQ=" })
 ```
 
 ```json Result
 {
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "meta": {},
   "payload": "AGQ="
 }
@@ -322,8 +324,8 @@ const result = await window.dsx.module.bluetooth.raw({ id: "1A2B3C4D-0000-1111-2
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | Identifies the device the bytes were sent to, matching the id you passed. |
-| `meta` | object | Extra details; always empty for now. |
+| `deviceId` | string | Identifies the device the bytes were sent to, matching the deviceId you passed. |
+| `meta` | object | Always an empty object, reserved for future use. |
 | `payload` | string | The bytes that were written, as base64 text. |
 
 </Accordion>
@@ -335,20 +337,20 @@ Reads the current value of one characteristic on a connected device.
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `characteristic` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 | `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.read({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
+const result = await window.dsx.module.bluetooth.read({ characteristic: "2a37", deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
 ```
 
 ```json Result
 {
-  "char": "2a37",
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "characteristic": "2a37",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "service": "180d",
   "value": "AGQ=",
   "valueHex": "0064"
@@ -359,8 +361,8 @@ const result = await window.dsx.module.bluetooth.read({ char: "2a37", id: "1A2B3
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic that was read. |
-| `id` | string | Identifies the device that was read, matching the id you passed. |
+| `characteristic` | string | The characteristic that was read. |
+| `deviceId` | string | Identifies the device that was read, matching the deviceId you passed. |
 | `service` | string | The service that was read. |
 | `value` | string | The value as base64 text. |
 | `valueHex` | string | The same value as upper-case hexadecimal text. |
@@ -381,17 +383,17 @@ Reads the signal strength of a connected device, which tells you roughly how nea
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.rssi({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+const result = await window.dsx.module.bluetooth.rssi({ deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA" })
 ```
 
 ```json Result
 {
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "rssi": -52
 }
 ```
@@ -400,25 +402,28 @@ const result = await window.dsx.module.bluetooth.rssi({ id: "1A2B3C4D-0000-1111-
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `id` | string | Identifies the device that was measured, matching the id you passed. |
+| `deviceId` | string | Identifies the device that was measured, matching the deviceId you passed. |
 | `rssi` | number | The signal strength in decibels; closer to zero is stronger. |
 
 </Accordion>
 <Accordion title="scan">
 
-Scans for nearby Bluetooth Low Energy devices and sends a device event for each one found, until the duration ends or you stop it.
+Scans for nearby Bluetooth Low Energy devices and sends a device event (with its deviceId) for each one found, until the duration ends or you stop it. On the web, where the browser only offers a device chooser, allowDuplicates and rssiThreshold are ignored and one device event fires for the pick.
 
 **Arguments**
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `duration` | number | How long to scan, in milliseconds. |
-| `services` | string[] | Only report devices that advertise these service UUIDs, as a list; filtering by service is more reliable than by name. |
+| `allowDuplicates`? | boolean | Pass true to report a device again on every advertisement, which you need for a live signal-strength meter. Defaults to false (each device once per scan). Ignored on the web chooser. |
+| `duration`? | number | How long to scan, in milliseconds. Defaults to 10000. |
+| `rssiThreshold`? | number | Signal strength floor in dBm, for example -80; devices weaker than this are not reported. Ignored on the web chooser. |
+| `scanMode`? | "lowLatency" \\| "balanced" \\| "lowPower" | How aggressively to scan: lowLatency (default), balanced or lowPower. Android only; ignored on iOS and the web. |
+| `services`? | string[] | Only report devices that advertise these service UUIDs, as a list; filtering by service is more reliable than by name. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.scan({ duration: 10000, services: ["180d"] })
+const result = await window.dsx.module.bluetooth.scan({ allowDuplicates: false, duration: 10000, rssiThreshold: -90, scanMode: "lowLatency", services: ["180d"] })
 ```
 
 ```json Result
@@ -498,15 +503,15 @@ Starts receiving notifications from a characteristic as data events, for as long
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `characteristic` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 | `server`? | string | An https address that receives a copy of each notification for your backend. |
 | `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.subscribe({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", service: "180d" })
+const result = await window.dsx.module.bluetooth.subscribe({ characteristic: "2a37", deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", service: "180d" })
 ```
 
 **Result:** a stream. Pass a handler as the second argument; it receives each update.
@@ -527,20 +532,20 @@ Stops notifications from a characteristic.
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `characteristic` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 | `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.unsubscribe({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
+const result = await window.dsx.module.bluetooth.unsubscribe({ characteristic: "2a37", deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
 ```
 
 ```json Result
 {
-  "char": "2a37",
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "characteristic": "2a37",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "service": "180d"
 }
 ```
@@ -549,37 +554,37 @@ const result = await window.dsx.module.bluetooth.unsubscribe({ char: "2a37", id:
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic that was unsubscribed. |
-| `id` | string | Identifies the device that was unsubscribed, matching the id you passed. |
+| `characteristic` | string | The characteristic that was unsubscribed. |
+| `deviceId` | string | Identifies the device that was unsubscribed, matching the deviceId you passed. |
 | `service` | string | The service that was unsubscribed. |
 
 </Accordion>
 <Accordion title="write">
 
-Writes bytes to a characteristic on a connected device, from text, hex or base64.
+Writes bytes to a characteristic on a connected device, from text, hex or base64. A write without response larger than mtu - 3 bytes fails with write_failed and a message saying so (native); with a response, up to 512 bytes are sent as a long write.
 
 **Arguments**
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `characteristic` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `deviceId` | string | The device id from a device event while scanning; opaque and platform specific (a per-app UUID on iOS that can change after a reinstall, the Bluetooth address on Android, a browser-issued id on the web). |
 | `hex`? | string | Bytes to send as hexadecimal text. |
-| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
 | `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
 | `text`? | string | Text to send as the bytes; if more than one of text, hex and value is given, text wins. |
 | `value`? | string | Bytes to send as base64 text. |
-| `with_response`? | boolean | True by default so the device confirms the write; false sends it without waiting, so success only means it was sent. |
+| `withResponse`? | boolean | True by default so the device confirms the write; false sends it without waiting, so success only means it was sent. Without a response the value must fit in mtu - 3 bytes (see connect); a longer one fails with write_failed. With a response, values up to 512 bytes go as a long write. |
 
 **Example** (from the package's own test)
 
 ```javascript
-const result = await window.dsx.module.bluetooth.write({ char: "2a37", hex: "", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d", text: "ping", value: "", with_response: true })
+const result = await window.dsx.module.bluetooth.write({ characteristic: "2a37", deviceId: "1A2B3C4D-0000-1111-2222-3344556677AA", hex: "", service: "180d", text: "ping", value: "", withResponse: true })
 ```
 
 ```json Result
 {
-  "char": "2a37",
-  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "characteristic": "2a37",
+  "deviceId": "1A2B3C4D-0000-1111-2222-3344556677AA",
   "service": "180d",
   "success": true
 }
@@ -589,8 +594,8 @@ const result = await window.dsx.module.bluetooth.write({ char: "2a37", hex: "", 
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `char` | string | The characteristic that was written. |
-| `id` | string | Identifies the device that was written to, matching the id you passed. |
+| `characteristic` | string | The characteristic that was written. |
+| `deviceId` | string | Identifies the device that was written to, matching the deviceId you passed. |
 | `service` | string | The service that was written. |
 | `success` | boolean | True when the write was accepted or, without a response, dispatched. |
 
@@ -624,7 +629,7 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 
 ## Known limits
 
-- Android: automatic reconnect (`auto_connect`) does not reconnect yet.
-- Android: writes are capped at 20 bytes (no MTU request).
-- Android: no background connections or notifications.
-- Not supported: the peripheral role (advertising, hosting a GATT server), pairing control, L2CAP channels, Bluetooth Classic and beacons.
+- Android: no background delivery; connections live while the app process does.
+- Not included yet: the peripheral role, pairing control, L2CAP channels, Bluetooth Classic and beacons.
+- Device ids are opaque and differ by platform.
+- After an automatic reconnect (`autoConnect: true`), call `discover` and `subscribe` again.

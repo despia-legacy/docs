@@ -15,10 +15,10 @@ Add the Despia connector to your AI builder, and the builder turns your web app 
 The connector address:
 
 ```text
-https://mcp.despia.com/mcp
+https://mcp.despia.com/mcp/account
 ```
 
-{/* TODO-VERIFY: host of the hosted connector (placeholder https://mcp.despia.com/mcp). */}
+{/* TODO-VERIFY: signed-in connector URL https://mcp.despia.com/mcp/account (coordinator 2026-10-10); confirm when deployed. */}
 
 ## Add it in one step
 
@@ -49,17 +49,17 @@ https://mcp.despia.com/mcp
     3. Create it, then sign in to Despia when asked.
   </Tab>
   <Tab title="Claude Code">
-    1. In a terminal, run: `claude mcp add --transport http despia https://mcp.despia.com/mcp`
+    1. In a terminal, run: `claude mcp add --transport http despia https://mcp.despia.com/mcp/account`
     2. Start Claude Code and run `/mcp`.
     3. Choose `despia` and sign in to Despia in your browser.
   </Tab>
   <Tab title="Cursor">
     1. Open `.cursor/mcp.json` (or `~/.cursor/mcp.json`).
-    2. Add `"despia": { "url": "https://mcp.despia.com/mcp" }` under `mcpServers`.
+    2. Add `"despia": { "url": "https://mcp.despia.com/mcp/account" }` under `mcpServers`.
     3. Open Cursor's settings and sign in to Despia when asked.
   </Tab>
   <Tab title="Codex">
-    1. In a terminal, run: `codex mcp add despia --url https://mcp.despia.com/mcp`
+    1. In a terminal, run: `codex mcp add despia --url https://mcp.despia.com/mcp/account`
     2. Start Codex.
     3. Sign in to Despia in your browser when asked.
   </Tab>
@@ -87,7 +87,7 @@ Builds use your Despia credits. The connector shows what a build will do before 
 
 ## Details
 
-For developers: the Despia connector is an MCP server at `https://mcp.despia.com/mcp` (Streamable HTTP). Sign-in uses OAuth in your browser: you choose the Despia workspace and approve what the builder may do.
+For developers: the Despia connector is an MCP server at `https://mcp.despia.com/mcp/account` (Streamable HTTP). Sign-in uses OAuth in your browser: the consent page is titled **Despia MCP**; you choose the Despia workspace and approve what the builder may do.
 
 | Permission | What it allows |
 | :-- | :-- |

@@ -1,0 +1,200 @@
+---
+title: "Your own packages"
+description: "Write your own Despia package for your web view app: page scripts, or native Swift and Kotlin actions your pages call through window.dsx."
+icon: "puzzle-piece"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import ConnectorCallout from '/snippets/connector-callout.mdx';
+
+<ConnectorCallout />
+
+<EnvNew />
+
+<Info>Requires the published `@despia-native/cli` package, 0.0.2 or later.</Info>
+
+Your web view app can include packages you write yourself, next to the Despia packages you add with
+`despia add` or in the console. A package you write lives in your project folder and ships with your app.
+
+## Where your packages live
+
+Your **DSX project folder** is the folder that holds `dsx.config.json`. Every package you write goes in its
+own folder under `Modules/` in that folder:
+
+```text
+my-app/
+  dsx.config.json
+  dsx.json
+  Components/App.dsx
+  Modules/
+    Hello/
+      dsx.json
+      ...
+```
+
+Every build made from this folder includes every `Modules/<Name>/` folder that has a `dsx.json`. You don't list it in
+`dsx.config.json`: `modules` stays the list of Despia packages you added.
+
+`despia new`, `despia init` and `despia import` don't create a `Modules/` folder. Create a package with
+`despia package new`, run inside your project folder:
+
+```bash
+npx despia package new Hello
+```
+
+This writes `Modules/Hello/` with a `dsx.json`, a component and a README, and it passes `despia package check`
+as written.
+
+## The manifest: `dsx.json`
+
+```json
+{
+  "name": "Hello",
+  "id": "5d7c1a2e-1b9f-4f3e-8c4a-2e6b9d0f7a11",
+  "command": "hello",
+  "version": "0.1.0",
+  "summary": "Hello: one greeting action."
+}
+```
+
+- `command` is the name your pages call: `dsx.module.hello`. Use lowercase letters and digits. Pick a word no
+  Despia package uses. A vendor prefix works well, for example `acmehello`.
+- `id` is a UUID of your own. `despia package new` generates one for you.
+- Older examples used the key `scheme`. It has been renamed to `command`, and `despia package check`
+  tells you to rename it.
+
+## A package with no native code: scripts in your pages
+
+A package can add JavaScript to the pages of your web app inside the iOS and Android app, without any Swift
+or Kotlin. List the file under `resources` and inject it with `pageScripts`:
+
+```text
+Modules/Hello/
+  dsx.json
+  page/hello.js
+```
+
+```json
+{
+  "name": "Hello",
+  "id": "5d7c1a2e-1b9f-4f3e-8c4a-2e6b9d0f7a11",
+  "command": "hello",
+  "version": "0.1.0",
+  "summary": "Hello: a script for the app's pages.",
+  "resources": ["page/hello.js"],
+  "pageScripts": [{ "resource": "page/hello.js", "at": "end", "frames": "main" }]
+}
+```
+
+- `at`: `"start"` runs the script before your page's own scripts, `"end"` runs it after the page has loaded.
+- `frames`: `"main"` is the top page only, `"all"` includes iframes.
+
+The script runs in the app only, never on your website in a normal browser. Your website is already the
+web side of the app, so this kind of package needs nothing else.
+
+## A package with native code: Swift and Kotlin
+
+Native code makes new `dsx.module.<command>` actions that your pages call. Each platform has its own
+folder:
+
+```text
+Modules/Hello/
+  dsx.json
+  swift/Hello.swift
+  kotlin/Hello.kt
+  web/index.js        optional: only used when the DSX app itself runs in a browser
+```
+
+Declare each action in `dsx.json`:
+
+```json
+{
+  "name": "Hello",
+  "id": "5d7c1a2e-1b9f-4f3e-8c4a-2e6b9d0f7a11",
+  "command": "hello",
+  "version": "0.1.0",
+  "summary": "Hello: one greeting action.",
+  "actions": {
+    "greet": { "args": { "name": "string" }, "resolves": { "hi": "string" } }
+  }
+}
+```
+
+`swift/Hello.swift`:
+
+```swift
+import Foundation
+
+final class Hello: Module {
+    override func setup() {
+        dsx.action("greet") { dsx in
+            let name = dsx.args("name") as? String ?? ""
+            dsx.resolve(JSON(["hi": name]))
+        }
+    }
+}
+```
+
+`kotlin/Hello.kt`:
+
+```kotlin
+package despia.modules.hello
+
+import despia.engine.JSON
+import despia.engine.Module
+
+class Hello : Module() {
+    override fun setup() {
+        dsx.action("greet") { dsx ->
+            val name = dsx.args("name") as? String ?: ""
+            dsx.resolve(JSON(mapOf("hi" to name)))
+        }
+    }
+}
+```
+
+Your pages call it like any Despia package:
+
+```js
+const { hi } = await window.dsx.module.hello.greet({ name: "Ada" });
+```
+
+Keep Swift in `swift/` and Kotlin in `kotlin/`. Code anywhere else in the package folder is refused.
+
+Every action has to say what happens on each platform. If your package has no `web/index.js`, give each
+action a `platforms` list and a `_note_platforms` that says what the web gets instead. `despia package check`
+shows you the exact lines to add.
+
+## Check your package
+
+```bash
+npx despia package check Modules/Hello
+```
+
+The check is free and runs on your machine. It catches a misspelled key, a missing platform and a name a
+Despia package already uses. Run it after every change.
+
+## Build and run
+
+| Your package | Where it builds |
+| :-- | :-- |
+| Page scripts only, or plain Swift and Kotlin in `swift/` and `kotlin/` | In the cloud, like any Despia build, and on your own machine |
+| Build scripts, `Package.swift`, Gradle files or CMake | On your own machine for now |
+
+| What you want | Command | Where it runs |
+| :-- | :-- | :-- |
+| Check the package | `npx despia package check Modules/Hello` | your machine |
+| Run on a simulator or emulator | `npx despia run --target ios` / `npx despia run --target android` | your Mac (Xcode) or your machine (Android SDK) |
+| A project to open in Xcode or Android Studio | `npx despia export ios` / `npx despia export android` | your machine |
+
+A cloud build that includes your own code runs that code as you wrote it. Despia checks that the package follows the package rules before the build; if your code makes the build fail, the build counts like any other build.
+
+The app shell for web view apps is a commercial Despia package. A build on your own machine without a Despia license shows the Despia evaluation watermark.
+
+{/* TODO-VERIFY: replace the paragraph above with the official custom-code build terms wording when it is published (not found in lane-reports on 2026-10-10). Cloud build of plain Swift/Kotlin per coordinator 2026-10-10; despia run takes --target (despia.cli.dsx); export verb form "despia export ios" from the custom-packages lane. */}
+
+## Your code is yours
+
+Despia checks that your package follows the package rules. We don't review what your code does, and we
+can't guarantee it. Keep your package in your own repository, and test it on real devices before you ship.

@@ -1,0 +1,30 @@
+---
+title: "Move a Despia V3 app with the CLI"
+description: "List your Despia V3 apps, request the free move to Despia V4, and convert an app into a Despia V4 project with the CLI."
+icon: "right-left"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import ConnectorCallout from '/snippets/connector-callout.mdx';
+
+<ConnectorCallout />
+
+<EnvNew />
+
+<Info>Requires the published `@despia-native/cli` package, 0.0.2 or later. Every command that changes something only shows what would happen until you add `--apply`.</Info>
+
+| Command | What it does |
+| :-- | :-- |
+| `npx despia v3` | Your Despia V3 apps matched to your confirmed email, with their platforms, your role and their move state |
+| `npx despia v3 request --apply` | Asks for the free move of every Despia V3 app you own or administer (or only the ids you give). Support approves within 48 hours |
+| `npx despia v3 status` | Your open move request (or the last moved one) and its history |
+| `npx despia v3 cancel --apply` | Withdraws your open request; you can ask again |
+| `npx despia v3 refresh <id>` | Reads one app from Despia V3 again before moving it (`--wait` waits up to about 90 seconds) |
+| `npx despia v3 convert <id>` | Shows the package plan for moving one app into a Despia V4 workspace; `--apply` moves it |
+
+`convert` options: `--workspace` (the Despia V4 workspace, default `DESPIA_WORKSPACE`), `--keep <package>` to keep a package the usage scan found no call to, `--remove <package>` to leave one out, `--ignore-usage` to keep every package the app had.
+
+What changes for the app itself: [Migrate from Despia V3](/packages/migrate-from-v3).
+
+{/* TODO-VERIFY: commands from framework branch wip/claude/release-0.0.2-bundle 5ca56d8875 (despia.cli.dsx); not in release/0.0.2 c12318c4dd. Drop this page if the bundle drops Despia V3. */}

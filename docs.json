@@ -32,7 +32,11 @@
             "icon": "terminal",
             "pages": [
               "packages/ai-tools",
-              "packages/store-listing"
+              "packages/store-listing",
+              "packages/cli-stores",
+              "packages/cli-workspace",
+              "packages/cli-v3",
+              "packages/custom-packages"
             ]
           },
           {

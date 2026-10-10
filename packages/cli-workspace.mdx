@@ -1,0 +1,48 @@
+---
+title: "Workspaces and projects"
+description: "Manage Despia workspaces, members, API tokens and credits, and a hosted project's packages, package settings, history, name and icon with the CLI."
+icon: "building"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+import ConnectorCallout from '/snippets/connector-callout.mdx';
+
+<ConnectorCallout />
+
+<EnvNew />
+
+<Info>Requires the published `@despia-native/cli` package, 0.0.2 or later.</Info>
+
+Every command that changes something only shows what would happen until you add `--apply`.
+
+## Workspaces
+
+| Command | What it does |
+| :-- | :-- |
+| `npx despia workspace` | The workspaces you belong to, with your role in each |
+| `npx despia workspace create <name> --apply` | Creates a workspace with you as its owner (`--kind organisation` or `personal`) |
+| `npx despia workspace rename <name> --apply` | Renames a workspace |
+| `npx despia workspace members` | Who belongs to the workspace, and the open invitations. `members invite <email> --role <role> --apply`, `members role`, `members uninvite` and `members remove` change them |
+| `npx despia workspace invitations` | Invitations addressed to you; `invitations accept <id> --apply` or `decline` |
+| `npx despia workspace tokens` | The workspace's API tokens, for CI. `tokens create <name> --scopes builds:read,builds:write --out token.txt --apply` writes the new secret into a new file (it is never printed); `tokens revoke <id> --apply` |
+| `npx despia workspace credits` | The build credit balance and ledger |
+| `npx despia workspace licences` | The workspace's app licences, per app and platform |
+
+`--workspace` chooses the workspace (default: `DESPIA_WORKSPACE`).
+
+Token scopes: `projects:read`, `projects:write`, `projects:create`, `builds:read`, `builds:write`, `integrations:read`, `config:read`, `config:write`, `activity:read`, `store:submit`.
+
+## Hosted project
+
+| Command | What it does |
+| :-- | :-- |
+| `npx despia project packages` | The project's packages. `packages add Core/OneSignal --apply` adds one with what it needs; `packages remove <path> --apply` removes one (refused while another package needs it) |
+| `npx despia project config <path>` | One package's settings, secrets by name only. `config set <path> --set key=value --apply` changes a setting; `--secret <key>` reads a secret value from stdin (or `--from-env <VAR>`) and never prints it |
+| `npx despia project history` | The project's revisions; `history revert <revision> --apply` puts one back |
+| `npx despia project settings` | The app's name and icon; `settings rename <name> --apply`, `settings icon icon.png --apply` (a square PNG) |
+| `npx despia project backup` | The project's GitHub backup: `status`, `run`, `link`, `unlink` |
+
+Adding an Alpha package asks you to accept its Alpha notice; pass `--acknowledge-alpha` to accept it for this project. `--project` chooses the project (default: `DESPIA_PROJECT_ID`, then `.despia/project.json`).
+
+{/* TODO-VERIFY: commands from framework branch wip/claude/release-0.0.2-bundle 5ca56d8875 (despia.cli.dsx); not in release/0.0.2 c12318c4dd. Drop this page if the bundle drops workspace/project. Credits are mentioned as a balance only (owner: no pricing). */}

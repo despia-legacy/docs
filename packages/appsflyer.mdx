@@ -50,13 +50,13 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.appsflyer.get_attribution()` | none | `attribution` | iOS, Android | Returns where this install came from: the ad network, campaign, ad and deep link details AppsFlyer recorded. |
 | `dsx.module.appsflyer.get_uid()` | none | `uid` | iOS, Android | Returns the AppsFlyer id of this install, which you can send to your server to match it with AppsFlyer reports. |
 | `dsx.module.appsflyer.install()` | `token`?: string | `adGroup`<br/>`campaign`<br/>`creative`<br/>`method`<br/>`referrer`<br/>`source` | iOS, Android | Gives the growth package this install's attribution as a normalised record, or nothing for organic installs. |
-| `dsx.module.appsflyer.logAdRevenue()` | `ad_platform`: string<br/>`ad_type`?: string<br/>`ad_unit_id`?: string<br/>`currency`?: string<br/>`revenue`: number | `ok` | iOS, Android | Reports the money earned from showing one ad, so AppsFlyer can include ad revenue in your campaign return. |
-| `dsx.module.appsflyer.logEvent()` | `event_name`: string<br/>`event_values`?: object | `ok` | iOS, Android | Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user. |
+| `dsx.module.appsflyer.logAdRevenue()` | `adPlatform`?: string<br/>`adType`?: string<br/>`adUnitId`?: string<br/>`ad_platform`?: string<br/>`ad_type`?: string<br/>`ad_unit_id`?: string<br/>`currency`?: string<br/>`revenue`: number | `ok` | iOS, Android | Reports the money earned from showing one ad, so AppsFlyer can include ad revenue in your campaign return. |
+| `dsx.module.appsflyer.logEvent()` | `eventName`?: string<br/>`eventValues`?: object<br/>`event_name`?: string<br/>`event_values`?: object | `ok` | iOS, Android | Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user. |
 | `dsx.module.appsflyer.logout()` | none | `ok` | iOS, Android | Clears your user id from AppsFlyer when the person signs out. |
-| `dsx.module.appsflyer.setConsent()` | `ads_personalization`?: boolean<br/>`has_consent`?: boolean<br/>`is_gdpr`?: boolean | `ok` | iOS, Android | Records the person's privacy consent with AppsFlyer, and makes sure it is applied before the install is reported. |
+| `dsx.module.appsflyer.setConsent()` | `adsPersonalization`?: boolean<br/>`ads_personalization`?: boolean<br/>`hasConsent`?: boolean<br/>`has_consent`?: boolean<br/>`isGdpr`?: boolean<br/>`is_gdpr`?: boolean | `ok` | iOS, Android | Records the person's privacy consent with AppsFlyer, and makes sure it is applied before the install is reported. |
 | `dsx.module.appsflyer.setEmail()` | `email`: string | `ok` | iOS, Android | Gives AppsFlyer the person's email address, hashed, to improve matching of their activity. |
 | `dsx.module.appsflyer.setPhone()` | `phone`: string | `ok` | iOS, Android | Gives AppsFlyer the person's phone number, hashed, to improve matching of their activity. |
-| `dsx.module.appsflyer.setUserId()` | `customer_user_id`: string | `ok` | iOS, Android | Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices. |
+| `dsx.module.appsflyer.setUserId()` | `customerUserId`?: string<br/>`customer_user_id`?: string | `ok` | iOS, Android | Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices. |
 
 ## Action reference
 
@@ -174,7 +174,10 @@ Reports the money earned from showing one ad, so AppsFlyer can include ad revenu
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `ad_platform` | string | The ad network that paid, for example admob. |
+| `adPlatform`? | string | The ad network that paid, for example admob. (camelCase alias of ad_platform) |
+| `adType`? | string | The kind of ad, for example banner or interstitial. (camelCase alias of ad_type) |
+| `adUnitId`? | string | The id of the ad unit that was shown. (camelCase alias of ad_unit_id) |
+| `ad_platform`? | string | The ad network that paid, for example admob. |
 | `ad_type`? | string | The kind of ad, for example banner or interstitial. |
 | `ad_unit_id`? | string | The id of the ad unit that was shown. |
 | `currency`? | string | The currency code of the revenue, such as USD. |
@@ -216,7 +219,9 @@ Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit 
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `event_name` | string | The name of the in-app event, such as purchase or sign_up. |
+| `eventName`? | string | The name of the in-app event, such as purchase or sign_up. (camelCase alias of event_name) |
+| `eventValues`? | object | Extra details about the event, such as price or item, sent along with it. (camelCase alias of event_values) |
+| `event_name`? | string | The name of the in-app event, such as purchase or sign_up. |
 | `event_values`? | object | Extra details about the event, such as price or item, sent along with it. |
 
 **Example** (from the package's own test)
@@ -287,8 +292,11 @@ Records the person's privacy consent with AppsFlyer, and makes sure it is applie
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
+| `adsPersonalization`? | boolean | True if the person agreed to personalised ads. (camelCase alias of ads_personalization) |
 | `ads_personalization`? | boolean | True if the person agreed to personalised ads. |
+| `hasConsent`? | boolean | True if the person agreed to data collection. (camelCase alias of has_consent) |
 | `has_consent`? | boolean | True if the person agreed to data collection. |
+| `isGdpr`? | boolean | True if the person is subject to GDPR. (camelCase alias of is_gdpr) |
 | `is_gdpr`? | boolean | True if the person is subject to GDPR. |
 
 **Example** (from the package's own test)
@@ -403,7 +411,8 @@ Tells AppsFlyer your own id for the signed-in person so their events are tied to
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `customer_user_id` | string | Your own id for the person, such as their account id. |
+| `customerUserId`? | string | Your own id for the person, such as their account id. (camelCase alias of customer_user_id) |
+| `customer_user_id`? | string | Your own id for the person, such as their account id. |
 
 **Example** (from the package's own test)
 
@@ -449,6 +458,7 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Setting | What it is |
 | :-- | :-- |
 | Apple app ID (`apple_app_id`) | The app's numeric App Store ID used by AppsFlyer. |
+| Wait for tracking answer (seconds) (`att_wait_seconds`) | iOS: hold the AppsFlyer install report until the person answers the tracking prompt, or this many seconds pass, so the first report can carry the advertising id. 0 sends it at once. |
 | Debug mode (`debug_mode`) | Verbose AppsFlyer SDK logging for integration testing. |
 | Dev key (`dev_key`) | Your AppsFlyer developer key from the AppsFlyer dashboard. |
 | OneLink domains (`onelink_domains`) | Your OneLink domains, so those links go to AppsFlyer instead of opening in the app. |

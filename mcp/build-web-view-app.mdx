@@ -36,7 +36,7 @@ This guide walks an AI agent, and you, from a web address to an app in TestFligh
 
 ### How the agent and you split the work
 
-The agent reads, checks and plans. Anything that creates something outside your project, spends credits or puts an app in front of users comes back as `effect_refused` with the exact `despia ...` command for **you** to run. That is on purpose: a tool call cannot prove a person agreed. Each step below says who does what.
+The agent reads, checks and plans. Anything that creates something outside your project or puts an app in front of users comes back as `effect_refused` with the exact `despia ...` command for **you** to run. That is on purpose: a tool call cannot prove a person agreed. Each step below says who does what.
 
 ---
 
@@ -144,19 +144,21 @@ Use this for the signed-in product your customers use, built with React, Next.js
   </Step>
 
   <Step title="Check the cloud build">
-    Ask: "Run a Despia Cloud build dry run for iOS."
+    Ask: "Run a cloud build dry run for iOS."
 
-    The agent calls `despia_build` with `target: "ios"`, `cloud: true`, `plan: true` and your `project` id (`despia_account` with `verb: "projects"` lists them). The dry run runs every check, shows the cost in credits and your balance, and starts and charges nothing. Use `profile: "debug"` for a build without store signing.
+    The agent calls `despia_build` with `target: "ios"`, `cloud: true`, `plan: true` and your `project` id (`despia_account` with `verb: "projects"` lists them). The dry run runs every check and starts nothing. Use `profile: "debug"` for a build without store signing.
   </Step>
 
   <Step title="Start the build (you)">
-    A cloud build spends credits, so you start it:
+    You start the build:
 
     ```bash
     npx despia build ios --cloud --project <project-id> --wait
     ```
 
-    Add `--publish testflight` (iOS) or `--publish internal` (Android) to upload the build with your store connection when it finishes. A failed build is refunded.
+    Add `--publish testflight` (iOS) or `--publish internal` (Android) to upload the build with your store connection when it finishes.
+
+    {/* TODO-VERIFY (hidden, owner 2026-10-10): build credits, costs and refunds are not documented until the final Despia V4 release. */}
   </Step>
 
   <Step title="Follow the build">

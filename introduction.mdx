@@ -33,7 +33,7 @@ flowchart LR
 
 ## What you can add
 
-This documentation covers 47 packages your web app can call today, in these groups. Packages marked **Alpha** are early implementations; the rest are verified on iOS and Android.
+This documentation covers 48 packages your web app can call today, in these groups. Packages marked **Alpha** are early implementations; the rest are verified on iOS and Android.
 
 | Group | Packages |
 | :-- | :-- |
@@ -44,7 +44,7 @@ This documentation covers 47 packages your web app can call today, in these grou
 | Device and system | [Haptics](/packages/haptic), [Device](/packages/device), [Clipboard](/packages/clipboard), [System bars](/packages/systembars) and more |
 | Media, files and sharing | [Camera](/packages/camera), [Scanner](/packages/scanner), [Share](/packages/share), [Wallet](/packages/wallet) and more |
 | Health | [HealthKit](/packages/healthkit), [Terra](/packages/terra) |
-| Connectivity | [NFC](/packages/nfc), [WebSocket](/packages/websocket), [Nearby](/packages/nearby) |
+| Connectivity | [NFC](/packages/nfc), [WebSocket](/packages/websocket), [Nearby](/packages/nearby), [Bluetooth](/packages/bluetooth) |
 | Speech | [Speech recognition](/packages/speechrecognition), [Speech synthesis](/packages/speechsynthesis) |
 | Data and contacts | [Storage](/packages/storage), [Contacts](/packages/contacts) |
 | Compliance | [Age assurance](/packages/ageassurance) |
@@ -69,7 +69,7 @@ The full list is in the sidebar under **Packages**. Start with [Modern API](/pac
     npx despia build ios --cloud --plan
     ```
 
-    `new` and `build --cloud` without `--apply` / with `--plan` only check and show what would happen. See [Add a package](/packages/add-a-package).
+    Requires the published `@despia-native/cli` package, 0.1.0 or later. `new` and `build --cloud` without `--apply` / with `--plan` only check and show what would happen. See [Add a package](/packages/add-a-package).
   </Tab>
 </Tabs>
 

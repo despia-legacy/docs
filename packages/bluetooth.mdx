@@ -1,0 +1,627 @@
+---
+title: "Bluetooth"
+description: "Connect your app to nearby Bluetooth Low Energy devices."
+icon: "bluetooth"
+tag: "Alpha"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<Warning>Alpha. This feature is an early implementation. It may change and is provided without a service level guarantee. Use at your own discretion. Report bugs to bugs@despia.com.</Warning>
+
+<Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
+
+Scans for Bluetooth Low Energy devices, connects, discovers services and reads, writes and subscribes to their data. Use it for wearables, sensors and other accessories. Asks for Bluetooth permission the first time it is used, with text you set. Works on phones and desktop.
+
+**When to use it.** Use it to talk to Bluetooth Low Energy accessories such as heart rate straps, sensors and smart devices. It does not handle classic Bluetooth audio or pairing screens.
+
+<EnvNew />
+
+## Call it from JavaScript
+
+No npm package is needed. Inside a Despia V4 app, the `bluetooth` package is on the global `window.dsx`. `dsx.has('bluetooth')` is true when the package is in your app's build:
+
+```javascript
+const dsx = window.dsx
+if (dsx && dsx.has('bluetooth')) {
+  // Connects to a device found by scanning, waiting for the radio to be on if needed.
+  const connect = await dsx.module.bluetooth.connect({ auto_connect: false, id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
+
+  // Disconnects from a device and turns off automatic reconnecting for it.
+  const disconnect = await dsx.module.bluetooth.disconnect({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+
+  // Finds the services and characteristics a connected device offers, which you need before reading or writing.
+  const discover = await dsx.module.bluetooth.discover({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+}
+```
+
+Calls that return something give you a promise; calls that stream take a handler as the second argument and return an object with `stop()`. Errors reject with an object that carries a `code`. See [Calling convention](/packages/overview#calling-convention).
+
+## Actions
+
+| Call | Arguments | Returns | Platforms | What it does |
+| :-- | :-- | :-- | :-- | :-- |
+| `dsx.module.bluetooth.connect()` | `auto_connect`: boolean<br/>`id`: string<br/>`server`: string<br/>`timeout`: number | `id`<br/>`state` | iOS, Android | Connects to a device found by scanning, waiting for the radio to be on if needed. |
+| `dsx.module.bluetooth.disconnect()` | `id`: string | `id`<br/>`state` | iOS, Android | Disconnects from a device and turns off automatic reconnecting for it. |
+| `dsx.module.bluetooth.discover()` | `id`: string | `id`<br/>`services` | iOS, Android | Finds the services and characteristics a connected device offers, which you need before reading or writing. |
+| `dsx.module.bluetooth.permission.manage()` | none | `canAsk`<br/>`changed`<br/>`level`<br/>`status` | iOS, Android | Lets the user change which items this app can see when Bluetooth is limited, without leaving the app; elsewhere it only reports the current state. |
+| `dsx.module.bluetooth.permission.openSettings()` | none | `opened` | iOS, Android | Opens this app's page in the system Settings so the user can change a denied permission. |
+| `dsx.module.bluetooth.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks for Bluetooth with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it. |
+| `dsx.module.bluetooth.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current state of Bluetooth without ever showing a dialog, so a settings screen can call it every time it appears. |
+| `dsx.module.bluetooth.raw()` | `id`: string<br/>`payload`: string | `id`<br/>`meta`<br/>`payload` | iOS, Android | Sends a base64 payload straight to a device and returns what was sent. |
+| `dsx.module.bluetooth.read()` | `char`: string<br/>`id`: string<br/>`service`: string | `char`<br/>`id`<br/>`service`<br/>`value`<br/>`valueHex` | iOS, Android | Reads the current value of one characteristic on a connected device. |
+| `dsx.module.bluetooth.rssi()` | `id`: string | `id`<br/>`rssi` | iOS, Android | Reads the signal strength of a connected device, which tells you roughly how near it is. |
+| `dsx.module.bluetooth.scan()` | `duration`: number<br/>`services`: string[] | stream (sends `device`) | iOS, Android | Scans for nearby Bluetooth Low Energy devices and sends a device event for each one found, until the duration ends or you stop it. |
+| `dsx.module.bluetooth.status()` | none | `authorized`<br/>`state` | iOS, Android | Reports whether Bluetooth is on and whether the app is allowed to use it. |
+| `dsx.module.bluetooth.stopScan()` | none | `ok` | iOS, Android | Stops the scan that is currently running, if any. |
+| `dsx.module.bluetooth.subscribe()` | `char`: string<br/>`id`: string<br/>`server`?: string<br/>`service`: string | stream (sends `data`) | iOS, Android | Starts receiving notifications from a characteristic as data events, for as long as the device stays connected. |
+| `dsx.module.bluetooth.unsubscribe()` | `char`: string<br/>`id`: string<br/>`service`: string | `char`<br/>`id`<br/>`service` | iOS, Android | Stops notifications from a characteristic. |
+| `dsx.module.bluetooth.write()` | `char`: string<br/>`hex`?: string<br/>`id`: string<br/>`service`: string<br/>`text`?: string<br/>`value`?: string<br/>`with_response`?: boolean | `char`<br/>`id`<br/>`service`<br/>`success` | iOS, Android | Writes bytes to a characteristic on a connected device, from text, hex or base64. |
+
+## Action reference
+
+<AccordionGroup>
+<Accordion title="connect">
+
+Connects to a device found by scanning, waiting for the radio to be on if needed.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `auto_connect` | boolean | Pass true to reconnect automatically after an unexpected drop; an explicit disconnect turns it off. |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `server` | string | An https address that receives a copy of connection events for your backend. |
+| `timeout` | number | How long to wait for the connection, in milliseconds, before giving up. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.connect({ auto_connect: false, id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", timeout: 5000 })
+```
+
+```json Result
+{
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "state": "connected"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The id of the connected device. |
+| `state` | string | The connection state, connected on success. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `switched_off` | Bluetooth is turned off. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+<Accordion title="disconnect">
+
+Disconnects from a device and turns off automatic reconnecting for it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.disconnect({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+```
+
+```json Result
+{
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "state": "disconnected"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | Identifies the device that was disconnected, matching the id you passed. |
+| `state` | string | The connection state, disconnected on success. |
+
+</Accordion>
+<Accordion title="discover">
+
+Finds the services and characteristics a connected device offers, which you need before reading or writing.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.discover({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+```
+
+```json Result
+{
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "services": []
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | Identifies the device whose services were found, matching the id you passed. |
+| `services` | object[] | The services on the device, each with its characteristics. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+<Accordion title="permission.manage">
+
+Lets the user change which items this app can see when Bluetooth is limited, without leaving the app; elsewhere it only reports the current state.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.permission.manage()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "changed": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for Bluetooth; false means only Settings can change it. |
+| `changed` | boolean | True when the user changed the selection in the system picker. |
+| `level`? | string | Always empty for Bluetooth, which has no permission levels. |
+| `status` | string | The current state of Bluetooth: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.openSettings">
+
+Opens this app's page in the system Settings so the user can change a denied permission.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.permission.openSettings()
+```
+
+```json Result
+{
+  "opened": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `opened` | boolean | True when the Settings page was opened. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `unavailable` | Opening Settings needs the App Settings package (dsx.module.settings). |
+| `unsupported_platform` | No page script can open browser or OS settings. |
+
+</Accordion>
+<Accordion title="permission.request">
+
+Asks for Bluetooth with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.permission.request()
+```
+
+```json Result
+{
+  "canAsk": false,
+  "status": "granted"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for Bluetooth; false means only Settings can change it. |
+| `level`? | string | Always empty for Bluetooth, which has no permission levels. |
+| `status` | string | The current state of Bluetooth: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="permission.status">
+
+Reads the current state of Bluetooth without ever showing a dialog, so a settings screen can call it every time it appears.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.permission.status()
+```
+
+```json Result
+{
+  "canAsk": true,
+  "status": "undetermined"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `canAsk` | boolean | True while the system can still show its permission dialog for Bluetooth; false means only Settings can change it. |
+| `level`? | string | Always empty for Bluetooth, which has no permission levels. |
+| `status` | string | The current state of Bluetooth: undetermined, granted, limited, denied, restricted or unavailable. |
+
+</Accordion>
+<Accordion title="raw">
+
+Sends a base64 payload straight to a device and returns what was sent.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `payload` | string | The bytes to send, as base64 text. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.raw({ id: "1A2B3C4D-0000-1111-2222-3344556677AA", payload: "AGQ=" })
+```
+
+```json Result
+{
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "meta": {},
+  "payload": "AGQ="
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | Identifies the device the bytes were sent to, matching the id you passed. |
+| `meta` | object | Extra details; always empty for now. |
+| `payload` | string | The bytes that were written, as base64 text. |
+
+</Accordion>
+<Accordion title="read">
+
+Reads the current value of one characteristic on a connected device.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.read({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
+```
+
+```json Result
+{
+  "char": "2a37",
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "service": "180d",
+  "value": "AGQ=",
+  "valueHex": "0064"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic that was read. |
+| `id` | string | Identifies the device that was read, matching the id you passed. |
+| `service` | string | The service that was read. |
+| `value` | string | The value as base64 text. |
+| `valueHex` | string | The same value as upper-case hexadecimal text. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+<Accordion title="rssi">
+
+Reads the signal strength of a connected device, which tells you roughly how near it is.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.rssi({ id: "1A2B3C4D-0000-1111-2222-3344556677AA" })
+```
+
+```json Result
+{
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "rssi": -52
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | string | Identifies the device that was measured, matching the id you passed. |
+| `rssi` | number | The signal strength in decibels; closer to zero is stronger. |
+
+</Accordion>
+<Accordion title="scan">
+
+Scans for nearby Bluetooth Low Energy devices and sends a device event for each one found, until the duration ends or you stop it.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `duration` | number | How long to scan, in milliseconds. |
+| `services` | string[] | Only report devices that advertise these service UUIDs, as a list; filtering by service is more reliable than by name. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.scan({ duration: 10000, services: ["180d"] })
+```
+
+```json Result
+{
+  "ended": true
+}
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `switched_off` | Bluetooth is turned off. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+<Accordion title="status">
+
+Reports whether Bluetooth is on and whether the app is allowed to use it.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.status()
+```
+
+```json Result
+{
+  "authorized": true,
+  "state": "on"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `authorized` | boolean | True when the user has allowed Bluetooth for this app. |
+| `state` | string | The radio state: on, off, unauthorized or unsupported. |
+
+</Accordion>
+<Accordion title="stopScan">
+
+Stops the scan that is currently running, if any.
+
+**Arguments:** none.
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.stopScan()
+```
+
+```json Result
+{
+  "ok": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ok` | boolean | True when the scan was stopped. |
+
+</Accordion>
+<Accordion title="subscribe">
+
+Starts receiving notifications from a characteristic as data events, for as long as the device stays connected.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `server`? | string | An https address that receives a copy of each notification for your backend. |
+| `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.subscribe({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", server: "", service: "180d" })
+```
+
+**Result:** a stream. Pass a handler as the second argument; it receives each update.
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+<Accordion title="unsubscribe">
+
+Stops notifications from a characteristic.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.unsubscribe({ char: "2a37", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d" })
+```
+
+```json Result
+{
+  "char": "2a37",
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "service": "180d"
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic that was unsubscribed. |
+| `id` | string | Identifies the device that was unsubscribed, matching the id you passed. |
+| `service` | string | The service that was unsubscribed. |
+
+</Accordion>
+<Accordion title="write">
+
+Writes bytes to a characteristic on a connected device, from text, hex or base64.
+
+**Arguments**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `hex`? | string | Bytes to send as hexadecimal text. |
+| `id` | string | The device id from a device event while scanning; it is not a hardware address and can change after a reinstall. |
+| `service` | string | The service identifier, as a 16-bit, 32-bit or full 128-bit UUID. |
+| `text`? | string | Text to send as the bytes; if more than one of text, hex and value is given, text wins. |
+| `value`? | string | Bytes to send as base64 text. |
+| `with_response`? | boolean | True by default so the device confirms the write; false sends it without waiting, so success only means it was sent. |
+
+**Example** (from the package's own test)
+
+```javascript
+const result = await window.dsx.module.bluetooth.write({ char: "2a37", hex: "", id: "1A2B3C4D-0000-1111-2222-3344556677AA", service: "180d", text: "ping", value: "", with_response: true })
+```
+
+```json Result
+{
+  "char": "2a37",
+  "id": "1A2B3C4D-0000-1111-2222-3344556677AA",
+  "service": "180d",
+  "success": true
+}
+```
+
+**Result**
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `char` | string | The characteristic that was written. |
+| `id` | string | Identifies the device that was written to, matching the id you passed. |
+| `service` | string | The service that was written. |
+| `success` | boolean | True when the write was accepted or, without a response, dispatched. |
+
+**Errors**
+
+| Code | Message |
+| :-- | :-- |
+| `permission_denied` | Bluetooth permission has not been granted. |
+| `unsupported_device` | This device has no Bluetooth radio this app can use. |
+
+</Accordion>
+</AccordionGroup>
+
+## Broadcasts
+
+Listen with `window.dsx.module.bluetooth.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
+
+| Broadcast | When it fires |
+| :-- | :-- |
+| `bluetooth` | Reports radio state changes, device disconnects and notifications that arrive when no call is waiting; missed ones are replayed when the app returns. |
+| `data` | A characteristic you subscribed to sent a new value. |
+| `device` | A device was found during a scan, with its name, signal strength and advertised services. |
+
+## Configuration
+
+Set these in the package settings of your app (see [Add a package](/packages/add-a-package)).
+
+| Setting | What it is |
+| :-- | :-- |
+| Permission prompt (`usage_description`) | The message shown when iOS asks the user for Bluetooth access. |
+
+## Known limits
+
+- Android: automatic reconnect (`auto_connect`) does not reconnect yet.
+- Android: writes are capped at 20 bytes (no MTU request).
+- Android: no background connections or notifications.
+- Not supported: the peripheral role (advertising, hosting a GATT server), pairing control, L2CAP channels, Bluetooth Classic and beacons.

@@ -36,7 +36,7 @@ import EnvNew from '/snippets/env-new.mdx';
     Agents cannot sign in by design. Run `npx despia login` yourself in a terminal on the same computer, finish the sign-in in the browser, then retry. On a CI machine, set `DESPIA_TOKEN` to a workspace token instead; never paste a token into a chat.
   </Accordion>
   <Accordion title="A tool answers effect_refused">
-    That is the safety boundary, not a failure. Creating an app, starting a cloud build (it spends credits), submitting to a store and signing in change things outside your project, so the agent plans them and you run them. The answer's `details.run` is the exact `despia ...` command; `details.instead` is what the agent can do without you (usually the plan or dry run).
+    That is the safety boundary, not a failure. Creating an app, starting a cloud build, submitting to a store and signing in change things outside your project, so the agent plans them and you run them. The answer's `details.run` is the exact `despia ...` command; `details.instead` is what the agent can do without you (usually the plan or dry run).
   </Accordion>
   <Accordion title="Tools work on the wrong project, or 'no dsx.config.json'">
     The server uses the folder your tool starts it in. Tools such as Claude Desktop and Windsurf do not start servers inside your project, so add `--dir /path/to/your/project` to the arguments. Cloud tools take a `project` id, or read `.despia/project.json`.

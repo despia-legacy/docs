@@ -68,9 +68,9 @@ An AI tool call is not a person at a keyboard. So the toolchain MCP lets the age
 | The agent can | You confirm in your terminal |
 |---|---|
 | List templates, read a template's inputs, detect what a GitHub repository is | Creating the app (`despia new ... --apply`, `despia import ... --apply`) |
-| Plan a new app and check every input, the repository and the identifiers | Starting a Despia Cloud build (it spends credits): the agent runs the dry run with the cost |
+| Plan a new app and check every input, the repository and the identifiers | Starting a cloud build: the agent runs the dry run first |
 | Add, remove and pin packages inside the project | Submitting to the App Store or Google Play |
-| Read builds, follow logs, download artefacts | Signing in or out, buying credits, Apple ID sessions |
+| Read builds, follow logs, download artefacts | Signing in or out, Apple ID sessions |
 
 When the agent asks for one of these, the tool answers with the error code `effect_refused`, the reason, and `details.run`: the exact `despia ...` line for you to run. Most agents show it to you; copy it into your terminal.
 
@@ -110,5 +110,5 @@ Paste one of these into your AI tool once Despia is connected.
 - "List the Despia templates and show me the inputs of the web app template."
 - "Plan a Despia web view app for https://app.example.com and tell me what each input will be."
 - "Which Despia packages does this project use, and what does each one add to the app?"
-- "Run a Despia Cloud build dry run for iOS and tell me the cost and anything that would fail."
+- "Run a cloud build dry run for iOS and tell me anything that would fail."
 - "Show the logs of my last failed Despia build and explain the failure."

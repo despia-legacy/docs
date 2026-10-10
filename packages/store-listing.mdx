@@ -1,0 +1,99 @@
+---
+title: "Store listing and screenshots"
+description: "Keep your App Store and Google Play listing text and screenshots in your project, check them against the store limits, and push them to the stores with the Despia CLI."
+icon: "images"
+tag: "V4"
+---
+
+import EnvNew from '/snippets/env-new.mdx';
+
+<Info>Requires the published `@despia-native/cli` package, 0.0.2 or later, a web view app made with Despia, and a store account connected to your Despia project.</Info>
+
+<EnvNew />
+
+The CLI keeps your store listing as files in your project: the name, description, keywords and other text, and the screenshot sets. You check them against the store limits, then push them to the App Store and Google Play through your project's store connection.
+
+## Files
+
+| Path | What it holds |
+| :-- | :-- |
+| `store/listing.json` | The shared listing: `"$schema": "despia.store-listing/1"`, `defaultLocale` (for example `en-US`), the fields and optional `locales` and `platforms` overrides |
+| `store/listing.ios.json` | App Store text (optional, merged over the shared file) |
+| `store/listing.android.json` | Google Play text (optional, merged over the shared file) |
+| `store/screenshots/<locale>/<class>/<file>` | Screenshots, PNG or JPEG, ordered by file name. Use `default` as the locale for the set every locale shares |
+
+Text fields: `name`, `subtitle`, `description`, `keywords`, `promotionalText`, `whatsNew`, `shortDescription`, `urls` (`support`, `marketing`, `privacyPolicy`), `category`, `contact`, `review`, `ageRating`, `featureGraphic` (Google Play, a path to the image in your project) and `supportsIpad`. For one field, a locale value overrides the shared one, a platform value overrides both, and a platform locale value overrides everything.
+
+A demo account password for App Review is never written in the file: write `{"$secret": "store.review_password"}` and set the value with `npx despia secrets set`.
+
+## Store limits
+
+`npx despia listing check` checks every field, locale and screenshot against these limits.
+
+| Store | Field | Limit |
+| :-- | :-- | :-- |
+| App Store | `name` | 2 to 30 characters, required |
+| App Store | `subtitle` | 30 characters |
+| App Store | `description` | 4000 characters, required |
+| App Store | `keywords` | 100 bytes, joined with commas |
+| App Store | `promotionalText` | 170 characters |
+| App Store | `whatsNew`, `review.notes` | 4000 characters |
+| Google Play | `name` | 30 characters, required |
+| Google Play | `shortDescription` | 80 characters, required |
+| Google Play | `description` | 4000 characters, required |
+| Google Play | `whatsNew` | 500 characters |
+| Both | `urls.privacyPolicy` | required, https |
+| App Store | `urls.support` | required, https |
+
+Screenshot classes are the folder names under `store/screenshots/<locale>/`:
+
+| Class | Store | Count | Accepted sizes (portrait or landscape) |
+| :-- | :-- | :-- | :-- |
+| `iphone-6.9` | App Store | 1 to 10, required | 1320x2868, 1290x2796, 1260x2736 |
+| `iphone-6.5` | App Store | 1 to 10 | 1284x2778, 1242x2688 |
+| `ipad-13` | App Store | 1 to 10, required when `supportsIpad` is true | 2064x2752, 2048x2732 |
+| `android-phone` | Google Play | 2 to 8, required | each side 320 to 3840 pixels, the long side at most twice the short side |
+| `android-tablet-7` | Google Play | 1 to 8 | each side 320 to 3840 pixels, the long side at most twice the short side |
+| `android-tablet-10` | Google Play | 1 to 8 | each side 320 to 3840 pixels, the long side at most twice the short side |
+
+Google Play also needs a 1024x500 feature graphic (`featureGraphic`). Every image is a PNG or JPEG of at most 8 MB.
+
+## Pull, edit, check, push
+
+<Steps>
+  <Step title="Pull what the stores have now">
+    ```bash
+    npx despia listing pull --project <project-id>
+    npx despia listing pull --screenshots --project <project-id>
+    ```
+    The first writes `store/listing.ios.json` and `store/listing.android.json` (and `store/listing.json` if you have none). The second writes the screenshot sets into `store/screenshots/`. Existing files are kept; add `--force` to replace them with the store's. `--target ios` or `--target android` limits it to one store.
+  </Step>
+  <Step title="Edit the files">
+    Change the text in the listing files and replace images in the screenshot folders.
+  </Step>
+  <Step title="Check">
+    ```bash
+    npx despia listing check
+    ```
+    Every problem is printed with the path of the field or file.
+  </Step>
+  <Step title="Push">
+    ```bash
+    npx despia listing push --project <project-id>
+    npx despia listing push --project <project-id> --apply
+    npx despia listing push --screenshots --project <project-id> --apply
+    ```
+    Without `--apply`, push shows what would change and changes nothing. With `--apply` it sets the store's text (name, description, keywords and the rest); with `--screenshots` it sets the screenshot sets to the folder's. Only the sets your folder has are touched, and only images the store does not have yet are uploaded.
+  </Step>
+</Steps>
+
+`--project` defaults to `DESPIA_PROJECT_ID`.
+
+## Then publish
+
+- `npx despia publish --target ios` (or `android`) uploads a build to TestFlight or the Play internal track; `publish promote`, `publish review` and `publish release` move it on. Each step changes the store only with `--apply`.
+- `npx despia submit ios` (or `android`) submits a build for store review after the checklist; `npx despia releases` shows where each submission stands.
+
+{/* TODO-VERIFY (coming, not deployed): the hosted MCP equivalents of listing check/pull/push. The local toolchain MCP serves despia_listing; listing push with apply is handed back to the user as a terminal command. */}
+{/* TODO-VERIFY: npm latest of @despia-native/cli is the placeholder 0.0.0-coming-soon.0 on 2026-10-10; 0.0.2 must be published before the CLI steps work outside a template project. Source: despia.cli.dsx, cli/src/submit-command.ts, cli/src/listing-screenshots.ts, store-core/src/listing.ts and limits.data.ts on release/0.0.2 c12318c4dd. */}
+

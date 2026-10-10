@@ -21,11 +21,18 @@
               "packages/overview",
               "packages/concepts",
               "packages/add-a-package",
-              "packages/ai-tools",
               "packages/broadcasts",
               "packages/push-notifications",
               "packages/migrate-from-v3",
               "packages/legacy-map"
+            ]
+          },
+          {
+            "group": "CLI",
+            "icon": "terminal",
+            "pages": [
+              "packages/ai-tools",
+              "packages/store-listing"
             ]
           },
           {

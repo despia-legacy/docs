@@ -16,6 +16,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
   - [**Storage Vault**](/native-features/storage-vault) for small encrypted values that need to survive uninstall and sync across devices on the same Apple ID or Google account. Backed by iCloud Key Value Store on iOS and Android Key/Value Backup on Android, with optional biometric gating.
   - [**IndexedDB**](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) (built into the WebView, no Despia SDK needed) for general-purpose structured local storage with multiple object stores, indexes, and transactions. Works in any browser and inside the Despia runtime.
 
+  Looking for `@despia/powersync`? It was never officially released and has been removed. Despia is building its own open-source local database; until then, use IndexedDB or your own backend API.
+
   Simple Storage only stores a single string slot per app and has no encryption, no sync, and no structure. The schemes below remain supported for apps already using them, but anything new is better served by one of the alternatives above.
 </Danger>
 

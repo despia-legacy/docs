@@ -247,14 +247,6 @@
                 ]
               },
               {
-                "group": "Local Database",
-                "icon": "database",
-                "pages": [
-                  "local-database/introduction",
-                  "local-database/reference"
-                ]
-              },
-              {
                 "group": "Local CDN",
                 "icon": "box-open",
                 "pages": [
@@ -680,6 +672,22 @@
     "dismissible": true
   },
   "redirects": [
+    {
+      "source": "/local-database",
+      "destination": "/native-features/simple-storage"
+    },
+    {
+      "source": "/local-database/introduction",
+      "destination": "/native-features/simple-storage"
+    },
+    {
+      "source": "/local-database/reference",
+      "destination": "/native-features/simple-storage"
+    },
+    {
+      "source": "/local-database/:slug*",
+      "destination": "/native-features/simple-storage"
+    },
     {
       "source": "/analytics/posthog/scheme-reference",
       "destination": "/analytics/posthog/reference"

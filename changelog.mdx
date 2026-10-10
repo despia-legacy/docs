@@ -4,9 +4,12 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
+
+<NpmVersion />
 
 <Update label="September 13, 2026" description="Infrastructure - DNS resolution during the V3 to V4 migration">
   ## V3 to V4 migration - if a Despia page says "This site can't be reached"
@@ -891,6 +894,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 
 <Update label="April 18, 2026" description="PowerSync - schema configuration in db.connect()">
   ## PowerSync schema configuration
+
+  <Note>`@despia/powersync` is discontinued and is not available in Despia V4. Despia is building its own open-source local database.</Note>
 
   `db.connect()` now accepts a `schema` parameter that tells the sync engine which tables and columns to map from your backend. Previously, schema configuration had to be inferred or handled separately outside the connect call.
 

@@ -4,9 +4,10 @@ icon: "fingerprint"
 description: "Add Face ID, Touch ID, and device passcode authentication to secure sensitive features in your Lovable application."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Note>
   **Biometric Authentication’s second version is coming soon, enabling you to securely store tokens and attach them to native biometric data. This allows for complete authentication flows across the stack through our new Identity Vault system.**
@@ -59,6 +60,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** The Despia SDK provides native bridge functionality for biometric authentication through callback-based async method calls. The SDK automatically detects available biometric methods (Face ID, Touch ID, or device passcode) and presents the appropriate authentication interface.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

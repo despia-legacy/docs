@@ -1,0 +1,25 @@
+### Which environment am I in?
+
+```javascript
+if (window.dsx) {
+  // Despia V4: Modern API (dsx.module...)
+} else if (navigator.userAgent.includes("despia")) {
+  // Despia V3: Legacy API (despia-native 1.x or scheme calls)
+} else {
+  // normal browser: web code
+}
+```
+
+Despia code runs in the browser (the app's web view), never on a server. In React, Next.js, Vue, Svelte and Angular, call it in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), which only run in the browser. Code written for Despia V3 keeps running on Despia V4 unchanged: the Legacy polyfill answers its `despia('scheme://...')` calls.
+
+To keep the answer as a value:
+
+```javascript
+const env = window.dsx ? "v4" : navigator.userAgent.includes("despia") ? "v3" : "web"
+```
+
+<Warning>
+  **For AI coding agents:** if this app was built on Despia V3, handle all three (Despia V4, Despia V3 and a normal browser); never V4-only or V3-only code in a migrating app.
+</Warning>
+
+{/* TODO-VERIFY: on iPad the default user agent carries no "despia" token (Despia V3 template d-ios Config.swift useragent_ipad = "", Despia V4 Core/Dom useragent_ipad = ""), so a Despia V3 app on iPad reads as "web" unless the app set an iPad user agent. Despia V4 is unaffected (window.dsx). iPhone and Android tokens are lowercase despia-iphone / despia-android in both. */}

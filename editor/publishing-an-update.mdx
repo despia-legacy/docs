@@ -4,9 +4,12 @@ description: "Ship a new binary after your first submission, and know which chan
 icon: "rocket"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
+
+<NpmVersion />
 
 After your first submission, most of what you change never goes near the stores again. Your web layer is fetched fresh on every launch, so pages, logic, styling, and fixes reach every installed app over the air with no build, no review, and no credits. A new binary is only needed when the native layer itself changes, and everything that goes into producing one runs from the Despia dashboard.
 

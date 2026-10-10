@@ -5,7 +5,7 @@ icon: "fire"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Sets up your app's Firebase identity and registers each device with Firebase Clo
 
 **When to use it.** Use it when your team sends push notifications through Firebase Cloud Messaging. If you use another push provider such as OneSignal, you do not need it.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.firebase.subscription.get()
-else if (rt.kind === 'v3') despia('getfirebaseplayerid://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `firebase` package is on the global `window.dsx`. `dsx.has('firebase')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('firebase')) {
   // Returns this install's push subscription: its Firebase installation id, the FCM address your server sends to, and whether it is opted in.
   const subscriptionGet = await dsx.module.firebase.subscription.get()
@@ -54,11 +45,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.firebase.topics.subscribe()` | `topic`: string | `topic` | iOS, Android | Subscribes this install to an FCM topic so you can send one message to everyone on it. |
 | `dsx.module.firebase.topics.unsubscribe()` | `topic`: string | `topic` | iOS, Android | Removes this install from an FCM topic so it stops receiving that topic's messages. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.firebase.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.firebase.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `subscription` | Fires when the FCM registration arrives, changes or is deleted, or when you change the opt-in. |
 
@@ -76,10 +67,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | FCM topic (`fcm_topic`) | Optional Firebase topic to subscribe every device to. |
 | Firebase push enabled (`push_enabled`) | Activate Firebase Cloud Messaging push (download and replace GoogleService-Info.plist from the Firebase dashboard first). |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `getfirebaseplayerid://` | `dsx.module.firebase.subscription.get()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -4,15 +4,18 @@ description: "Forward GDPR and DMA consent choices from your cookie banner to th
 icon: "shield-check"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [AppsFlyer](/packages/appsflyer).</Tip>
 
 Forward the user's cookie-banner choice to the AppsFlyer SDK's consent API for DMA compliance. The values control how AppsFlyer processes the user's data and shares it with ad partners.
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

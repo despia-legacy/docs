@@ -5,7 +5,7 @@ icon: "user-shield"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Lets your app find out whether the user allows tracking and ask for it when you 
 
 **When to use it.** Use it when your app has cross-app tracking, personalised ads or attribution that depends on user consent, and you need to show the iOS tracking dialog at the right moment. Skip it if your app does no tracking, since nothing asks on launch.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.apptracking.permission.status()
-else if (rt.kind === 'v3') despia('apptracking://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `apptracking` package is on the global `window.dsx`. `dsx.has('apptracking')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('apptracking')) {
   // Reads the current tracking answer without showing any dialog. Use it to decide whether to ask or to switch tracking off.
   const permissionStatus = await dsx.module.apptracking.permission.status()
@@ -61,12 +52,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Show ads when ATT denied (`att_denied_show_ads`) | Keep showing ads even when the user denies App Tracking Transparency. |
 | Permission prompt (`usage_description`) | The message shown when iOS asks permission to track the user across apps (ATT). |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `apptracking://` | `dsx.module.apptracking.permission.status()` |
-| `user-disable-tracking://` | `dsx.module.apptracking.permission.status()` |
-| `trackingconsent://` | `dsx.module.apptracking.permission.request()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

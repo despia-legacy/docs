@@ -19,7 +19,7 @@
             "pages": [
               "packages/overview",
               "packages/add-a-package",
-              "packages/events",
+              "packages/broadcasts",
               "packages/push-notifications",
               "packages/migrate-from-v3",
               "packages/legacy-map"
@@ -719,6 +719,10 @@
     {
       "source": "/packages/react",
       "destination": "/packages/frameworks/react"
+    },
+    {
+      "source": "/packages/events",
+      "destination": "/packages/broadcasts"
     }
   ],
   "logo": {

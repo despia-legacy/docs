@@ -4,9 +4,10 @@ icon: "location-arrow"
 description: "Track and retrieve a user's real-time location data with configurable intervals using the Despia SDK."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Note>
   This is the second version of background location tracking in Despia. This version utilizes the real native system’s background task capabilities to send network requests while the app is closed. This ensures reliable background location tracking for GPS-based applications like taxi apps, delivery apps, and so on. Unlike the previous version, this version does not inherit any WebView GPS limitations because it uses real native modules.
@@ -48,6 +49,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it Works**: Despia activates the device's native GPS and location services to continuously monitor the user's position. Location updates are collected at the interval specified by the buffer parameter (in seconds). Each update is optionally sent to your server endpoint and always stored locally in an array. When tracking stops, all collected location points are returned to your JavaScript code for processing or display.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

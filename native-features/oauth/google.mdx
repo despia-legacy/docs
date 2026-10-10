@@ -4,9 +4,10 @@ description: "Sign In with Google using the Despia OAuth bridge. Opens ASWebAuth
 icon: "google"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [OAuth](/packages/oauth).</Tip>
 
@@ -15,6 +16,8 @@ Sign in with Google using the Despia OAuth bridge. The same `oauth://` flow hand
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

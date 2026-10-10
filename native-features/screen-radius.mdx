@@ -4,9 +4,10 @@ description: "Read the device's physical screen corner radius and use it to buil
 icon: "bezier-curve"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 The Despia runtime measures the device's hardware screen corner radius at page load and exposes it to your web app as a JavaScript value and a CSS variable. Use it to make modals, sheets, cards, and overlays curve in lockstep with the physical bezel.
 
@@ -17,6 +18,8 @@ The Despia runtime measures the device's hardware screen corner radius at page l
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

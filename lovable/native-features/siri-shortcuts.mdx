@@ -4,9 +4,10 @@ icon: "circle-waveform-lines"
 description: "Enable Siri voice shortcuts with custom natural language commands that trigger JavaScript functions in your Lovable mobile app using the Despia SDK."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Note>
   **THIS FEATURE IS STILL A BETA FEATURE!**
@@ -32,6 +33,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** Despia acts as a bridge between your Lovable app and Siri voice shortcuts. When users register a Siri shortcut with a natural language command like "Order Coffee", they can later speak that command to Siri. When triggered, your app opens and automatically executes the specified globally-defined JavaScript function, enabling hands-free voice-activated workflows and app interactions.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

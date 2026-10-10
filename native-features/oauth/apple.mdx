@@ -4,9 +4,10 @@ description: "Sign In with Apple, platform-aware. Native Face ID on iOS, Chrome 
 icon: "apple"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [OAuth](/packages/oauth).</Tip>
 
@@ -19,6 +20,8 @@ Sign In with Apple using the Apple JS SDK in three flavors. iOS uses the SDK's n
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

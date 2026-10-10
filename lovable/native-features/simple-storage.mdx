@@ -4,9 +4,10 @@ description: "Persist data directly on the user's device using simple read/write
 icon: "database"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Card title="Lovable Prompt" icon="sparkles">
   Add local storage functionality to my app using the Despia SDK from: [**https://www.npmjs.com/package/despia-native**](https://www.npmjs.com/package/despia-native)
@@ -44,6 +45,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** Despia acts as a bridge between your Lovable app and native device storage. Store user preferences, tokens, or settings directly on the device. Data persists between app sessions and is accessed through simple URL commands that trigger native storage operations.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

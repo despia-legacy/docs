@@ -5,7 +5,7 @@ icon: "bars"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Sets the colour, icon style and visibility of the status bar and the navigation 
 
 **When to use it.** Use it when a screen needs its own bar colours, hidden bars or a fullscreen video mode. Leave it alone if the default bar look already suits the app.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `systembars` package is on the global `window.dsx`. `dsx.has('systembars')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('systembars')) {
   // Changes the status bar, the navigation bar or the fullscreen mode. Anything you leave out keeps its current value.
   const setResult = await dsx.module.systembars.set({ status: {"background": "#1A1A2E"} })
@@ -56,15 +56,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Status bar background (dark) (`dark_mode_status_bar_background_color`) | Status bar background color in dark mode (#RRGGBB or #RRGGBBAA). |
 | Status bar background (`status_bar_background_color`) | Status bar background color in light mode (#RRGGBB or #RRGGBBAA). |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `statusbarbackgroundcolor://` | `dsx.module.systembars.set()` |
-| `statusbartextcolor://` | `dsx.module.systembars.set()` |
-| `statusbarcolor://` | `dsx.module.systembars.set()` |
-| `navbartextcolor://` | `dsx.module.systembars.set()` |
-| `hidebars://` | `dsx.module.systembars.set()` |
-| `bottombarcolor://` | `dsx.module.systembars.set()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

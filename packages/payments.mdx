@@ -5,7 +5,7 @@ icon: "credit-card"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Gives your app one way to start a payment, manage saved cards, link a bank accou
 
 **When to use it.** Use it to take payments inside your app through one set of calls, whichever provider package you add. Choose it before wiring a provider's own calls, so you can change provider later. Do not use it for in-app purchases of digital goods, which belong to the stores.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `payments` package is on the global `window.dsx`. `dsx.has('payments')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('payments')) {
   // Shows the provider's payment sheet so the user can pick a method and pay, and returns when they finish or cancel.
   const payment = await dsx.module.payments.payment({ payment_intent_client_secret: "pi_123_secret_abc", publishable_key: "pk_test_123" })
@@ -57,14 +57,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Payment processor (retired) (`processor`) | Retired spelling of `provider`; still read as the same choice. Set `provider` instead. |
 | Payment provider (`provider`) | Optional: which provider package takes payments (for example stripe). Empty means the one provider package this app includes. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `stripe://payment` | `dsx.module.payments.payment()` |
-| `stripe://manage` | `dsx.module.payments.manage()` |
-| `stripe://connectBank` | `dsx.module.payments.connectBank()` |
-| `stripe://payAch` | `dsx.module.payments.payAch()` |
-| `stripe://connectOnboard` | `dsx.module.payments.stripe.connectOnboard()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

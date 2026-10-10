@@ -5,7 +5,7 @@ icon: "hand"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Turns off the built-in iOS keyboard autoscroll on the main web view, and can han
 
 **When to use it.** Use it when your web page has a composer or sticky bar and iOS pushes the page around when the keyboard opens. Leave it alone if the default keyboard scrolling already works for your screens.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `preventdefault` package is on the global `window.dsx`. `dsx.has('preventdefault')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('preventdefault')) {
   // Turns the native iOS keyboard autoscroll off, or back on. Called with no value it prevents autoscroll. The default at launch is autoscroll restored.
   const autoscroll = await dsx.module.preventdefault.autoscroll({ enabled: true })
@@ -35,10 +35,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.preventdefault.autoscroll()` | `enabled`?: boolean | `prevented` | iOS, Android | Turns the native iOS keyboard autoscroll off, or back on. Called with no value it prevents autoscroll. The default at launch is autoscroll restored. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `preventdefault://autoscroll` | `dsx.module.preventdefault.autoscroll()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

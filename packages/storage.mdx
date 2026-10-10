@@ -5,7 +5,7 @@ icon: "database"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ A simple store for things like a theme choice, a language or a last-seen date. V
 
 **When to use it.** Reach for it to remember small things between launches, such as a theme, a language or the last screen. It is not meant for large files or secrets; use files for big data and a secure store for credentials.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.storage.get({ key: "appSettings" })
-else if (rt.kind === 'v3') despia('readvalue://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `storage` package is on the global `window.dsx`. `dsx.has('storage')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('storage')) {
   // Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type.
   const setResult = await dsx.module.storage.set({ key: "theme", value: "dark" })
@@ -58,19 +49,12 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.storage.remove()` | `key`: string | `ok` | iOS, Android | Deletes one saved key. Removing a key that is not there does nothing. |
 | `dsx.module.storage.set()` | `key`: string<br/>`value`: any | `ok` | iOS, Android | Saves one value under a key. Strings, numbers, true or false, null, lists and objects are all kept with their type. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.storage.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.storage.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `change` | Sent after any write to the store: set, remove, clear, their multi versions, and an open that upgraded the store. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `writevalue://` | `dsx.module.storage.set()` |
-| `readvalue://` | `dsx.module.storage.get()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

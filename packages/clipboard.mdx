@@ -5,7 +5,7 @@ icon: "clipboard"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Gives you one call to read text, links, rich text, images and files from the cli
 
 **When to use it.** Reach for it for copy buttons, paste buttons and share-to-clipboard features. For plain copy of a short string on a web page the browser clipboard may be enough, but this also handles images and expiry.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.clipboard.read()
-else if (rt.kind === 'v3') despia('getclipboard://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `clipboard` package is on the global `window.dsx`. `dsx.has('clipboard')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('clipboard')) {
   // Reads the current clipboard as text, a link, rich text, an image or files.
   const readResult = await dsx.module.clipboard.read({ type: "image" })
@@ -52,18 +43,12 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.clipboard.read()` | `type`?: "text" \\| "url" \\| "html" \\| "image" \\| "files" | `files`<br/>`html`<br/>`image`<br/>`text`<br/>`url` | iOS, Android | Reads the current clipboard as text, a link, rich text, an image or files. |
 | `dsx.module.clipboard.write()` | `expiresIn`?: number<br/>`files`?: string[]<br/>`html`?: string<br/>`image`?: string<br/>`localOnly`?: boolean<br/>`sensitive`?: boolean<br/>`text`?: string<br/>`url`?: string | `expiry`<br/>`ignored`<br/>`ok` | iOS, Android | Puts text, a link, rich text, an image or files on the clipboard, with optional expiry and privacy settings. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.clipboard.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.clipboard.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `change` | The system clipboard changed. It starts after the first inspect call. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `getclipboard://` | `dsx.module.clipboard.read()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

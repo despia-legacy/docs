@@ -5,7 +5,7 @@ icon: "file"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Opens a file in the phone's own preview screen, which handles PDFs, images, Offi
 
 **When to use it.** Use it when the user should look at a document, invoice or image without leaving the app. If you only need to send the file to another app, use the file sharing package instead.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `fileviewer` package is on the global `window.dsx`. `dsx.has('fileviewer')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('fileviewer')) {
   // Opens one or more files in a full screen preview, downloading https addresses first.
   const preview = await dsx.module.fileviewer.preview({ src: "https://files.app/invoice.pdf" })
@@ -39,10 +39,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.fileviewer.preview()` | `src`: any<br/>`theme`?: "dark" \\| "light" | `file`<br/>`files`<br/>`status` | iOS, Android | Opens one or more files in a full screen preview, downloading https addresses first. |
 | `dsx.module.fileviewer.thumbnail()` | `height`?: number<br/>`src`: string<br/>`width`?: number | `height`<br/>`path`<br/>`src`<br/>`width` | iOS, Android | Makes a small picture of a file and saves it in the cache, so a list can show real previews without opening a viewer. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `fileviewer://` | `dsx.module.fileviewer.preview()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

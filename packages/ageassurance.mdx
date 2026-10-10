@@ -5,7 +5,7 @@ icon: "id-card"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Uses Apple's Declared Age Range on iOS and Google's Play Age Signals on Android 
 
 **When to use it.** Use it when you must treat under-age users differently, for example to show or hide adult content. Check for yes with a strict true test, because unknown is not the same as no. If the system cannot answer, ask for a birthdate yourself.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.ageassurance.last()
-else if (rt.kind === 'v3') despia('ageassurance://last')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `ageassurance` package is on the global `window.dsx`. `dsx.has('ageassurance')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('ageassurance')) {
   // Asks the system for the user's age band and tells whether the user is at least each age you list; the system may show a prompt.
   const check = await dsx.module.ageassurance.check({ gates: [13, 15, 17] })
@@ -61,13 +52,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Default age gates (`default_gates`) | The ages this app asks about when a call passes none. At most three, whole years. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `ageassurance://check` | `dsx.module.ageassurance.check()` |
-| `ageassurance://resolve` | `dsx.module.ageassurance.resolve()` |
-| `ageassurance://last` | `dsx.module.ageassurance.last()` |
-| `ageassurance://forget` | `dsx.module.ageassurance.forget()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

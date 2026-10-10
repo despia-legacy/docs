@@ -4,9 +4,10 @@ description: "Open your app's native settings page directly from within your Lov
 icon: "gear"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Note>
   **This setting is incredible for re-engaging users!** It allows you to re-request users to grant push notification access, which keeps users engaged in your app. You only get one chance to ask for push permission, but this setting also allows you to use the deep link feature to request it multiple times without any limit, all while using your own custom UI.
@@ -32,6 +33,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** Despia acts as a bridge between your Lovable app and the native mobile OS. When triggered, Despia opens your app's dedicated settings page in the device's native settings application, allowing users to manage app-specific permissions, notifications, and preferences directly from the native interface.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

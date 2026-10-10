@@ -4,15 +4,12 @@ description: "Native local SQLite database with optional real-time backend sync 
 icon: "circle-info"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import PowersyncDiscontinued from '/snippets/powersync-discontinued.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
-<Warning>The `@despia/powersync` local database is not supported in Despia V4 0.1.0 (pre-release). Support is planned for 1.0.0. Keep apps that use it on their Despia V3 build for now, see [Migrate from Despia V3](/packages/migrate-from-v3).</Warning>
-
-<Info>
-  **The PowerSync integration is fully built and production-ready.** The cloud sync component will become publicly available when the Despia V4 editor launches. To enable it already contact our support via the Despia live chat and share your PowerSync URL \+ Bundle ID.
-</Info>
+<PowersyncDiscontinued />
 
 `@despia/powersync` gives your Despia app a native SQLite database on-device. Reads and writes hit local storage with no network round-trip, the app stays fully usable offline, and optional two-way sync with your existing Postgres, MongoDB, or MySQL backend is a single call away once you have a token for the signed-in user.
 
@@ -331,8 +328,8 @@ if (token) {
     Yes. The database is compiled into the app binary. No executables are downloaded post-install. SQLite is a standard system framework on both iOS and Android.
   </Accordion>
 
-  <Accordion title="How do I get access before the public release?">
-    The integration is fully built and ready. Contact [support@despia.com](mailto:support@despia.com) to enable it on your app before the V4 editor launch.
+  <Accordion title="Can I still start with @despia/powersync?">
+    No. `@despia/powersync` is discontinued and is not available in Despia V4. Despia is building its own open-source local database. Until it is available, use your own backend API or IndexedDB.
   </Accordion>
 </AccordionGroup>
 

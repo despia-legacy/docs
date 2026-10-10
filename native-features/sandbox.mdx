@@ -4,9 +4,10 @@ description: "Repoint a compiled app at a test environment at runtime without re
 icon: "flask"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 Repoint a compiled app at a test environment at runtime, without rebuilding. Testers can redirect the running app from its production host to a staging host and start URL, run QA against the test backend, then restore the production app when they are done. Every switch, and every launch that starts in a test environment, shows a native alert so it is always clear which environment is live, and the behaviour is identical on iOS and Android.
 
@@ -17,6 +18,8 @@ Repoint a compiled app at a test environment at runtime, without rebuilding. Tes
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

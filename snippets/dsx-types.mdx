@@ -1,10 +1,10 @@
-No types ship with Despia V4 yet, so declare the global once. This block describes exactly what `window.dsx` has in a Despia V4 web view:
+Despia V4 has no package to install, so declare the global once and your editor autocompletes it. This block describes exactly what `window.dsx` has in a Despia V4 web view:
 
 ```typescript despia-dsx.d.ts
 // The window.dsx surface of Despia V4 (pre-release 0.1.0)
 export interface DsxEnvelope {
-  event?: string          // the event name, or 'error'
-  data?: unknown          // the event's payload
+  event?: string          // the broadcast's name, or 'error'
+  data?: unknown          // its payload
   scheme?: string         // the package that sent it
   final?: boolean
   code?: string           // set on errors
@@ -15,7 +15,7 @@ export interface DsxEnvelope {
 export interface DsxSurface {
   // dsx.module.<package>.<action>(args) returns a promise; with a handler as the
   // second argument it streams and returns { id, stop() }.
-  // dsx.module.<package>.on('<event>', (data) => {}) returns an unsubscribe function.
+  // dsx.module.<package>.on('<broadcast>', (data) => {}) returns a function that stops listening.
   module: any
   has(nameOrScheme: string): boolean
   version(nameOrScheme: string): string | null
@@ -27,7 +27,6 @@ export interface DsxSurface {
 declare global {
   interface Window {
     dsx?: DsxSurface
-    __nativeRuntime?: { platform?: string; appVersion?: string }
   }
 }
 ```

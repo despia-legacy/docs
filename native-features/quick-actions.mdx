@@ -4,9 +4,10 @@ description: "Add native long-press shortcuts to your app icon that invoke a glo
 icon: "align-left"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [QuickActions](/packages/quickactions).</Tip>
 
@@ -21,6 +22,8 @@ When the user long-presses your app icon, the OS shows a list of shortcuts you c
 ---
 
 ## Installation
+
+<NpmVersion />
 
 Quick Actions does not require installing the `despia-native` package. The runtime invokes your global function directly when the shortcut fires, no SDK calls or imports needed on your side. Install `despia-native` only if your page also uses other Despia schemes.
 

@@ -5,7 +5,7 @@ icon: "bell"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Handles the notification permission, the device token, Android channels, action 
 
 **When to use it.** Reach for it when your app needs to remind, alert or message people outside the app, from your own server or from the device itself. If you already use a push vendor, keep it and use this package only for the local side.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.notify.permission.request()
-else if (rt.kind === 'v3') despia('registerpush://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `notify` package is on the global `window.dsx`. `dsx.has('notify')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('notify')) {
   // Asks the user to allow notifications and tells you where that leaves you. With provisional set on iOS, notifications are allowed quietly without showing a prompt.
   const permissionRequest = await dsx.module.notify.permission.request({ provisional: true })
@@ -69,11 +60,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.notify.scheduled()` | none | `items` | iOS, Android | Lists the notifications that are still waiting to fire, so a screen can show the user's own reminders. |
 | `dsx.module.notify.token()` | `kind`?: string | `kind`<br/>`token` | iOS, Android | Gets the device token your own server needs to send this device a push. The token can change and arrives again on each launch, so your upload should be safe to repeat. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.notify.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.notify.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `dismissed` | The user dismissed a notification without opening it. |
 | `opened` | The user tapped a notification or one of its action buttons. |
@@ -98,11 +89,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Notification sounds (`sounds`) | The package resources a notification may play, as &lt;package&gt;/&lt;path&gt;, e.g. app/sounds/chime.wav. |
 | Push transport (`token_kind`) | Which remote-push transport the token action asks for: auto, apns or fcm. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `registerpush://` | `dsx.module.notify.permission.request()` |
-| `checknativepushpermissions://` | `dsx.module.notify.permission.status()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

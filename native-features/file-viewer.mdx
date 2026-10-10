@@ -4,9 +4,10 @@ description: "Open a remote file in a native previewer with consistent render fi
 icon: "file-magnifying-glass"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [FileViewer](/packages/fileviewer).</Tip>
 
@@ -17,6 +18,8 @@ Useful for invoices, statements, contracts, exported reports, generated PDFs, an
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

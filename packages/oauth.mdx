@@ -5,7 +5,7 @@ icon: "key"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Opens your provider's sign-in page in the trusted system browser sheet and hands
 
 **When to use it.** Use it for social or enterprise sign-in with providers that refuse to load inside an embedded web view. If you only need a native Apple or Google button, use that provider's own package instead.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `oauth` package is on the global `window.dsx`. `dsx.has('oauth')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('oauth')) {
   // Opens the provider's authorize address in the system sign-in sheet and waits for the user to finish. You get back the redirect address and every parameter it carried, or a clear refusal such as cancelled.
   const startResult = await dsx.module.oauth.start({ url: "https://idp.example/authorize?client_id=app&state=s1" })
@@ -44,11 +44,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.oauth.session()` | `ephemeral`?: boolean<br/>`host`?: string<br/>`path`?: string<br/>`pkce`?: boolean<br/>`proofs`?: boolean<br/>`url`: string | `url` | iOS, Android | Runs the same sign-in sheet as start but hands back only the raw redirect address, for packages that read the callback themselves. |
 | `dsx.module.oauth.start()` | `callback`?: string<br/>`ephemeral`?: boolean<br/>`host`?: string<br/>`path`?: string<br/>`pkce`?: boolean<br/>`url`: string | `params`<br/>`url` | iOS, Android | Opens the provider's authorize address in the system sign-in sheet and waits for the user to finish. You get back the redirect address and every parameter it carried, or a clear refusal such as cancelled. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.oauth.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.oauth.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `error` | A sign-in could not complete because the callback host is not linked to the app; its fields say which host and which system code. |
 
@@ -63,11 +63,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Extra origins for native Apple sign-in (`native_apple_signin_origins`) | Additional https origins of your own that may use the native Apple sheet. |
 | Token endpoints allowed to receive the PKCE verifier (`token_endpoints`) | The https origins this app may redeem an authorization code at, for example https://oauth2.googleapis.com. Leave it empty if the app does not use device-held PKCE. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `oauth://` | `dsx.module.oauth.start()` |
-| `googlelogin://` | `dsx.module.oauth.start()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

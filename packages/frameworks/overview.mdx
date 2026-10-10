@@ -5,42 +5,39 @@ icon: "layer-group"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
+import SsrRule from '/snippets/ssr-rule.mdx';
 
-<RuntimeCheck />
+<EnvNew />
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-Every framework talks to Despia V4 the same way: through the global `window.dsx`, which the app installs before your first script runs. There is no Despia package for any framework, no React hook and no Vue plugin to install. Each guide gives you a few lines to copy instead.
+<SsrRule />
+
+Every framework talks to Despia V4 the same way: through the global `window.dsx`, which the app installs before your first script runs. No package is needed for any framework: each guide gives you a few lines to copy.
 
 ## One rule for every stack
 
-```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
-```
-
-- `window.dsx` exists only inside a Despia V4 app. In a normal browser, in Despia V3 and on the server it is `undefined`.
-- A bare `dsx` throws a `ReferenceError` wherever it does not exist, so always read it through the line above.
-- In frameworks that render on the server, read it only after mount (in an effect, `onMount` or an event handler), never during render.
+`window.dsx` exists only inside a Despia V4 app. Despia code runs in the browser (the app's web view), never on a server, so read `window.dsx` in an effect or event handler (`useEffect`, `onMounted`, `onMount`, a click handler), never during render. Then server-rendered frameworks never reach it on the server, and server and browser output match.
 
 ## Pick your guide
 
 | Your stack | Guide | You copy |
 | :-- | :-- | :-- |
-| React, Next.js, Remix | [React and Next.js](/packages/frameworks/react) | `useDespiaRuntime`, `useDsxCall`, `useDsxEvent` hooks |
-| Vue 3, Nuxt | [Vue and Nuxt](/packages/frameworks/vue) | `useDespiaRuntime`, `useDsxCall`, `useDsxEvent` composables |
-| Svelte, SvelteKit | [Svelte and SvelteKit](/packages/frameworks/svelte) | a `runtime` store, `dsxCall`, `onDsxEvent` |
+| React, Next.js, Remix | [React and Next.js](/packages/frameworks/react) | `useDsxCall`, `useDsxBroadcast` hooks |
+| Vue 3, Nuxt | [Vue and Nuxt](/packages/frameworks/vue) | `useDsxCall`, `useDsxBroadcast` composables |
+| Svelte, SvelteKit | [Svelte and SvelteKit](/packages/frameworks/svelte) | `dsxCall`, `onDsxBroadcast` |
 | Angular | [Angular](/packages/frameworks/angular) | a `DespiaService` with zone handling |
-| SolidJS, SolidStart | [SolidJS](/packages/frameworks/solid) | `createDespiaRuntime`, `createDsxCall`, `onDsxEvent` |
+| SolidJS, SolidStart | [SolidJS](/packages/frameworks/solid) | `createDsxCall`, `onDsxBroadcast` |
 | Plain HTML, vanilla JS, Astro, jQuery, anything else | [Plain HTML, vanilla JS and Astro](/packages/frameworks/html) | nothing: call `window.dsx` from a script |
 
 Lovable and Base44 generate React apps, so use the React guide.
 
 ## What every guide covers
 
-- **Runtime detection**: the `getDespiaRuntime()` helper from the block above, to branch between Despia V4, Despia V3 and a normal browser.
+- **Environment check**: the check at the top of the page (Despia V4 or a normal browser).
 - **Calling a package** with loading and error state. A failed call rejects with an object that has a `code`.
-- **Events** with cleanup when the component goes away.
+- **Broadcasts** with cleanup when the component goes away.
 - **Server rendering**: where it is safe to read `window.dsx`.
 - **TypeScript**: a declaration of `window.dsx` that matches the runtime.
 

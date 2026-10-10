@@ -4,9 +4,10 @@ description: "Retrieve clipboard content from users' devices within your Lovable
 icon: "copy"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <iframe src="https://www.youtube.com/embed/zoWQKLhlVp4" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -31,6 +32,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** The Despia SDK provides native bridge functionality to access device clipboard through async method calls. The clipboard content is returned as a JSON object with the text content accessible via the `clipboarddata` key.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

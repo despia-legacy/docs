@@ -5,7 +5,7 @@ icon: "print"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Presents the system print sheet for a file in your app or for a web address it d
 
 **When to use it.** Use it for receipts, tickets, reports and other documents the person may want on paper. For sharing a file rather than printing it, use the share sheet.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `print` package is on the global `window.dsx`. `dsx.has('print')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('print')) {
   // Shows the system print sheet for a document, which is a file in your app or one downloaded from a web address.
   const document = await dsx.module.print.document()
@@ -35,10 +35,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.print.document()` | `jobName`?: string<br/>`path`?: string<br/>`url`?: string | `completed`<br/>`fallback` | iOS, Android | Shows the system print sheet for a document, which is a file in your app or one downloaded from a web address. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `printitem://` | `dsx.module.print.document()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -4,9 +4,10 @@ description: "Show the operating system's native star rating prompt inside your 
 icon: "star"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [AppRating](/packages/apprating).</Tip>
 
@@ -19,6 +20,8 @@ Ask users to rate your app using the operating system's own star prompt, present
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

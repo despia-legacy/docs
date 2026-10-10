@@ -5,7 +5,7 @@ icon: "upload"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,7 +13,7 @@ When a person taps a file input, the app shows the native source sheet and hands
 
 **When to use it.** It works by itself: write an ordinary file input and uploads just work. You rarely call its actions; read its state if you want to show a spinner while a picker is open.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
@@ -21,7 +21,7 @@ No npm package is needed. Inside a Despia V4 app, the `fileupload` package is on
 
 ```javascript
 // built into every Despia V4 app
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx) {
   // Turns the native handling of file inputs on or off; when off, every file input opens the generic source sheet instead.
   const nativeOverwrite = await dsx.module.fileupload.nativeOverwrite({ native_overwrite: false })
@@ -48,10 +48,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Camera permission description (`camera_usage_description`) | Turns on the camera in file uploads and says why the app asks for it, for example: Use the camera to capture a photo you choose to upload. Empty (the default): file inputs offer the photo library and files only, and the app declares no camera permission. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `filepicker://` | `dsx.module.fileupload.nativeOverwrite()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

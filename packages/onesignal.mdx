@@ -5,7 +5,7 @@ icon: "bell-ring"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Registers the device with OneSignal, asks for notification permission and links 
 
 **When to use it.** Add it when your team already sends push, email and text messages from OneSignal and you want devices linked to your signed-in people. If you do not use OneSignal, use the plain notifications package.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.onesignal.subscription.get()
-else if (rt.kind === 'v3') despia('getonesignalplayerid://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `onesignal` package is on the global `window.dsx`. `dsx.has('onesignal')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('onesignal')) {
   // Reads this device's push subscription: its id, token and whether it is opted in.
   const subscriptionGet = await dsx.module.onesignal.subscription.get()
@@ -75,11 +66,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Open deeplink in browser (`open_deeplink_in_browser`) | Open a tapped notification's deeplink in Safari instead of the in-app web view. |
 | Reload on subscription ID (`reload_on_user_id`) | Reload the web view once OneSignal returns the push subscription ID. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `getonesignalplayerid://` | `dsx.module.onesignal.subscription.get()` |
-| `setonesignalplayerid://` | `dsx.module.onesignal.login()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

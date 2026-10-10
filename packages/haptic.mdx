@@ -5,7 +5,7 @@ icon: "waveform"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Plays short vibrations: light, medium and heavy taps for touches, and success, w
 
 **When to use it.** Use it for a small physical confirmation of a touch or an outcome, such as a toggle, a saved item or a failed payment. Do not buzz on every scroll frame or for things the person cannot connect to an action.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.haptic.light()
-else if (rt.kind === 'v3') despia('lighthaptic://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `haptic` package is on the global `window.dsx`. `dsx.has('haptic')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('haptic')) {
   // Plays a light single tap.
   const light = await dsx.module.haptic.light()
@@ -56,15 +47,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.haptic.success()` | none | `ok` | iOS, Android | Plays an upbeat double tap that signals something finished cleanly. |
 | `dsx.module.haptic.warning()` | none | `ok` | iOS, Android | Plays two heavy taps that signal a problem the person can recover from. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `lighthaptic://` | `dsx.module.haptic.light()` |
-| `mediumhaptic://` | `dsx.module.haptic.medium()` |
-| `heavyhaptic://` | `dsx.module.haptic.heavy()` |
-| `successhaptic://` | `dsx.module.haptic.success()` |
-| `warninghaptic://` | `dsx.module.haptic.warning()` |
-| `errorhaptic://` | `dsx.module.haptic.error()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

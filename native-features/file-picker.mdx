@@ -4,9 +4,10 @@ description: "Route every file upload to the correct native picker based on the 
 icon: "paperclip"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [FileUpload](/packages/fileupload).</Tip>
 
@@ -19,6 +20,8 @@ Give users a native picker that matches what your upload actually accepts. Photo
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

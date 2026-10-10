@@ -5,7 +5,7 @@ icon: "share-from-square"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Opens the share sheet with a file attached, so the user can send it to Messages,
 
 **When to use it.** Use it when the user should send, save or open a file in another app, such as a report, a ticket or an exported image. If you only want to show a link or a short text, a normal web share is enough.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `filesharing` package is on the global `window.dsx`. `dsx.has('filesharing')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('filesharing')) {
   // Opens the system share sheet with a file, taken from a device path or downloaded first from an https address.
   const shareResult = await dsx.module.filesharing.share({ url: "https://files.example.com/report.pdf" })
@@ -35,11 +35,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.filesharing.share()` | `filename`?: string<br/>`path`?: string<br/>`url`?: string | `cancelled`<br/>`delivery`<br/>`path`<br/>`shared` | iOS, Android | Opens the system share sheet with a file, taken from a device path or downloaded first from an https address. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `sharefile://` | `dsx.module.filesharing.share()` |
-| `download://` | `dsx.module.filesharing.share()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -5,7 +5,7 @@ icon: "qrcode"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Opens the phone's own scanner to read a QR code or barcode, or to scan a paper d
 
 **When to use it.** Reach for it when people need to scan a QR code, a barcode or a paper document. If you want your own camera screen with scanning on top, use the scanner preview in your layout instead.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.scanner.scan({ for: "code" })
-else if (rt.kind === 'v3') despia('qrcode://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `scanner` package is on the global `window.dsx`. `dsx.has('scanner')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('scanner')) {
   // Opens the system scanner for a code or a document and resolves with what was read. Backing out resolves as cancelled.
   const scan = await dsx.module.scanner.scan({ for: "code", formats: ["qr"] })
@@ -52,11 +43,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for camera access to scan a code or a document. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `qrcode://` | `dsx.module.scanner.scan()` |
-| `barcodescanner://` | `dsx.module.scanner.scan()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

@@ -5,7 +5,7 @@ icon: "tower-broadcast"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Finds nearby devices that run the same app, connects them and lets them exchange
 
 **When to use it.** Reach for it for local multiplayer, file-less data sharing or classroom-style features between devices in the same room. Do not use it when an iPhone must talk to an Android phone, because the two systems cannot find each other; use a server for that.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.nearby.stop()
-else if (rt.kind === 'v3') despia('nearby://stop')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `nearby` package is on the global `window.dsx`. `dsx.has('nearby')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('nearby')) {
   // Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events.
   const startResultSub = dsx.module.nearby.start({ mode: "both", name: "Alice", strategy: "star" }, (event) => {
@@ -59,14 +50,14 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.nearby.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks the person for nearby device access through the system prompt and reports the answer. |
 | `dsx.module.nearby.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reports whether the app currently has nearby device access without asking the person. |
 | `dsx.module.nearby.send()` | `data`: string<br/>`peer`?: string | `bytes`<br/>`sent` | iOS, Android | Sends a message to one connected device, or to all of them when no peer is given. |
-| `dsx.module.nearby.start()` | `mode`?: string<br/>`name`?: string<br/>`prompt`?: boolean<br/>`strategy`?: string | stream (events: `peerFound`, `peerLost`, `connecting`, `connected`, `disconnected`, `payload`) | iOS, Android | Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events. |
+| `dsx.module.nearby.start()` | `mode`?: string<br/>`name`?: string<br/>`prompt`?: boolean<br/>`strategy`?: string | stream (sends `peerFound`, `peerLost`, `connecting`, `connected`, `disconnected`, `payload`) | iOS, Android | Starts the single nearby session: advertises this device, looks for others, or both, and streams what it finds as events. |
 | `dsx.module.nearby.stop()` | none | `active` | iOS, Android | Ends the nearby session and disconnects everyone. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.nearby.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.nearby.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `connected` | The connection to a device is established and you can send messages. |
 | `connecting` | A connection to a device is being set up. |
@@ -84,14 +75,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Service id (`service_id`) | The identifier peers use to find each other. Both sides of a connection must use the same value. |
 | Local network prompt (`usage_local_network`) | The message shown when iOS asks for local-network access. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `nearby://start` | `dsx.module.nearby.start()` |
-| `nearby://connect` | `dsx.module.nearby.connect()` |
-| `nearby://disconnect` | `dsx.module.nearby.disconnect()` |
-| `nearby://send` | `dsx.module.nearby.send()` |
-| `nearby://stop` | `dsx.module.nearby.stop()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

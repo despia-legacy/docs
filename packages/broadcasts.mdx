@@ -1,60 +1,52 @@
 ---
-title: "Events"
-description: "Listen to Despia V4 package events from your page, and the Despia V3 callback each one replaces."
-icon: "bell"
+title: "Broadcasts"
+description: "Listen to the broadcasts Despia V4 packages send to your page, and the Despia V3 event or callback each one replaces."
+icon: "tower-broadcast"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<RuntimeCheck />
+<EnvMigration />
 
-## Listen to an event
+## Listen to a broadcast
 
-Packages tell your page when something happens that is not the answer to a call: the app went to the background, a push was tapped, a purchase changed the customer. Subscribe on the package:
+Packages also send broadcasts that are not the answer to a call, for example when a purchase changes the customer's entitlements. Listen on the package:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
-if (dsx) {
-  // one event of one package: the handler gets the event's data
-  const off = dsx.module.focus.on('change', (data) => {
-    console.log(data.focused ? 'foreground' : 'background')
-  })
-
-  // every event of one package: the handler gets the whole envelope { event, data, scheme, ... }
-  const offAll = dsx.on('focus', (envelope) => console.log(envelope.event, envelope.data))
-
-  // later
-  off()
-  offAll()
-}
+const off = window.dsx?.module.revenuecat.on('customerInfo', (data) => { /* ... */ })
+off?.()  // stop listening
 ```
 
-`dsx.module.<package>.on(handler)` without an event name also receives every event of that package, as the whole envelope.
+A package declares its broadcasts under `broadcasts` in its `dsx.json`; each package page lists them with their payload.
 
-## Failures are rejections, not events
+- `dsx.module.<package>.on('<broadcast>', (data) => {})` receives one broadcast and its payload.
+- `dsx.module.<package>.on((envelope) => {})` and `dsx.on('<package>', (envelope) => {})` receive every broadcast of the package as the whole envelope `{ event, data, scheme, ... }`, where `event` is the broadcast's name.
+- Each returns a function that stops listening.
 
-When a call fails, its promise rejects with a typed error that carries a `code`. There is no separate error event to listen for. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
+## Failures are rejections, not broadcasts
+
+When a call fails, its promise rejects with a typed error that carries a `code`. There is no error broadcast to listen for. For example, `fileviewer.preview()` rejects with `invalid_src`, `download_failed` or `write_failed`:
 
 ```javascript
 try {
-  await dsx.module.fileviewer.preview({ src: 'https://example.com/report.pdf' })
+  await window.dsx.module.fileviewer.preview({ src: 'https://example.com/report.pdf' })
 } catch (err) {
   if (err.code === 'download_failed') showRetry()
 }
 ```
 
-Despia V3 callbacks that only answered a call (`onBioAuthSuccess`, `onOneSignalLogin`, `despiafileerror`, `offeringsData`) have no modern event: their modern form is the call's result or its rejection. See each package page for the codes.
+Despia V3 callbacks that only answered a call (`onBioAuthSuccess`, `onOneSignalLogin`, the `despiafileerror` event, `offeringsData`) have no broadcast: their Despia V4 form is the call's result or its rejection. See each package page for the codes.
 
-## Despia V3 pages keep hearing the old names
+## Despia V3 pages keep hearing the old events
 
-The Legacy polyfill listens to the modern events and fires the Despia V3 callback with the Despia V3 payload, so an existing page needs no change. For example, `focus.change` with `focused: false` calls `window.focusout()`, `admob.earned` calls `updateRewardedStatus('true')`, and on iOS a `fileviewer.preview` rejection still dispatches the `despiafileerror` event (`{ reason, url, message }`).
+The Legacy polyfill listens to the Despia V4 broadcasts and fires the Despia V3 event or callback with the Despia V3 payload, so an existing page needs no change. For example, the `focus.change` broadcast with `focused: false` calls `window.focusout()`, `admob.earned` calls `updateRewardedStatus('true')`, and on iOS a `fileviewer.preview` rejection still dispatches the `despiafileerror` event (`{ reason, url, message }`).
 
-## Event names
+## Despia V3 events and callbacks to Despia V4 broadcasts
 
-| Despia V3 (page heard) | Despia V4 (modern) | Payload | When it fires |
+| Despia V3 event or callback | Despia V4 broadcast | Payload | When it fires |
 | :-- | :-- | :-- | :-- |
 | `window.focusin()` / `window.focusout()` | `dsx.module.focus.on('change')` | `focused`: boolean | Tells you the app moved to the foreground or the background. It fires at most once per trip each way. |
 | `onNotificationEvent(event)` (push tap) | `dsx.module.notify.on('opened')` | `actionId`: string<br/>`coldStart`: boolean<br/>`data`: object<br/>`id`: string<br/>`path`: string<br/>`url`: string<br/>`userText`: string | The user tapped a notification or one of its action buttons. |
@@ -93,6 +85,6 @@ The Legacy polyfill listens to the modern events and fires the Despia V3 callbac
 | quick action navigate + injected function | `dsx.module.quickactions.on('tap')` | `value`: string | Fires when the person chooses one of your shortcuts, including when it launched the app. |
 | `healthkitResponse` on a device without health data | `dsx.module.healthkit.on('unavailable')` | `code`: string<br/>`error`: string<br/>`message`: string | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
 
-Despia V3 features that live only in the Legacy polyfill (the V3 audio player, location server posts, the local CDN, Siri shortcuts) keep their Despia V3 callbacks and have no modern event name yet.
+Despia V3 features that live only in the Legacy polyfill (the Despia V3 audio player, location server posts, the local CDN, Siri shortcuts) keep their Despia V3 callbacks and have no Despia V4 broadcast yet.
 
 {/* TODO-VERIFY: names marked (name freezing) may still be renamed before the 0.1.0 tag (lane EVENT-NAMES-FREEZE). */}

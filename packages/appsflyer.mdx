@@ -5,7 +5,7 @@ icon: "chart-pie-simple"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Starts the AppsFlyer SDK at launch, logs in-app events and ad revenue, reports w
 
 **When to use it.** Use it when you buy ads and need to know which campaign produced an install or a purchase. It does nothing until you set your AppsFlyer dev key.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.appsflyer.get_uid()
-else if (rt.kind === 'v3') despia('appsflyer://get_uid')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `appsflyer` package is on the global `window.dsx`. `dsx.has('appsflyer')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('appsflyer')) {
   // Records an in-app event, such as a purchase or sign-up, so AppsFlyer can credit it to the campaign that brought the user.
   const logEvent = await dsx.module.appsflyer.logEvent({ event_name: "purchase", event_values: {"value": 9.99} })
@@ -59,11 +50,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.appsflyer.setPhone()` | `phone`: string | `ok` | iOS, Android | Gives AppsFlyer the person's phone number, hashed, to improve matching of their activity. |
 | `dsx.module.appsflyer.setUserId()` | `customer_user_id`: string | `ok` | iOS, Android | Tells AppsFlyer your own id for the signed-in person so their events are tied together across devices. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.appsflyer.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.appsflyer.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `deep_link` | Fires when a OneLink or deferred deep link opens the app, or when an install is attributed. |
 
@@ -78,17 +69,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Dev key (`dev_key`) | Your AppsFlyer developer key from the AppsFlyer dashboard. |
 | OneLink domains (`onelink_domains`) | Your OneLink domains, so those links go to AppsFlyer instead of opening in the app. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `appsflyer://log_event` | `dsx.module.appsflyer.logEvent()` |
-| `appsflyer://set_user_id` | `dsx.module.appsflyer.setUserId()` |
-| `appsflyer://get_uid` | `dsx.module.appsflyer.get_uid()` |
-| `appsflyer://set_email` | `dsx.module.appsflyer.setEmail()` |
-| `appsflyer://set_phone` | `dsx.module.appsflyer.setPhone()` |
-| `appsflyer://log_ad_revenue` | `dsx.module.appsflyer.logAdRevenue()` |
-| `appsflyer://get_attribution` | `dsx.module.appsflyer.get_attribution()` |
-| `appsflyer://set_consent` | `dsx.module.appsflyer.setConsent()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

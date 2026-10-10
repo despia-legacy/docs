@@ -4,9 +4,10 @@ description: "Enable native printing capabilities in your Lovable mobile app, al
 icon: "print"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <iframe src="https://www.youtube.com/embed/EHa5lz6cyP4" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -30,6 +31,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** Despia acts as a bridge between your Lovable app and native mobile printing systems. When users tap a print button, Despia opens the device's native print dialog with the specified document or image, allowing users to select their printer, adjust print settings (copies, page range, orientation), and send the job to any connected or nearby printer. Supports both images and PDF documents.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

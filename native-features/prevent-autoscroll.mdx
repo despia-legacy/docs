@@ -4,9 +4,10 @@ description: "Stop the native WebView from repositioning when the keyboard appea
 icon: "keyboard"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [PreventDefault](/packages/preventdefault).</Tip>
 
@@ -15,6 +16,8 @@ When a keyboard appears, iOS and Android both attempt to resize or reposition th
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

@@ -4,9 +4,10 @@ description: "Capture the visible page and save it directly to the device photo 
 icon: "border-top-left"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Warning>
   Screenshot capture is currently not optimized for React or other framework-driven apps. The native capture renders the WebView contents as the user sees them, but virtual DOM frameworks can have a frame's worth of pending work that has not yet committed to the visible layer when the call fires. For React, await the next animation frame before triggering the call so the most recent render is fully painted, see the React example below.
@@ -19,6 +20,8 @@ This feature captures the WebView only, not the system chrome around it (status 
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

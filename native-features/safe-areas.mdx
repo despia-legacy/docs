@@ -4,9 +4,10 @@ icon: "object-ungroup"
 description: "Handle notches, status bars, home indicators, and gesture bars using CSS variables injected by the Despia runtime, paired with a defensive env() fallback."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <iframe src="https://www.youtube.com/embed/e4xN7eZW4NU" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -21,6 +22,8 @@ There is no SDK call. The variables are always present in the runtime, and you r
 ---
 
 ## Installation
+
+<NpmVersion />
 
 No package installation is required for the CSS variables themselves. The runtime injects them automatically into every WebView. Install `despia-native` only if your page also calls SDK schemes for other features.
 

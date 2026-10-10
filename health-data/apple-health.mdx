@@ -4,9 +4,10 @@ icon: "apple"
 description: "Read and write Apple HealthKit data including steps, heart rate, sleep, workouts, and more within your Despia app."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [HealthKit](/packages/healthkit).</Tip>
 
@@ -19,6 +20,8 @@ Access Apple HealthKit from your web app through the Despia native bridge. Despi
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

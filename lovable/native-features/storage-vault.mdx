@@ -4,9 +4,10 @@ description: "Store and retrieve user identity data that persists across app ses
 icon: "vault"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Card title="Lovable Prompt" icon="sparkles">
   Add identity vault functionality to my app using the Despia SDK from: https://www.npmjs.com/package/despia-native
@@ -70,6 +71,8 @@ When `locked` is set to `true`, users must authenticate with Face ID (iPhone), T
 **Why this matters**: Even if someone uninstalls your app and reinstalls it, the vault data comes back. This helps you identify returning users and prevent abuse of free trials.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

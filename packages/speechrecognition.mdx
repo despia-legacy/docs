@@ -5,7 +5,7 @@ icon: "microphone"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Adds the browser SpeechRecognition API to your web pages inside the app, because
 
 **When to use it.** Use it for dictation, voice search or voice commands in a web page. Code written for the standard speech recognition API keeps working without changes.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.speechrecognition.stop()
-else if (rt.kind === 'v3') despia('speechrecognition://stop')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `speechrecognition` package is on the global `window.dsx`. `dsx.has('speechrecognition')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('speechrecognition')) {
   // Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed.
   const startResultSub = dsx.module.speechrecognition.start({ continuous: false, interim: true, language: "en-US", max: 1 }, (event) => {
@@ -57,14 +48,14 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.speechrecognition.permission.request()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Asks for speech recognition and the microphone with the system dialog, for a settings row or an onboarding step; the dialog only appears while the system still allows it. |
 | `dsx.module.speechrecognition.permission.status()` | none | `canAsk`<br/>`level`<br/>`status` | iOS, Android | Reads the current state of speech recognition and the microphone without ever showing a dialog, so a settings screen can call it every time it appears. |
 | `dsx.module.speechrecognition.polyfill()` | `action`: string<br/>`config`?: object<br/>`recognizerId`: string |  | iOS, Android | The internal route the SpeechRecognition polyfill uses to talk to the phone; you do not call it by hand. |
-| `dsx.module.speechrecognition.start()` | `continuous`?: boolean<br/>`interim`?: boolean<br/>`language`?: string<br/>`max`?: number | stream (events: `start`, `result`) | iOS, Android | Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed. |
+| `dsx.module.speechrecognition.start()` | `continuous`?: boolean<br/>`interim`?: boolean<br/>`language`?: string<br/>`max`?: number | stream (sends `start`, `result`) | iOS, Android | Starts listening and streams what the user says as results, asking for speech and microphone permission first if needed. |
 | `dsx.module.speechrecognition.stop()` | none | `ok` | iOS, Android | Stops listening and lets the recognizer finish the words it already heard; it is safe to call when nothing is running. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.speechrecognition.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.speechrecognition.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `polyfill` | Carries the standard web speech events to the polyfill on the page; you should not read it by hand. |
 | `result` | The recognizer heard something and has a best transcript with its alternatives. |
@@ -78,12 +69,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for speech recognition. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `speechrecognition://start` | `dsx.module.speechrecognition.start()` |
-| `speechrecognition://stop` | `dsx.module.speechrecognition.stop()` |
-| `speechrecognition://abort` | `dsx.module.speechrecognition.abort()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

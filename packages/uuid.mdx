@@ -5,7 +5,7 @@ icon: "fingerprint"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Returns one identifier that stays the same across launches. It uses the vendor i
 
 **When to use it.** Use it to recognise the same install across launches, for example to attach anonymous settings or sessions to a device. Do not use it as an advertising id or for tracking across other companies' apps.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.uuid.get()
-else if (rt.kind === 'v3') despia('get-uuid://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `uuid` package is on the global `window.dsx`. `dsx.has('uuid')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('uuid')) {
   // Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again.
   const getResult = await dsx.module.uuid.get()
@@ -44,10 +35,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | :-- | :-- | :-- | :-- | :-- |
 | `dsx.module.uuid.get()` | none | `uuid` | iOS, Android | Returns the stable id for this install. On iOS it is empty for a moment after install until the device is first unlocked, so treat empty as not ready and ask again. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `get-uuid://` | `dsx.module.uuid.get()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

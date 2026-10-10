@@ -4,9 +4,10 @@ description: "Run your web app's service worker inside the native app so cached 
 icon: "wifi-slash"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 Give your app a working offline mode using the service worker your web app already ships. Cached documents, assets, and API responses continue to serve when the device drops off the network, and everything is driven by standard web APIs, so there are no build tools, no native offline layer, and no plugin to install. This is the lowest-effort path to offline support in Despia, and it works the same on iOS and Android.
 
@@ -17,6 +18,8 @@ Give your app a working offline mode using the service worker your web app alrea
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

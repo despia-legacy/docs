@@ -5,7 +5,7 @@ icon: "store"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Shows a paywall you design in JSON, runs checkout, restores purchases and tells 
 
 **When to use it.** Reach for it when your app sells subscriptions or one-off purchases and you want one set of calls for paywall, checkout, restore and what a person owns, on both iOS and Android. If you already run everything in RevenueCat you can pick that as the provider and keep the same calls.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.store.storefront()
-else if (rt.kind === 'v3') despia('getstorelocation://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `store` package is on the global `window.dsx`. `dsx.has('store')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('store')) {
   // Reads which country's store the person is using, as a country code.
   const storefront = await dsx.module.store.storefront()
@@ -55,7 +46,7 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.store.entitlements()` | `provider`?: string | `entitlements`<br/>`provider` | iOS, Android | Lists what the person owns right now, as entitlement ids from RevenueCat or product ids from the store. |
 | `dsx.module.store.manage()` | `product`?: string<br/>`provider`?: string | `presented` | iOS, Android | Opens the store's own screen for managing subscriptions, where the person can cancel or change plan. |
 | `dsx.module.store.offers()` | `product`: string | `eligibleForIntro`<br/>`offers`<br/>`product` | iOS, Android | Lists every offer a product carries, such as free trials and promotional prices, in one shape for both stores. |
-| `dsx.module.store.paywall()` | `accent`?: string<br/>`actions`?: string[]<br/>`appAccountToken`?: string<br/>`balance`?: number<br/>`coins`?: object[]<br/>`countdown`?: number<br/>`cta`?: string<br/>`data`?: object<br/>`display`?: string<br/>`entitlement`?: string<br/>`externalId`?: string<br/>`features`?: string[]<br/>`footer`?: object<br/>`header`?: object<br/>`mode`?: string<br/>`products`?: object[]<br/>`provider`?: string<br/>`restore`?: boolean<br/>`subtitle`?: string<br/>`template`?: string<br/>`theme`?: object<br/>`title`?: string<br/>`token`?: string | stream (events: `impression`) | iOS, Android | Builds and shows a native paywall from a JSON description of products, features and coins, and resolves when the person buys, restores or closes it. |
+| `dsx.module.store.paywall()` | `accent`?: string<br/>`actions`?: string[]<br/>`appAccountToken`?: string<br/>`balance`?: number<br/>`coins`?: object[]<br/>`countdown`?: number<br/>`cta`?: string<br/>`data`?: object<br/>`display`?: string<br/>`entitlement`?: string<br/>`externalId`?: string<br/>`features`?: string[]<br/>`footer`?: object<br/>`header`?: object<br/>`mode`?: string<br/>`products`?: object[]<br/>`provider`?: string<br/>`restore`?: boolean<br/>`subtitle`?: string<br/>`template`?: string<br/>`theme`?: object<br/>`title`?: string<br/>`token`?: string | stream (sends `impression`) | iOS, Android | Builds and shows a native paywall from a JSON description of products, features and coins, and resolves when the person buys, restores or closes it. |
 | `dsx.module.store.product()` | `product`: string<br/>`provider`?: string | `description`<br/>`id`<br/>`introductory_offer`<br/>`price`<br/>`store`<br/>`subscription`<br/>`title`<br/>`type` | iOS, Android | Reads one product from the store with its title, description, price and subscription details. |
 | `dsx.module.store.receipts()` | `provider`?: string | `provider`<br/>`transactions` | iOS, Android | Lists the person's transactions the store knows about, for example to send to your server for checking. |
 | `dsx.module.store.redeemCode()` | `code`?: string | `presented` | iOS, Android | Takes the person to the store's own screen for redeeming an offer code. |
@@ -66,11 +57,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.store.subscription()` | `group`?: string<br/>`product`?: string<br/>`provider`?: string | `billingIssue`<br/>`gracePeriodEndsAt`<br/>`provider`<br/>`renewsAt`<br/>`state`<br/>`subscriptions`<br/>`willRenew` | iOS, Android | Reads the renewal state of the person's active subscription, including grace period and billing problems, which entitlements alone cannot tell you. |
 | `dsx.module.store.update()` | `data`?: object | `updated` | iOS, Android | Changes what a paywall that is already open shows, by name, without closing it. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.store.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.store.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `impression` | Fires when the paywall has been built and shown. |
 
@@ -82,11 +73,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Purchase provider (`provider`) | Optional: which provider runs purchases and answers what a person owns (store, revenuecat or commerce). Empty means the one provider package this app includes, or the App Store and Google Play directly. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `getstorelocation://` | `dsx.module.store.storefront()` |
-| `cancelinapppurchase://` | `dsx.module.store.manage()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

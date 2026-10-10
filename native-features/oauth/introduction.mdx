@@ -4,9 +4,10 @@ icon: "circle-info"
 title: "Introduction"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [OAuth](/packages/oauth).</Tip>
 
@@ -15,6 +16,8 @@ Native apps cannot handle OAuth redirects the way browsers do. Despia solves thi
 ---
 
 ## Installation
+
+<NpmVersion />
 
 The `despia()` function is only available after importing `despia-native` via npm or CDN. Calling it without importing will throw a reference error.
 

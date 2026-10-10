@@ -5,7 +5,7 @@ icon: "chart-column"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Works with the Product analytics package: it takes the events it collects and de
 
 **When to use it.** Use it when you analyse your product in PostHog. It sends the events your app already records to your PostHog project; you do not call it yourself.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `posthog` package is on the global `window.dsx`. `dsx.has('posthog')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('posthog')) {
   // Sends a batch of recorded events to your PostHog project in one request. The product analytics package calls it for you.
   const send = await dsx.module.posthog.send({ events: [{"anonymousId": "a-1", "at": 1758801600000, "event": "checkout.started", "eventId": "e-1", "platform": "ios", "properties": {}, "sessionId": "s-1", "source": "app"}], token: "phc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG" })

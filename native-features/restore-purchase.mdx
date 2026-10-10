@@ -5,9 +5,10 @@ icon: "recycle"
 hidden: true
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [RevenueCat](/packages/revenuecat).</Tip>
 
@@ -54,6 +55,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 Despia queries the native platform's billing system to retrieve all purchases associated with the current user's App Store or Google Play account. This includes active subscriptions, expired subscriptions, consumables, and non-consumable (lifetime) purchases. The data is normalized into a consistent format across both iOS and Android platforms.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

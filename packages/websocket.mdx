@@ -5,7 +5,7 @@ icon: "plug"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,7 +13,7 @@ Opens named WebSocket connections, reconnects with a growing delay, and keeps ou
 
 **When to use it.** Reach for it when your app needs a live connection to your own server, such as chat, live feeds or presence, and messages must survive a dropped connection or a relaunch. For one-off requests use a normal API call instead.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
@@ -21,7 +21,7 @@ No npm package is needed. Inside a Despia V4 app, the `websocket` package is on 
 
 ```javascript
 // built into every Despia V4 app
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx) {
   // Opens a named connection to a ws:// or wss:// address, or updates it if it is already open, and reconnects automatically if it drops.
   const connect = await dsx.module.websocket.connect({ id: "feed", url: "wss://example.com/socket" })
@@ -47,22 +47,12 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.websocket.status()` | `id`: string | `id`<br/>`ok`<br/>`pendingOutbound`<br/>`reconnectAttempt`<br/>`state`<br/>`unacked` | iOS, Android | Returns the connection's state and how many messages are waiting, at the moment you ask. |
 | `dsx.module.websocket.subscribe()` | `frame`?: string<br/>`id`: string | `id`<br/>`ok` | iOS, Android | Stores one message that is sent first on every connect and reconnect, for example a login or channel-join frame. An empty frame clears it. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.websocket.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.websocket.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `event` | Sent for everything that happens on a connection: it connects, opens, receives a message, waits to reconnect, closes, fails or drops messages. Check the type field to tell them apart. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `websocket://connect` | `dsx.module.websocket.connect()` |
-| `websocket://send` | `dsx.module.websocket.send()` |
-| `websocket://subscribe` | `dsx.module.websocket.subscribe()` |
-| `websocket://status` | `dsx.module.websocket.status()` |
-| `websocket://disconnect` | `dsx.module.websocket.disconnect()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

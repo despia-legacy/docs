@@ -4,9 +4,10 @@ icon: "heart-pulse"
 description: "Retrieve and display health and fitness data from users' Apple HealthKit within your Lovable application."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <iframe src="https://www.youtube.com/embed/EWYHfjZ01yc" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -55,6 +56,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** The Despia SDK provides native bridge functionality to access and write Apple HealthKit data through async method calls. Read health data by specifying the HealthKit types you want to access and the number of days to retrieve, which returns as a JSON object via `healthkitResponse`.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

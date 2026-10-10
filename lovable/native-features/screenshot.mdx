@@ -4,9 +4,10 @@ description: "Capture full page screenshots and save them directly to the device
 icon: "border-top-left"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Danger>
   **This SDK is currently not optimized yet for React apps.**
@@ -30,6 +31,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** Despia acts as a bridge between your Lovable app and native screenshot capture systems. When users trigger the screenshot command, Despia captures the full page content including all visible elements, renders it as a high-quality image, and automatically saves it to the device's photo gallery with proper permissions handling, making it instantly accessible in the camera roll for sharing or editing.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

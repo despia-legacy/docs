@@ -4,9 +4,10 @@ icon: "eye"
 description: "Read the device's unique identifier through despia.uuid to track installs, link sessions, and prevent account sharing across your mobile app."
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [DeviceUUID](/packages/uuid).</Tip>
 
@@ -25,6 +26,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

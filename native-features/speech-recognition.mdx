@@ -5,9 +5,10 @@ description: "Convert spoken audio into text on-device using the native iOS spee
 hidden: true
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [SpeechRecognition](/packages/speechrecognition).</Tip>
 
@@ -20,6 +21,8 @@ Despia exposes two interoperable speech recognition surfaces on iOS and Android,
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

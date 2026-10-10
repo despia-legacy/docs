@@ -5,7 +5,7 @@ icon: "heart-pulse"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Reads steps, heart rate, sleep and workouts, saves measurements, and can send ne
 
 **When to use it.** Add it when your app shows or records health and fitness data on the device, or forwards it to your backend. If you want data from wearable brands through a cloud service, look at the Terra package instead.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `healthkit` package is on the global `window.dsx`. `dsx.has('healthkit')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('healthkit')) {
   // Reads health data for the types you list, as daily totals or as individual samples.
   const readResult = await dsx.module.healthkit.read({ days: 2, types: ["HKQuantityTypeIdentifierStepCount"] })
@@ -50,11 +50,11 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.healthkit.workouts()` | `days`?: number<br/>`included`?: array | array | iOS, Android | Lists the person's workouts for the last days, with the totals you ask for. |
 | `dsx.module.healthkit.write()` | `type`: string<br/>`unit`?: string<br/>`value`: number | `type`<br/>`value`<br/>`written` | iOS, Android | Saves one health value, such as a weight, to Apple Health or Health Connect. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.healthkit.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.healthkit.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `unavailable` | Health data is not available on this device, for example on an iPad without the Health app or an Android phone without Health Connect. The call that found out also fails with the same code. |
 
@@ -67,16 +67,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | Health read prompt (`usage_share_description`) | The message shown when iOS asks permission to read Health data. |
 | Health write prompt (`usage_update_description`) | The message shown when iOS asks permission to save data to Health. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `readhealthkit://` | `dsx.module.healthkit.read()` |
-| `writehealthkit://` | `dsx.module.healthkit.write()` |
-| `healthkit://state` | `dsx.module.healthkit.status()` |
-| `healthkit://observe` | `dsx.module.healthkit.observe()` |
-| `healthkit://unobserve` | `dsx.module.healthkit.unobserve()` |
-| `healthkit://workouts` | `dsx.module.healthkit.workouts()` |
-| `healthkit://read` | `dsx.module.healthkit.read()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

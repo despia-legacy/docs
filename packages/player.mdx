@@ -5,7 +5,7 @@ icon: "play"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ A complete video player for your app: the picture, touch controls that hide them
 
 **When to use it.** Use it whenever the app plays a video or a streamed playlist, inline in a card or full screen. For plain audio, use the audio package instead.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `player` package is on the global `window.dsx`. `dsx.has('player')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('player')) {
   // Opens the player full screen over the app and plays a video file or HLS playlist.
   const play = await dsx.module.player.play({ url: "https://cdn.example.com/clip.m3u8" })
@@ -45,10 +45,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.player.play()` | `artist`?: string<br/>`autoplay`?: boolean<br/>`chapters`?: object[]<br/>`gravity`?: string<br/>`id`?: string<br/>`loop`?: boolean<br/>`muted`?: boolean<br/>`pip`?: boolean<br/>`poster`?: string<br/>`skipStep`?: number<br/>`speed`?: number<br/>`speeds`?: number[]<br/>`start`?: number<br/>`title`?: string<br/>`url`: string | `pictureInPicture`<br/>`playing`<br/>`url` | iOS, Android | Opens the player full screen over the app and plays a video file or HLS playlist. |
 | `dsx.module.player.removeDownload()` | `id`: string | `removed` | iOS, Android | Deletes a saved video and its files from the device, whether it is still downloading or finished. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `startnativevideo://` | `dsx.module.player.play()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

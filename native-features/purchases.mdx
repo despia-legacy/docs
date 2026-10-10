@@ -5,9 +5,10 @@ description: "Purchase a specific product directly using RevenueCat through Appl
 hidden: true
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [RevenueCat](/packages/revenuecat).</Tip>
 
@@ -117,6 +118,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it Works:** Despia acts as a bridge between your app and native mobile payment systems. When a user taps a purchase button, Despia triggers the native RevenueCat purchase flow for the specified product - directly through Apple's App Store or Google Play Store - without opening a full paywall UI. The purchase flow handles secure transactions and automatic subscription management.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

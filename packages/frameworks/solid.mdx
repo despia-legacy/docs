@@ -1,60 +1,44 @@
 ---
 title: "SolidJS"
-description: "Call Despia V4 packages from SolidJS and SolidStart through the global window.dsx, with signals, loading and error state, events with cleanup, SSR and TypeScript."
+description: "Call Despia V4 packages from SolidJS and SolidStart through the global dsx, with two small primitives, loading and error state, broadcasts with cleanup, SSR and TypeScript."
 icon: "cube"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
+import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
 
-<RuntimeCheck />
+<EnvNew />
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-There is no Despia Solid package. The Modern API is the global `window.dsx`, so you need nothing installed: copy these primitives into your project.
+<SsrRule />
+
+The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two primitives into your project.
 
 ## The primitives
 
-Save the runtime helper from the block above as `despia-runtime.js`, then add:
-
 ```jsx despia.js
 import { createSignal, onCleanup, onMount } from 'solid-js'
-import { getDespiaRuntime } from './despia-runtime'
 
-// window.dsx exists only inside a Despia V4 app
-function getDsx() {
-  return typeof window !== 'undefined' ? window.dsx : undefined
-}
-
-// 'v4', 'v3' or 'web'; filled in on mount, so server and client render the same first
-export function createDespiaRuntime() {
-  const [runtime, setRuntime] = createSignal({ kind: 'web', platform: 'web', version: null, ready: false })
-  onMount(() => setRuntime({ ...getDespiaRuntime(), ready: true }))
-  return runtime
-}
-
-// Call one package action with loading and error state
+// createDsxCall('revenuecat', 'purchase') -> { call, data, error, loading }
 export function createDsxCall(pkg, action) {
   const [data, setData] = createSignal(null)
   const [error, setError] = createSignal(null)
   const [loading, setLoading] = createSignal(false)
   async function call(args) {
-    const dsx = getDsx()
-    if (!dsx) {
-      const e = { code: 'no_dsx', message: 'Not running in Despia V4' } // our own code
-      setError(e)
-      throw e
-    }
+    const dsx = window.dsx
+    if (!dsx) throw setError({ code: 'no_dsx' }) // our own code: not in Despia V4
     setLoading(true)
     setError(null)
     try {
-      const fn = action.split('.').reduce((member, key) => member[key], dsx.module[pkg])
+      const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
       const result = await fn(args)
       setData(() => result)
       return result
     } catch (e) {
-      setError(e) // e.code, e.message
+      setError(e)
       throw e
     } finally {
       setLoading(false)
@@ -63,35 +47,31 @@ export function createDsxCall(pkg, action) {
   return { call, data, error, loading }
 }
 
-// Subscribe to one package event for the life of the component
-export function onDsxEvent(pkg, event, handler) {
+// onDsxBroadcast('focus', 'change', (data) => ...), removed on cleanup
+export function onDsxBroadcast(pkg, name, handler) {
   onMount(() => {
-    const dsx = getDsx()
-    if (!dsx) return
-    const off = dsx.module[pkg].on(event, handler)
-    onCleanup(off)
+    const dsx = window.dsx
+    if (dsx) onCleanup(dsx.module[pkg].on(name, handler))
   })
 }
 ```
 
-## Call a package and listen to events
+## Call a package and listen to a broadcast
 
 ```jsx BuyButton.jsx
-import { Show } from 'solid-js'
-import { createDespiaRuntime, createDsxCall, onDsxEvent } from './despia'
+import { createSignal, onMount, Show } from 'solid-js'
+import { createDsxCall, onDsxBroadcast } from './despia'
 
 export function BuyButton(props) {
-  const runtime = createDespiaRuntime()
+  const [ready, setReady] = createSignal(false)
   const { call, loading, error } = createDsxCall('revenuecat', 'purchase')
-
-  onDsxEvent('focus', 'change', ({ focused }) => {
-    if (!focused) console.log('app went to the background')
-  })
+  onMount(() => setReady(!!window.dsx?.has('revenuecat')))
+  onDsxBroadcast('focus', 'change', ({ focused }) => { if (!focused) console.log('app went to the background') })
 
   const buy = () => call({ external_id: props.userId, product: ['coins_100'] }).catch(() => {})
 
   return (
-    <Show when={runtime().kind === 'v4'}>
+    <Show when={ready()}>
       <button disabled={loading()} onClick={buy}>
         {loading() ? 'Buying…' : 'Buy 100 coins'}
         <Show when={error()}>{(e) => <small> ({e().code})</small>}</Show>
@@ -101,9 +81,9 @@ export function BuyButton(props) {
 }
 ```
 
-## SolidStart and server rendering
+## SolidStart
 
-`onMount` runs only in the browser, so the primitives are safe with SolidStart. Never read `window.dsx` in a component body or a server function: a bare `dsx` throws a `ReferenceError` on the server and in a normal browser.
+`onMount` runs only in the browser, so the primitives are safe with SolidStart. Never read `window.dsx` in a component body or a server function.
 
 ## TypeScript
 

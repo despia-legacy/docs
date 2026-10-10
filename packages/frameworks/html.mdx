@@ -1,16 +1,19 @@
 ---
 title: "Plain HTML, vanilla JS and Astro"
-description: "Call Despia V4 packages from a script tag, plain JavaScript or an Astro site through the global window.dsx, with loading and error state, events and TypeScript."
+description: "Call Despia V4 packages from a script tag, plain JavaScript or an Astro site through the global dsx, with loading and error state, events and TypeScript."
 icon: "html5"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
+import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
 
-<RuntimeCheck />
+<EnvNew />
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
+
+<SsrRule />
 
 No package and no build step: inside a Despia V4 app, `window.dsx` is installed before the first script on the page runs.
 
@@ -21,8 +24,8 @@ No package and no build step: inside a Despia V4 app, `window.dsx` is installed 
 <small id="buy-error"></small>
 
 <script type="module">
-  // safe in a normal browser, in Despia V3 and in Despia V4
-  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  // safe in a normal browser and in Despia V4
+  const dsx = window.dsx
   const button = document.getElementById('buy')
   const errorText = document.getElementById('buy-error')
 
@@ -46,11 +49,11 @@ No package and no build step: inside a Despia V4 app, `window.dsx` is installed 
 </script>
 ```
 
-## Listen to events
+## Listen to a broadcast
 
 ```html
 <script type="module">
-  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  const dsx = window.dsx
   if (dsx) {
     const off = dsx.module.focus.on('change', ({ focused }) => {
       document.body.classList.toggle('in-background', !focused)
@@ -61,21 +64,6 @@ No package and no build step: inside a Despia V4 app, `window.dsx` is installed 
 ```
 
 `type="module"` gives each script its own scope, so two scripts can both declare `const dsx`.
-
-## `window.dsx` or `dsx`?
-
-`window.dsx` is a property of `window`, so in a browser script you can also write `dsx` once you know it exists. Before that check, a bare `dsx` throws a `ReferenceError` in a normal browser, in Despia V3 and during server rendering. The safe forms are:
-
-```javascript
-// recommended: safe everywhere, including server rendering
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
-if (dsx) dsx.module.haptic.light()
-
-// also safe, in browser code with no local variable called dsx:
-// if (typeof dsx !== 'undefined') dsx.module.haptic.light()
-```
-
-Use the first form everywhere. Every example on these pages does.
 
 ## Astro
 
@@ -88,7 +76,7 @@ The frontmatter of an `.astro` file and its components run on the server, where 
 <button id="buy" hidden>Buy 100 coins</button>
 
 <script>
-  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+  const dsx = window.dsx
   const button = document.getElementById('buy')
   if (dsx && dsx.has('revenuecat') && button) {
     button.hidden = false

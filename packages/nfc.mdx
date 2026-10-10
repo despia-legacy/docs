@@ -5,7 +5,7 @@ icon: "wifi"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Reads NDEF tags and writes a text record to them. Needs the NFC Tag Reading capa
 
 **When to use it.** Reach for it when your app should read an NFC tag the user holds to the phone, or write a short text onto one, for example for check-ins, product tags or pairing. It reads and writes text tags only, and needs a phone with NFC.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.nfc.read()
-else if (rt.kind === 'v3') despia('readnfc://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `nfc` package is on the global `window.dsx`. `dsx.has('nfc')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('nfc')) {
   // Opens the system scan sheet, reads the first NDEF tag the user holds to the phone, and returns its records.
   const readResult = await dsx.module.nfc.read({ message: "Hold a tag near the phone." })
@@ -63,13 +54,4 @@ Set these in the package settings of your app (see [Add a package](/packages/add
 | :-- | :-- |
 | Permission prompt (`usage_description`) | The message shown when iOS asks the user for NFC tag scanning. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `readnfc://` | `dsx.module.nfc.read()` |
-| `writenfc://` | `dsx.module.nfc.write()` |
-| `nfc://read` | `dsx.module.nfc.read()` |
-| `nfc://write` | `dsx.module.nfc.write()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

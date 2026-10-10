@@ -4,9 +4,10 @@ description: "Access shared content (images and text) from other apps when your 
 icon: "file-import"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <iframe src="https://www.youtube.com/embed/KtYBtKJY4l0" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -28,6 +29,8 @@ import RuntimeCheck from '/snippets/runtime-check.mdx';
 **How it works:** When users share content (like a photo from their gallery or a link from their browser) to your app, the Despia runtime opens your application in a web view and calls the `onSharedDataReceived(value, type)` function with the shared data. Images are provided as data URLs, URLs as plain strings, and text as plain strings. Video sharing is not yet supported.
 
 ## Installation
+
+<NpmVersion />
 
 Install the Despia package from NPM:
 

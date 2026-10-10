@@ -5,7 +5,7 @@ icon: "spinner"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,23 +13,14 @@ Puts a centered activity indicator over the web surface and lets you show or hid
 
 **When to use it.** Use it when you want to show a loading spinner over the web surface yourself, for example during your own long task. You do not need it for normal page loads, which the app shell handles.
 
-<RuntimeCheck />
-
-**On Despia V3 and Despia V4:**
-
-```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') await window.dsx.module.spinner.show()
-else if (rt.kind === 'v3') despia('spinneron://')
-else { /* web fallback */ }
-```
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `spinner` package is on the global `window.dsx`. `dsx.has('spinner')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('spinner')) {
   // Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide.
   const showResult = await dsx.module.spinner.show()
@@ -48,11 +39,4 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.spinner.hide()` | none | `ok` | iOS, Android | Hides the activity indicator again. |
 | `dsx.module.spinner.show()` | none | `ok` | iOS, Android | Shows the activity indicator over the web surface right away, without any loading rule. Pair it with hide. |
 
-## Coming from the Legacy API
-
-Older apps call these through `despia-native` or a URL scheme. They keep working on Despia V4 through the Legacy polyfill. New code should use the modern call.
-
-| Legacy (`despia('...')`) | Modern |
-| :-- | :-- |
-| `spinneron://` | `dsx.module.spinner.show()` |
-| `spinneroff://` | `dsx.module.spinner.hide()` |
+Migrating an app from Despia V3? See [Migrate from Despia V3](/packages/migrate-from-v3).

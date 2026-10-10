@@ -5,11 +5,11 @@ icon: "bell-ring"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-<RuntimeCheck />
+<EnvMigration />
 
 ## When the user taps a push
 
@@ -57,24 +57,22 @@ body: JSON.stringify({
 | :-- | :-- | :-- |
 | Package | [OneSignal](/packages/onesignal) (`onesignal`) | [Notify](/packages/notify) (`notify`) |
 | Who sends pushes | OneSignal (dashboard or REST API) | Your own server, straight to APNs / FCM |
-| Link a push to your user | `dsx.module.onesignal.login({ externalId })` | Save the token from the `notify.token` event on your server |
-| Device id | `dsx.module.onesignal.subscription.get()` | `notify.token` event (`{ kind, token }`) |
+| Link a push to your user | `dsx.module.onesignal.login({ externalId })` | Save the token from the `notify.token` broadcast on your server |
+| Device id | `dsx.module.onesignal.subscription.get()` | `notify.token` broadcast (`{ kind, token }`) |
 | Tap routing (`path` → `popstate` → `onNotificationEvent`) | Yes | Listen to `notify.opened` |
 
 Both use the same permission calls on `notify`.
 
-### Listen in the Modern API
+### Listen to the broadcasts
 
 ```javascript
-const rt = getDespiaRuntime() // from the block above
-if (rt.kind === 'v4') {
-  window.dsx.module.notify.on('opened', (data) => {
-    // { id, path, url, data, actionId, userText, coldStart }
-    if (data.path) router.navigate(data.path)
-  })
-  window.dsx.module.notify.on('token', ({ kind, token }) => saveTokenOnServer(kind, token))
+if (window.dsx) {
+  window.dsx.module.notify.on("opened", (data) => { if (data.path) router.navigate(data.path) })
+  window.dsx.module.notify.on("token", ({ kind, token }) => saveTokenOnServer(kind, token))
 }
 ```
+
+`notify.opened` carries `{ id, path, url, data, actionId, userText, coldStart }`.
 
 {/* TODO-VERIFY: whether notify.opened also fires for OneSignal taps (doc 25 follow-up F4). onNotificationEvent is verified for OneSignal taps. */}
 
@@ -83,14 +81,14 @@ if (rt.kind === 'v4') {
 On Despia V3 you read the `nativePushEnabled` global after `despia('checknativepushpermissions://', ['nativePushEnabled'])`. On Despia V4 that still works (the Legacy polyfill sets it to `true` when the permission is granted or provisional). The modern call gives you the full state:
 
 ```javascript
-const rt = getDespiaRuntime()
-if (rt.kind === 'v4') {
+if (window.dsx) {
   const { status, canAsk } = await window.dsx.module.notify.permission.status()
-  // status: undetermined, granted, limited, denied, restricted or unavailable
-  if (status === 'undetermined' && canAsk) await window.dsx.module.notify.permission.request()
-} else if (rt.kind === 'v3') {
-  const { nativePushEnabled } = await despia('checknativepushpermissions://', ['nativePushEnabled'])
+  if (status === "undetermined" && canAsk) await window.dsx.module.notify.permission.request()
+} else if (navigator.userAgent.includes("despia")) {
+  const { nativePushEnabled } = await despia("checknativepushpermissions://", ["nativePushEnabled"])
 }
 ```
 
-`notify.permission.status()` never shows a prompt. `notify.permission.request()` asks, and `notify.permission.openSettings()` opens the app's settings when the user said no before. The `notify.permission` event fires when the answer changes, including when the user comes back from Settings.
+`status` is `undetermined`, `granted`, `limited`, `denied`, `restricted` or `unavailable`.
+
+`notify.permission.status()` never shows a prompt. `notify.permission.request()` asks, and `notify.permission.openSettings()` opens the app's settings when the user said no before. The `notify.permission` broadcast is sent when the answer changes, including when the user comes back from Settings.

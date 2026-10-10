@@ -4,15 +4,18 @@ description: "Render AdMob ads as real DOM elements inside your web UI by bridgi
 icon: "rectangle-ad"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 Inline Ads connects the Google Mobile Ads SDK directly to the Android WebView and iOS WKWebView that Despia bundles inside your app. When your web content loads ad tags through AdSense, Google Publisher Tag, or IMA for HTML5, the SDK intercepts those events and bridges native app signals into the auction. Ads render as DOM elements where you place them, not as native overlays sitting above or below the WebView.
 
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

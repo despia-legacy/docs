@@ -4,9 +4,10 @@ description: "Encrypted persistent storage backed by iCloud Key Value Store on i
 icon: "vault"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [IdentityVault](/packages/identityvault).</Tip>
 
@@ -19,6 +20,8 @@ Encrypted key-value storage fully bridged to your web layer. Data survives app r
 ---
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

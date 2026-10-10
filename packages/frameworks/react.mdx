@@ -1,99 +1,77 @@
 ---
 title: "React and Next.js"
-description: "Call Despia V4 packages from React and Next.js through the global window.dsx: runtime detection, calls with loading and error state, events with cleanup, SSR and TypeScript."
+description: "Call Despia V4 packages from React and Next.js through the global dsx: calls with loading and error state, broadcasts with cleanup, SSR and TypeScript."
 icon: "react"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
+import SsrRule from '/snippets/ssr-rule.mdx';
 import DsxTypes from '/snippets/dsx-types.mdx';
 
-<RuntimeCheck />
+<EnvNew />
 
 <Info>Modern API. Requires Despia V4 or greater, currently a pre-release (0.1.0), stable for web view apps.</Info>
 
-There is no Despia React package and no built-in hook. The Modern API is the global `window.dsx`, so you need nothing installed: copy the three hooks below into your project.
+<SsrRule />
+
+The Modern API is the global `window.dsx`, so there is nothing to install. Copy these two hooks into your project.
 
 ## The hooks
 
-Save the runtime helper from the block above as `despia-runtime.js`, then add:
-
 ```jsx despia-hooks.js
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getDespiaRuntime } from './despia-runtime'
 
-// window.dsx exists only inside a Despia V4 app; never read it during render
-function getDsx() {
-  return typeof window !== 'undefined' ? window.dsx : undefined
-}
+const getDsx = () => window.dsx
 
-// Which runtime is this? 'v4', 'v3' or 'web'. `ready` is false until after the first mount,
-// so the server render and the first client render match (no hydration mismatch).
-export function useDespiaRuntime() {
-  const [runtime, setRuntime] = useState({ kind: 'web', platform: 'web', version: null, ready: false })
-  useEffect(() => {
-    setRuntime({ ...getDespiaRuntime(), ready: true })
-  }, [])
-  return runtime
-}
-
-// Call one package action with loading and error state.
 // useDsxCall('revenuecat', 'purchase') -> { call, data, error, loading }
 export function useDsxCall(pkg, action) {
   const [state, setState] = useState({ data: null, error: null, loading: false })
   const call = useCallback(async (args) => {
     const dsx = getDsx()
-    if (!dsx) {
-      const error = { code: 'no_dsx', message: 'Not running in Despia V4' } // our own code, not Despia's
-      setState({ data: null, error, loading: false })
-      throw error
-    }
+    if (!dsx) throw { code: 'no_dsx' } // our own code: not in Despia V4
     setState((s) => ({ ...s, error: null, loading: true }))
     try {
-      // 'permission.request' -> dsx.module.notify.permission.request
-      const fn = action.split('.').reduce((member, key) => member[key], dsx.module[pkg])
+      const fn = action.split('.').reduce((m, key) => m[key], dsx.module[pkg])
       const data = await fn(args)
       setState({ data, error: null, loading: false })
       return data
     } catch (error) {
-      setState({ data: null, error, loading: false }) // error.code, error.message
+      setState({ data: null, error, loading: false })
       throw error
     }
   }, [pkg, action])
   return { ...state, call }
 }
 
-// Subscribe to one package event; unsubscribes on unmount.
-// useDsxEvent('focus', 'change', (data) => ...)
-export function useDsxEvent(pkg, event, handler) {
+// useDsxBroadcast('focus', 'change', (data) => ...), removed on unmount
+export function useDsxBroadcast(pkg, name, handler) {
   const latest = useRef(handler)
   latest.current = handler
   useEffect(() => {
     const dsx = getDsx()
-    if (!dsx) return undefined
-    return dsx.module[pkg].on(event, (data, envelope) => latest.current(data, envelope))
-  }, [pkg, event])
+    return dsx ? dsx.module[pkg].on(name, (data) => latest.current(data)) : undefined
+  }, [pkg, name])
 }
 ```
+
+A failed call rejects with an object that has a `code` (for RevenueCat, for example `user_cancelled` or `not_ready`); `no_dsx` is the hook's own code for "not in Despia V4". `action` may contain dots, for example `'permission.request'` on `notify`.
 
 ## Call a package
 
 ```jsx BuyButton.jsx
-import { useDespiaRuntime, useDsxCall } from './despia-hooks'
+import { useEffect, useState } from 'react'
+import { useDsxCall } from './despia-hooks'
 
 export function BuyButton({ userId }) {
-  const runtime = useDespiaRuntime()
+  const [ready, setReady] = useState(false)
   const { call, loading, error } = useDsxCall('revenuecat', 'purchase')
+  useEffect(() => setReady(!!window.dsx?.has('revenuecat')), [])
 
-  if (runtime.kind !== 'v4' || !window.dsx.has('revenuecat')) {
-    return null // web checkout or the Legacy API goes here
-  }
+  if (!ready) return null // web checkout goes here
 
   return (
-    <button
-      disabled={loading}
-      onClick={() => call({ external_id: userId, product: ['coins_100'] }).catch(() => {})}
-    >
+    <button disabled={loading} onClick={() => call({ external_id: userId, product: ['coins_100'] }).catch(() => {})}>
       {loading ? 'Buying…' : 'Buy 100 coins'}
       {error && <small> ({error.code})</small>}
     </button>
@@ -101,44 +79,28 @@ export function BuyButton({ userId }) {
 }
 ```
 
-A failed call rejects with an object that has a `code`, for example `user_cancelled` or `not_ready` for RevenueCat. The codes of each action are on its package page.
+`ready` is read in an effect, so the server render and the first client render are the same.
 
-## Listen to events
+## Listen to a broadcast
 
 ```jsx
-import { useDsxEvent } from './despia-hooks'
-
-function SessionTimer() {
-  useDsxEvent('focus', 'change', ({ focused }) => {
-    if (!focused) saveDraft()
-  })
-  useDsxEvent('revenuecat', 'customerInfo', ({ customerInfo }) => {
-    refreshEntitlements(customerInfo)
-  })
-  return null
-}
+useDsxBroadcast('focus', 'change', ({ focused }) => { if (!focused) saveDraft() })
+useDsxBroadcast('revenuecat', 'customerInfo', ({ customerInfo }) => refresh(customerInfo))
 ```
 
-To stop a stream when a component unmounts, return its `stop`:
+For a stream, return its `stop` from an effect:
 
 ```jsx
 useEffect(() => {
-  const dsx = typeof window !== 'undefined' ? window.dsx : undefined
-  if (!dsx || !dsx.has('speechrecognition')) return undefined
-  const sub = dsx.module.speechrecognition.start({ interim: true }, (event) => {
-    if (event.event === 'result') setTranscript(event.data.transcript)
-  })
+  if (!window.dsx?.has('speechrecognition')) return undefined
+  const sub = window.dsx.module.speechrecognition.start({ interim: true }, (e) => setText(e.data?.transcript))
   return () => sub.stop()
 }, [])
 ```
 
-## Next.js and other server rendering
+## Next.js
 
-`window.dsx` only exists in the browser, inside the Despia V4 app, so:
-
-- Use the hooks in **client components** (`'use client'` in the App Router).
-- Read `window.dsx` only inside `useEffect`, event handlers or the hooks above, never during render. The hooks start as `kind: 'web'` and switch after mount, so server and client render the same first.
-- A bare `dsx` throws a `ReferenceError` on the server and in a normal browser. Always go through `typeof window !== 'undefined' ? window.dsx : undefined`.
+Use the hooks in client components (`'use client'` in the App Router). They read `window.dsx` only inside effects and handlers, never during render.
 
 ```jsx app/buy/page.jsx
 'use client'

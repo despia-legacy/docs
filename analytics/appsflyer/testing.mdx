@@ -4,9 +4,10 @@ description: "Confirm your AppsFlyer setup is working before you launch. No codi
 icon: "flask"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvMigration from '/snippets/env-migration.mdx';
+import NpmVersion from '/snippets/npm-version.mdx';
 
-<RuntimeCheck />
+<EnvMigration />
 
 <Tip>On Despia V4, call this feature with the Modern API, no npm package needed: see [AppsFlyer](/packages/appsflyer).</Tip>
 
@@ -17,6 +18,8 @@ Before you go live, confirm that when someone installs your app AppsFlyer sees i
 </Info>
 
 ## Installation
+
+<NpmVersion />
 
 <Tabs>
   <Tab title="Bundle">

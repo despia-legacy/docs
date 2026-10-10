@@ -5,7 +5,7 @@ icon: "bolt"
 tag: "V4"
 ---
 
-import RuntimeCheck from '/snippets/runtime-check.mdx';
+import EnvNew from '/snippets/env-new.mdx';
 
 <Info>Modern API. Requires Despia V4 or greater. Despia V4 is currently a pre-release (0.1.0), stable for web view apps. Check for it first, see [Detect Despia V4](/packages/overview#detect-despia-v4).</Info>
 
@@ -13,14 +13,14 @@ Lets you set the shortcuts that appear when someone presses and holds your app i
 
 **When to use it.** Use it to give quick routes into your app, such as New message or Scan, from the Home screen icon. The shortcuts are shown by the system, so keep them few and short.
 
-<RuntimeCheck />
+<EnvNew />
 
 ## Call it from JavaScript
 
 No npm package is needed. Inside a Despia V4 app, the `quickactions` package is on the global `window.dsx`. `dsx.has('quickactions')` is true when the package is in your app's build:
 
 ```javascript
-const dsx = typeof window !== 'undefined' ? window.dsx : undefined
+const dsx = window.dsx
 if (dsx && dsx.has('quickactions')) {
   // Removes all the shortcuts from the app icon's menu.
   const clear = await dsx.module.quickactions.clear()
@@ -43,10 +43,10 @@ Calls that return something give you a promise; calls that stream take a handler
 | `dsx.module.quickactions.get()` | none | `count`<br/>`items` | iOS, Android | Reads the shortcuts that are currently set, including the ones kept from an earlier launch. |
 | `dsx.module.quickactions.set()` | `items`?: object[] | `count` | iOS, Android | Sets the shortcuts shown when the app icon is long pressed, replacing the ones set before. |
 
-## Events
+## Broadcasts
 
-Subscribe with `window.dsx.module.quickactions.on('<event>', (data) => { ... })`. It returns a function that unsubscribes.
+Listen with `window.dsx.module.quickactions.on('<broadcast>', (data) => { ... })`. It returns a function that stops listening.
 
-| Event | When it fires |
+| Broadcast | When it fires |
 | :-- | :-- |
 | `tap` | Fires when the person chooses one of your shortcuts, including when it launched the app. |

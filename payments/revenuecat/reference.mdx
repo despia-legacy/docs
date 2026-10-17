@@ -75,7 +75,7 @@ despia(`revenuecat://purchase?external_id=${userId}&product=monthly_premium_ios`
 | Parameter | Required | Description |
 | --- | --- | --- |
 | `external_id` | Yes | Your user's ID in RevenueCat. |
-| `product` | Yes | The product ID. iOS uses the plain product ID. Android requires the subscription group prefix: `group:productId`. |
+| `product` | Yes | The product ID. iOS uses the plain product ID. Android subscriptions use `subscriptionId:basePlanId`; one-time products use the product ID. |
 
 **iOS product ID format:**
 
@@ -86,10 +86,10 @@ monthly_premium_ios
 **Android product ID format:**
 
 ```text
-premium:monthly_premium_android
+premium:monthly
 ```
 
-The prefix before `:` is the subscription group name as configured in Google Play Console.
+The part before `:` is the subscription product ID in Google Play Console; the part after it is the base plan ID. URL-encode the full value with `encodeURIComponent`. Direct purchases do not require a RevenueCat offering.
 
 ---
 
@@ -121,6 +121,80 @@ Call this on app load, on page navigation, and before gating any premium feature
 ---
 
 ## Purchase callback
+
+### Purchase outcomes and dispatch promises
+
+Register `window.onRevenueCatResult` **before** dispatching a purchase. It receives
+successful purchases, cancellations, and native login/product lookup/purchase
+errors. An error can arrive before a store sheet opens. The result is also
+assigned to `window.revenueCatResult`.
+
+`await despia(command)` without watched variables resolves after queuing the
+command. It does not confirm native receipt, open checkout, or report payment
+completion. Its `catch` cannot replace the native result handler. Checking
+whether `window.despia` exists is not a native acknowledgement either.
+
+This example uses the result callback as the single purchase outcome handler.
+`setPurchaseLoading`, `showPurchaseError`, and `verifyMembershipFromBackend` are
+functions supplied by your app. The last one must check your backend's membership
+state before granting access; allow for webhook processing time.
+
+```javascript
+let purchaseState = 'idle';
+
+window.onRevenueCatResult = async (result) => {
+    if (result.source !== 'purchase' || purchaseState !== 'purchasing') return;
+    purchaseState = 'verifying';
+    try {
+        if (result.cancelled) return;
+        if (!result.ok) {
+            showPurchaseError(result.code, result.error);
+            return;
+        }
+        await verifyMembershipFromBackend();
+    } catch (error) {
+        showPurchaseError('VerificationError', String(error));
+    } finally {
+        purchaseState = 'idle';
+        setPurchaseLoading(false);
+    }
+};
+
+async function purchase(userId, productId) {
+    if (purchaseState !== 'idle') return;
+    purchaseState = 'purchasing';
+    setPurchaseLoading(true);
+    try {
+        await despia(`revenuecat://purchase?external_id=${encodeURIComponent(userId)}&product=${encodeURIComponent(productId)}`);
+    } catch (error) {
+        purchaseState = 'idle';
+        setPurchaseLoading(false);
+        showPurchaseError('DispatchError', String(error));
+    }
+}
+```
+
+The legacy `window.onRevenueCatPurchase` callback is success-only. A direct
+purchase can invoke both it and `onRevenueCatResult`; do not run the same success
+verification in both handlers. If you retain an existing success handler, use
+`onRevenueCatResult` only for cancellation and failure instead.
+
+Install one owner for these global callbacks. In a component, remove a handler
+on cleanup only if it is still the handler that component installed. Avoid
+starting another purchase while one is pending. A UI timeout is not proof of
+cancellation or failure; reconcile an interrupted flow with the backend/customer
+state rather than telling the user a purchase succeeded.
+
+The result includes `ok`, `cancelled`, `restored`, `source`, `product`,
+`transaction`, `entitlements`, `user`, `platform`, `runtime`, `error`, and `code`.
+For a cancelled purchase, `ok` is false and `cancelled` is true. `code` is the
+machine-readable failure and `error` is its message. Fields such as `product`
+and `transaction` may be null. License/configuration checks that prevent the
+purchase command from running are not confirmation of a store outcome.
+
+### Legacy success callback
+
+The following legacy examples are alternatives to the result handler above.
 
 The Despia runtime calls `window.onRevenueCatPurchase()` immediately when the store confirms a transaction client-side. This is a signal that a transaction occurred, not confirmation that access should be granted.
 
@@ -343,7 +417,7 @@ if (isDespia) {
 if (isDespiaIOS) {
     despia(`revenuecat://purchase?external_id=${userId}&product=monthly_premium_ios`)
 } else if (isDespiaAndroid) {
-    despia(`revenuecat://purchase?external_id=${userId}&product=premium:monthly_premium_android`)
+    despia(`revenuecat://purchase?external_id=${userId}&product=premium:monthly`)
 } else {
     window.location.href = `https://pay.rev.cat/<your_token>/${encodeURIComponent(userId)}`
 }

@@ -4,6 +4,26 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="October 30, 2026" description="iOS runtime - Sign in with Apple on iOS 27">
+  ## Sign in with Apple works on iOS 27
+
+  On iOS 27, Apple's web view stopped turning the Sign in with Apple JS popup into the native sheet. A page calling `AppleID.auth.signIn()` with `usePopup: true` got `popup_blocked_by_browser` and a blank in-app browser.
+
+  The Despia iOS runtime now answers that call itself on iOS 27 and later:
+
+  - **Same code.** Keep your script tag, `AppleID.auth.init({ usePopup: true, ... })` and `AppleID.auth.signIn()` exactly as they are.
+  - **Native sheet.** `signIn()` opens the native Sign in with Apple sheet with Face ID.
+  - **Same result.** The promise, `{ authorization: { code, id_token, state }, user }`, the `AppleIDSignInOnSuccess` and `AppleIDSignInOnFailure` events and `popup_closed_by_user` on cancel match Apple JS. `state` and `nonce` are passed through unchanged.
+  - **Nothing changes below iOS 27.** iOS 26 and earlier keep Apple's own behaviour, and redirect mode (`usePopup: false`) is untouched.
+
+  We also hid the page loading spinner by default in the same runtime update.
+
+  **Action needed:**
+
+  - Rebuild your iOS app to pick up the updated runtime.
+  - The native sheet issues the `id_token` for your app's bundle ID instead of your Service ID. Add the bundle ID next to your Service ID wherever your backend checks the audience, for example in the Supabase Apple provider's Client IDs. See [Apple Auth](/lovable/native-features/o-auth-2-0/apple-auth).
+</Update>
+
 <Update label="September 13, 2026" description="Infrastructure - DNS resolution during the V3 to V4 migration">
   ## V3 to V4 migration - if a Despia page says "This site can't be reached"
 

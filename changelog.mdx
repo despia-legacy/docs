@@ -4,6 +4,21 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="October 31, 2026" description="iOS and Android runtime - Share files into your app">
+  ## Share PDFs and other files into your app
+
+  Your app now appears in the iOS and Android share sheet for files, not only images, links and text. Users can share a PDF from Files, an attachment from Mail or Gmail, a document from Google Drive, an audio file, a video or an archive straight into your app.
+
+  - **New type.** `window.onSharedDataReceived(value, type, meta)` receives `type` `'file'`. `value` is a URL to the file; read it with `fetch(value)`.
+  - **File details.** The new third argument `meta` gives `{ name, mimeType, size }`, so you can keep the original file name when you upload it.
+  - **Nothing else changes.** `image`, `url` and `text` shares work exactly as before, and existing two-argument callbacks keep working.
+
+  **Action needed:**
+
+  - File sharing is only available on builds made on or after October 31, 2026. Rebuild your iOS and Android apps in the Despia Editor to get it.
+  - Handle `type === 'file'` in your `onSharedDataReceived` callback. See [Share Extension](/native-features/share-extension).
+</Update>
+
 <Update label="October 30, 2026" description="iOS runtime - Sign in with Apple on iOS 27">
   ## Sign in with Apple works on iOS 27
 

@@ -1,6 +1,6 @@
 ---
 title: "Share Extension"
-description: "Receive content shared into your app from other apps via the system share sheet, delivered through a single global callback that fires when your app launches with a shared payload."
+description: "Receive images, links, text and files such as PDFs shared into your app from other apps via the system share sheet, delivered through a single global callback that fires when your app launches with a shared payload."
 icon: "file-import"
 ---
 
@@ -10,7 +10,11 @@ icon: "file-import"
   The video uses a specific AI coding tool to demonstrate the setup, but the configuration works 1:1 with Cursor, Claude Code, or any other tool. Despia is web framework and tooling agnostic, so the only thing that matters is defining the global `onSharedDataReceived` callback before the runtime tries to invoke it.
 </Note>
 
-Share Extension is the inbound counterpart to the system share sheet. When a user shares an image from Photos, a link from Safari, or text from Notes into your app, the OS launches your app and the Despia runtime calls `window.onSharedDataReceived(value, type)` with the shared payload. Three content types are supported: `image` (as a data URL), `url` (as a string), and `text` (as a string). Video is not currently supported.
+Share Extension is the inbound counterpart to the system share sheet. When a user shares an image from Photos, a link from Safari, text from Notes, or a PDF from Files or Mail into your app, the OS launches your app and the Despia runtime calls `window.onSharedDataReceived(value, type, meta)` with the shared payload. Four content types are supported: `image` (as a data URL), `url` (as a string), `text` (as a string), and `file` (as a URL to the file, with the file's name, MIME type and size in `meta`). Videos arrive as `file`. One item is shared at a time.
+
+<Info>
+  Sharing files (PDFs, documents, audio, video, archives) into your app, the `file` type, works on iOS and Android builds made on or after October 31, 2026. Older builds only receive `image`, `url` and `text`. Rebuild your app in the Despia Editor to get it.
+</Info>
 
 This is the opposite direction from [Share Dialog](/native-features/share-dialog) and [File Sharing](/native-features/file-sharing), which both _send_ content out of your app. Share Extension _receives_ content sent in from other apps.
 
@@ -45,7 +49,7 @@ Share Extension on iOS runs as a separate App Extension target with its own bund
     Both values must match exactly what you registered in Apple Developer.
   </Step>
   <Step title="Rebuild your app">
-    Trigger a fresh build from the Despia Editor. The extension target has to be compiled into your app binary and signed with the matching provisioning profile, so this cannot be applied over-the-air. After the build finishes, your app appears in the system share sheet whenever a user shares an image, URL, or text from another app.
+    Trigger a fresh build from the Despia Editor. The extension target has to be compiled into your app binary and signed with the matching provisioning profile, so this cannot be applied over-the-air. After the build finishes, your app appears in the system share sheet whenever a user shares an image, URL, text, or file from another app.
   </Step>
 </Steps>
 
@@ -100,19 +104,22 @@ Share Extension on iOS runs as a separate App Extension target with its own bund
 
 ## How it works
 
-Define `window.onSharedDataReceived` as a global function before the runtime needs to invoke it. The runtime calls this function with two arguments: the shared value and a string indicating the type (`'image'`, `'url'`, or `'text'`).
+Define `window.onSharedDataReceived` as a global function before the runtime needs to invoke it. The runtime calls this function with the shared value and a string indicating the type (`'image'`, `'url'`, `'text'`, or `'file'`). For `file` it also passes a third argument, `meta`, with `{ name, mimeType, size }`.
 
 ```javascript
-window.onSharedDataReceived = function (value, type) {
+window.onSharedDataReceived = function (value, type, meta) {
     switch (type) {
         case 'image':
-            handleSharedImage(value)  // value is a data URL
+            handleSharedImage(value)        // value is a data URL
             break
         case 'url':
-            handleSharedUrl(value)    // value is a URL string
+            handleSharedUrl(value)          // value is a URL string
             break
         case 'text':
-            handleSharedText(value)   // value is plain text
+            handleSharedText(value)         // value is plain text
+            break
+        case 'file':
+            handleSharedFile(value, meta)   // value is a URL to the file, meta = { name, mimeType, size }
             break
     }
 }
@@ -122,13 +129,24 @@ The callback is global because the native runtime invokes it by name. Defining i
 
 ---
 
-## The three content types
+## The four content types
 
 | Type | Value shape | Common sources |
 | :-- | :-- | :-- |
 | `image` | Data URL, e.g. `data:image/jpeg;base64,/9j/4AAQ...` | Photos app, Camera Roll, image previews from other apps |
 | `url` | URL string, e.g. `https://example.com/article` | Safari, Chrome, social apps sharing a link |
 | `text` | Plain text string | Notes, Messages, any app sharing selected text |
+| `file` | URL to the file (a local `http://localhost` address served by your app), plus `meta` | Files, Mail and Gmail attachments, Google Drive, PDF readers, videos from Photos |
+
+For `file`, `value` is a URL you pass to `fetch()` to read the file. It is a local address served by your app, or a `data:` URL on apps that deliver shared data inline. `fetch(value)` works the same for both. The third argument `meta` describes the file:
+
+| Field | Example | Notes |
+| :-- | :-- | :-- |
+| `name` | `"Invoice March.pdf"` | Original file name, including the extension |
+| `mimeType` | `"application/pdf"` | Falls back to `application/octet-stream` when the sharing app does not say |
+| `size` | `248913` | Size in bytes |
+
+`file` requires a build made on or after October 31, 2026. On older builds the share sheet does not offer your app for files.
 
 Image data is delivered as a base64 data URL, which means it can be displayed immediately as an `<img src>` without going through any decoding step. To send the bytes to your backend, convert the data URL to a Blob first and post it as multipart form data, since most servers reject base64-in-JSON for large files.
 
@@ -217,11 +235,36 @@ window.onSharedDataReceived = async function (value, type) {
 }
 ```
 
+## Save a shared file to your backend
+
+Fetch the file's URL to get a Blob, then upload it like an image. Use `meta.name` so the upload keeps the original file name and extension.
+
+```javascript
+window.onSharedDataReceived = async function (value, type, meta) {
+    if (type !== 'file') return
+
+    const res  = await fetch(value)
+    const blob = await res.blob()
+
+    const formData = new FormData()
+    formData.append('file', blob, meta.name)
+
+    await fetch('/api/uploads', { method: 'POST', body: formData })
+}
+```
+
+To show a shared PDF, create an object URL from the Blob and open it, or pass it to a PDF viewer such as PDF.js.
+
+```javascript
+const url = URL.createObjectURL(blob)
+window.open(url)
+```
+
 For text and URL shares, post the value as JSON since both are small.
 
 ```javascript
 window.onSharedDataReceived = async function (value, type) {
-    if (type === 'image') return  // handled above
+    if (type === 'image' || type === 'file') return  // handled above
 
     await fetch('/api/shares', {
         method: 'POST',

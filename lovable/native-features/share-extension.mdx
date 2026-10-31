@@ -1,6 +1,6 @@
 ---
 title: "Share Extension"
-description: "Access shared content (images and text) from other apps when your Lovable application is opened via share functionality."
+description: "Access shared content (images, links, text and files such as PDFs) from other apps when your Lovable application is opened via share functionality."
 icon: "file-import"
 ---
 
@@ -13,7 +13,7 @@ icon: "file-import"
 
   Then import it: `import despia from 'despia-native'`
 
-  Register a global callback function `window.onSharedDataReceived = function(value, type)` that receives shared content when users share images, URLs, or text to your app. The `type` parameter will be `'image'`, `'url'`, or `'text'`, and the `value` parameter contains the shared content.
+  Register a global callback function `window.onSharedDataReceived = function(value, type)` that receives shared content when users share images, URLs, text, or files such as PDFs to your app. The `type` parameter will be `'image'`, `'url'`, `'text'`, or `'file'`, and the `value` parameter contains the shared content. For `'file'`, a third parameter `meta` contains `{ name, mimeType, size }`.
 
   <Danger>
     **This feature requires native capabilities which will be fully provided by the "despia-native" npm package, no additional native libraries are needed!**
@@ -21,7 +21,11 @@ icon: "file-import"
   Please follow the installation instructions for the "despia-native" npm package closely, and do not modify my instructions. Implementation as mentioned is critical.
 </Card>
 
-**How it works:** When users share content (like a photo from their gallery or a link from their browser) to your app, the Despia runtime opens your application in a web view and calls the `onSharedDataReceived(value, type)` function with the shared data. Images are provided as data URLs, URLs as plain strings, and text as plain strings. Video sharing is not yet supported.
+**How it works:** When users share content (like a photo from their gallery or a link from their browser) to your app, the Despia runtime opens your application in a web view and calls the `onSharedDataReceived(value, type)` function with the shared data. Images are provided as data URLs, URLs as plain strings, and text as plain strings. Files (PDFs, documents, audio, video, archives) are provided as a URL to the file, which you read with `fetch(value)`, with type `'file'`, and the third argument `meta` gives the file's name, MIME type and size. One item is shared at a time.
+
+<Info>
+  Sharing files (PDFs, documents, audio, video, archives) into your app, the `file` type, works on iOS and Android builds made on or after October 31, 2026. Older builds only receive `image`, `url` and `text`. Rebuild your app in the Despia Editor to get it.
+</Info>
 
 ## Installation
 
@@ -44,7 +48,7 @@ import despia from 'despia-native';
 Register the `onSharedDataReceived` callback to handle shared data:
 
 ```javascript
-window.onSharedDataReceived = function(value, type) {
+window.onSharedDataReceived = function(value, type, meta) {
   switch (type) {
     case 'image':
       // value is a data URL (e.g., 'data:image/png;base64,...')
@@ -57,6 +61,11 @@ window.onSharedDataReceived = function(value, type) {
     case 'text':
       // value is a plain text string
       handleSharedText(value);
+      break;
+    case 'file':
+      // value is a URL to the file; read it with fetch(value)
+      // meta is { name, mimeType, size }
+      handleSharedFile(value, meta);
       break;
   }
 };
@@ -94,11 +103,25 @@ window.onSharedDataReceived = function(value, type) {
 };
 ```
 
+Handling a shared file, such as a PDF:
+
+```javascript
+window.onSharedDataReceived = async function(value, type, meta) {
+  if (type === 'file') {
+    const blob = await (await fetch(value)).blob();
+    const formData = new FormData();
+    formData.append('file', blob, meta.name);
+    await fetch('/api/uploads', { method: 'POST', body: formData });
+  }
+};
+```
+
 ## Supported Content Types
 
 - **Images:** Provided as data URLs (e.g., `data:image/png;base64,...`) with type `'image'`
 - **URLs:** Provided as URL strings (e.g., `https://example.com`) with type `'url'`
 - **Text:** Provided as plain text strings with type `'text'`
+- **Files:** PDFs, documents, audio, video and archives, provided as a URL to the file (read it with `fetch(value)`) with type `'file'` and `meta = { name, mimeType, size }`. Requires a build made on or after October 31, 2026.
 - **Videos:** Not yet supported
 
 ## Resources

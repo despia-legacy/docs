@@ -8,6 +8,7 @@ title: "Apple Auth"
 ## Platform Strategy
 
 **iOS (Despia)**: Apple JS SDK -> Native Face ID dialog (instant)
+**iOS 27 and later (Despia)**: the same Apple JS SDK call with `usePopup: true` -> the Despia runtime opens the native Sign in with Apple sheet and answers in the Apple JS format
 **Android (Despia)**: oauth:// protocol -> ASWebAuthenticationSession -> form_post
 **Web**: Apple JS SDK -> Native browser dialog (instant)
 
@@ -15,6 +16,22 @@ title: "Apple Auth"
 - iOS has native Apple Sign In support -> Use JS SDK for instant dialog
 - Android has NO native Apple Sign In -> Use oauth:// to trigger browser session
 - Web has Apple Sign In support -> Use JS SDK for instant dialog
+
+## iOS 27 and later
+
+On iOS 27, WebKit no longer turns the Apple JS popup into the native sheet. A plain `usePopup: true` call would reject with `popup_blocked_by_browser` and open a blank in-app browser. The Despia V3 runtime handles this for you:
+
+- Keep your Apple JS code as it is: the script tag, `AppleID.auth.init({ usePopup: true, ... })` and `AppleID.auth.signIn()` in the tap handler.
+- On iOS 27 and later, `signIn()` opens the native Sign in with Apple sheet. The result has the Apple JS shape: the same promise, `{ authorization: { code, id_token, state }, user }`, and the same `AppleIDSignInOnSuccess` and `AppleIDSignInOnFailure` events. Cancelling gives `popup_closed_by_user`. Your `state` and `nonce` are passed through unchanged.
+- iOS 26 and earlier keep Apple's own behaviour. Redirect mode (`usePopup: false`) is not changed.
+- Rebuild your app once to pick up the updated runtime.
+
+**One backend change:** the native sheet issues the `id_token` for your app's **bundle ID** (for example `com.yourcompany.yourapp`), not your Service ID. Your backend must accept both as the token audience:
+
+- **Supabase Auth (Apple provider):** add the bundle ID to the **Client IDs** list, comma-separated after your Service ID.
+- **Your own verification** (like the edge function below): accept both the Service ID and the bundle ID as `aud`.
+
+To turn the native handling off for a page, add `data-apple-auth-polyfill="off"` to its `<html>` tag.
 
 ## Apple Developer Console Setup
 
@@ -573,9 +590,11 @@ async function getApplePublicKeys(): Promise<jose.JWTVerifyGetKey> {
 
 async function verifyAppleToken(idToken: string, clientId: string): Promise<jose.JWTPayload> {
   const JWKS = await getApplePublicKeys();
+  // Web tokens carry the Service ID; the native sheet on iOS 27+ issues them for the bundle ID.
+  const bundleId = Deno.env.get('APPLE_BUNDLE_ID');
   const { payload } = await jose.jwtVerify(idToken, JWKS, {
     issuer: 'https://appleid.apple.com',
-    audience: clientId,
+    audience: bundleId ? [clientId, bundleId] : clientId,
   });
   return payload;
 }
@@ -821,6 +840,9 @@ Add these secrets:
 # Your Service ID (same as VITE_APPLE_CLIENT_ID)
 APPLE_CLIENT_ID=com.yourcompany.yourapp.web
 
+# Your app's bundle ID (App ID). Tokens from the native sheet on iOS 27+ use it as audience
+APPLE_BUNDLE_ID=com.yourcompany.yourapp
+
 # Your Team ID from Apple Developer Console (top right corner)
 APPLE_TEAM_ID=ABCD1234EF
 
@@ -925,6 +947,14 @@ Return URLs:
 - No trailing slashes
 - Must use https://
 - Domain must match exactly
+
+**`popup_blocked_by_browser` or a blank in-app browser on iOS 27**:
+- Rebuild the app so it includes the updated Despia runtime
+- Use `usePopup: true` and call `AppleID.auth.signIn()` directly in the tap handler
+- Make sure the page is on your app's own start URL domain (or its www/apex twin)
+
+**Sign-in succeeds on the device but the backend rejects the token on iOS 27**:
+- The token audience is your bundle ID: add it next to your Service ID (Supabase Client IDs, or `APPLE_BUNDLE_ID` above)
 
 **"Invalid client_id" error**:
 - Check VITE_APPLE_CLIENT_ID matches your Service ID

@@ -10,15 +10,15 @@ description: "Handle notches, status bars, home indicators, and gesture bars usi
   The video uses a specific AI coding tool to demonstrate the setup, but the configuration works 1:1 with Cursor, Claude Code, or any other tool. Despia is web framework and tooling agnostic, so the only thing that matters is the CSS pattern you apply to your fixed and sticky elements.
 </Note>
 
-The Despia runtime injects four CSS variables into every WebView: `--safe-area-top`, `--safe-area-bottom`, `--safe-area-left`, `--safe-area-right`. Each one measures the inset for the matching edge, accounting for the status bar, notch, Dynamic Island, home indicator, and gesture bar on iOS, and the equivalent system chrome on Android. The variables are available before your JavaScript runs and update in real time when the device rotates.
+Despia reports four independent safe-area insets when the WebView draws edge to edge. They account for system UI and display cutouts such as the status bar, camera region, and home indicator. Use `--safe-area-top`, `--safe-area-right`, `--safe-area-bottom`, and `--safe-area-left` in CSS. The aliases `--safe-area-inset-top`, `--safe-area-inset-right`, `--safe-area-inset-bottom`, and `--safe-area-inset-left` contain the same values.
 
-There is no SDK call. The variables are always present in the runtime, and you reference them from CSS exactly like any custom property.
+The insets update as the native WebView geometry changes. An edge that no longer overlaps system UI can drop back to zero. CSS fallbacks cover the time before the native values arrive and let the same styles run in a browser.
 
 ---
 
 ## Installation
 
-No package installation is required for the CSS variables themselves. The runtime injects them automatically into every WebView. Install `despia-native` only if your page also calls SDK schemes for other features.
+No package installation is required for the CSS variables themselves. The runtime supplies them automatically in an edge-to-edge WebView. Install `despia-native` only if your page also calls SDK schemes for other features.
 
 <Tabs>
   <Tab title="Bundle">
@@ -72,7 +72,7 @@ padding-top: calc(1rem + var(--safe-area-top, env(safe-area-inset-top, 0px)));
 /* Bottom, home indicator and gesture bar region */
 padding-bottom: calc(1rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
 
-/* Left and right, landscape on notched devices */
+/* Left and right, including side system UI on foldables and in resizable windows */
 padding-left:  calc(1rem + var(--safe-area-left,  env(safe-area-inset-left,  0px)));
 padding-right: calc(1rem + var(--safe-area-right, env(safe-area-inset-right, 0px)));
 ```
@@ -102,8 +102,8 @@ A fixed header at the top of the screen needs to sit _below_ the status bar and 
     background: #1a1a2e;
     color: #fff;
     padding-top:    calc(0.75rem + var(--safe-area-top, env(safe-area-inset-top, 0px)));
-    padding-left:   1rem;
-    padding-right:  1rem;
+    padding-left:   calc(1rem + var(--safe-area-left, env(safe-area-inset-left, 0px)));
+    padding-right:  calc(1rem + var(--safe-area-right, env(safe-area-inset-right, 0px)));
     padding-bottom: 0.75rem;
   }
 </style>
@@ -126,8 +126,8 @@ function Header() {
             background:    '#1a1a2e',
             color:         '#fff',
             paddingTop:    'calc(0.75rem + var(--safe-area-top, env(safe-area-inset-top, 0px)))',
-            paddingLeft:   '1rem',
-            paddingRight:  '1rem',
+            paddingLeft:   'calc(1rem + var(--safe-area-left, env(safe-area-inset-left, 0px)))',
+            paddingRight:  'calc(1rem + var(--safe-area-right, env(safe-area-inset-right, 0px)))',
             paddingBottom: '0.75rem',
         }}>
             <h1>My App</h1>
@@ -153,8 +153,8 @@ A bottom tab bar or navigation needs to clear the home indicator on iOS and the 
     border-top: 1px solid #e0e0e0;
     padding-top:    0.5rem;
     padding-bottom: calc(0.5rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
-    padding-left:   1rem;
-    padding-right:  1rem;
+    padding-left:   calc(1rem + var(--safe-area-left, env(safe-area-inset-left, 0px)));
+    padding-right:  calc(1rem + var(--safe-area-right, env(safe-area-inset-right, 0px)));
     display: flex;
     justify-content: space-around;
   }
@@ -194,16 +194,183 @@ The runtime variable and the native env value are not redundant. They cover diff
 | Source | Available when |
 | :-- | :-- |
 | `var(--safe-area-top)` | Inside the Despia runtime, after the variables are injected. Source of truth |
-| `env(safe-area-inset-top)` | In any WebKit-based browser (Safari, iOS WKWebView), including web preview before the runtime initializes |
+| `env(safe-area-inset-top)` | In browsers and WebViews that provide an inset for that edge |
 | `0px` fallback | Anywhere the calc() would otherwise be invalid, e.g. desktop browsers without WebKit |
 
-In the native runtime, both lookups resolve, but `var()` wins because it comes first. In Safari preview, `var()` resolves to undefined and the chain falls through to `env()`. On desktop Chrome or Firefox, neither resolves and the chain ends at `0px`. The pattern is correct in every environment, which is why this is the only form the docs recommend.
+Inside Despia, the runtime variable takes precedence. Outside Despia, the browser supplies an inset when it exposes one for that edge. The final fallback is `0px`.
 
 <Warning>
   Without these insets, top elements render under the status bar and bottom elements are partially hidden behind the home indicator on modern iPhones. Always verify safe area behavior on a physical device or simulator running your Despia-built app, not in a desktop browser. Desktop preview shows zero insets, which makes the layout look fine when it would be broken on a real device.
 </Warning>
 
 ---
+
+## Foldable devices
+
+On a foldable, the safe area belongs to the current app window. It can change when the user opens or closes the device, rotates it, or moves the app into a different multitasking layout. Apply each edge to the matching physical side. A vertical status bar can reserve space on the right or left even when the top inset is zero.
+
+### Enable fullscreen on iPhone Duo
+
+1. Rebuild your iOS app with the updated Despia runtime. Apple's full-display behavior requires a build made with the iOS 27.1 SDK or later.
+2. Add `viewport-fit=cover` to the page's existing viewport meta tag in `<head>`. Keep one viewport tag per page.
+3. Apply safe-area padding to the parts of your layout that contain text, controls, and other essential content. Despia's automatic fullscreen mode looks for both the viewport declaration and CSS that uses the safe-area values.
+4. Keep the background on a full-width element. Put the edge padding on that element's contents or on the element itself so the background can continue behind the system UI.
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  body {
+    margin: 0;
+  }
+
+  .app-shell {
+    box-sizing: border-box;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: #101828;
+    color: white;
+  }
+
+  .app-header, .app-content, .app-tabs {
+    padding-left: calc(1rem + var(--safe-area-left, env(safe-area-inset-left, 0px)));
+    padding-right: calc(1rem + var(--safe-area-right, env(safe-area-inset-right, 0px)));
+  }
+
+  .app-header {
+    padding-top: calc(0.75rem + var(--safe-area-top, env(safe-area-inset-top, 0px)));
+    padding-bottom: 0.75rem;
+  }
+
+  .app-tabs {
+    padding-top: 0.75rem;
+    padding-bottom: calc(0.75rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+
+  @media (min-width: 720px) {
+    .app-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      gap: 1rem;
+    }
+  }
+</style>
+
+<div class="app-shell">
+  <header class="app-header">Messages</header>
+  <main class="app-content">
+    <section aria-label="Message list">Inbox</section>
+    <section aria-label="Selected message">Select a message.</section>
+  </main>
+  <nav class="app-tabs" aria-label="Main">
+    <button type="button">Inbox</button>
+    <button type="button">Settings</button>
+  </nav>
+</div>
+```
+
+The CSS responds to the width the WebView actually has, including on iPad and in Split View. Choose your breakpoint based on the space your content needs. Apply an edge inset once to each section of the layout, and avoid adding the same padding again in a child that already sits inside its parent's safe area.
+
+On iPhone Duo, open the device and check both inner-display orientations. Then close it and check the outer display. In a multitasking layout, iOS can deliver the new window geometry after a resizing gesture settles. Despia uses that window's UIKit safe area and refreshes the page's insets as the geometry changes. [Apple's iPhone Duo layout guide](https://developer.apple.com/iphone-duo/prepare/)
+
+### Read safe-area changes in JavaScript
+
+CSS updates automatically. If your layout uses a canvas, a map, or another interface positioned in JavaScript, read the latest snapshot and subscribe to subsequent changes. The values are numbers in CSS pixels.
+
+```js
+function updateMapControls({ top, right, bottom, left }) {
+  mapControls.style.inset = `${top}px ${right}px ${bottom}px ${left}px`;
+}
+
+const mapControls = document.querySelector('.map-controls');
+
+if (mapControls) {
+  window.addEventListener('despiasafeareachange', ({ detail }) => {
+    updateMapControls(detail);
+  });
+
+  if (window.safeAreaInsets) {
+    updateMapControls(window.safeAreaInsets);
+  }
+}
+```
+
+In this example, `.map-controls` is an absolutely positioned layer inside a full-viewport map. A snapshot can arrive after the page starts. Use CSS as the initial layout and read the snapshot any time you attach new controls.
+
+### Work around an Android fold or hinge
+
+Use the four safe-area values for bars and cutouts along the viewport edges. For a fold or physical hinge that crosses the middle of the WebView, use `window.despiaFoldFeatures`. Read the current array when you initialize and listen for `despiafoldchange` on `window`. The event's `detail` is the current array. An empty array means the WebView currently has no reported fold feature in its window.
+
+| Field | Meaning |
+| :-- | :-- |
+| `left`, `top`, `right`, `bottom` | Bounds in WebView CSS pixels measured from its top left corner. A crease can have zero width or height. |
+| `orientation` | `vertical` for a fold between left and right panes, or `horizontal` for one between top and bottom panes. |
+| `state` | `flat` or `half-opened`, as reported by Android. |
+| `occludes` | The feature blocks visibility in its bounds. |
+| `separates` | Android considers this feature a divider between two usable panes, even if the feature itself has no width or height. |
+
+For a list and detail layout, you can put one pane on either side of a separating feature. This example uses the first separator and keeps the pages in one column when there is no separator. Keep the four outer safe-area paddings on the controls inside the panes.
+
+```html
+<style>
+  .fold-layout {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template: "list" "detail" / minmax(0, 1fr);
+    direction: ltr;
+  }
+
+  .fold-layout[data-fold="vertical"] {
+    grid-template: "list . detail" minmax(0, 1fr) /
+      var(--fold-start) var(--fold-gap) minmax(0, 1fr);
+  }
+
+  .fold-layout[data-fold="horizontal"] {
+    grid-template: "list" var(--fold-start) "." var(--fold-gap)
+      "detail" minmax(0, 1fr) / minmax(0, 1fr);
+  }
+
+  .message-list { grid-area: list; overflow: auto; }
+  .message-detail { grid-area: detail; overflow: auto; }
+</style>
+
+<main class="fold-layout">
+  <section class="message-list" aria-label="Message list">Inbox</section>
+  <section class="message-detail" aria-label="Selected message">Select a message.</section>
+</main>
+
+<script type="module">
+  const layout = document.querySelector('.fold-layout');
+
+  function placePanes(features) {
+    const fold = features.find(({ separates }) => separates);
+    if (!fold) {
+      delete layout.dataset.fold;
+      return;
+    }
+
+    const vertical = fold.orientation === 'vertical';
+    const start = vertical ? fold.left : fold.top;
+    const end = vertical ? fold.right : fold.bottom;
+    layout.style.setProperty('--fold-start', start + 'px');
+    layout.style.setProperty('--fold-gap', Math.max(0, end - start) + 'px');
+    layout.dataset.fold = fold.orientation;
+  }
+
+  window.addEventListener('despiafoldchange', ({ detail }) => placePanes(detail));
+  placePanes(window.despiaFoldFeatures ?? []);
+</script>
+```
+
+The grid uses physical left and right placement to match the reported Android coordinates. If your app supports right-to-left languages, set the text direction of each pane independently. On layouts with multiple separating features, pick the feature that intersects your content region or place each pane explicitly. [Android's foldable layout guide](https://developer.android.com/develop/adaptive-apps/guides/foldables/make-your-app-fold-aware)
+
+### Verify your layout
+
+- **iPhone Duo:** Use the inner and outer displays in Xcode Device Hub. Try rotation, both Split View positions, and opening and closing the phone with your app visible. Check that full-bleed artwork reaches the display edges and buttons clear whichever side contains system UI.
+- **Android foldable:** Try a flat device, a half-open book or tabletop posture, and the single-screen layout after closing or unspanning. Confirm that no button sits in a physical hinge and that the layout returns to one column when the fold array empties.
+- **iPad and regular phones:** Check both orientations and a narrow iPad window where available. Use a keyboard and reload the page. Safe-area values describe the system bars and cutouts, so handle keyboard overlap separately with your app's keyboard behavior.
+- **Web preview:** The CSS `env()` fallback can keep a browser preview usable. Run the built app to check the exact values and native change events.
 
 ## Resources
 

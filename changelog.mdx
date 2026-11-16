@@ -4,6 +4,18 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="November 16, 2026" description="Despia V3 builds iOS binaries with the native features each app uses">
+  ## An iOS binary built for your app
+
+  Despia V3 now builds your iOS binary from your app's settings. Turn off a supported integration or clear an unused usage description, and the next build leaves out the corresponding SDK or native feature code.
+
+  Apple's App Review Guidelines prohibit hidden, dormant, or undocumented functionality. That matters for WebView apps because an optional feature can still be present in the submitted binary even when the website never calls it. Building from your app's settings helps the submitted binary match the features users and reviewers can access. [Apple's App Review Guideline 2.5.19](https://developer.apple.com/app-store/review/guidelines/#software-requirements)
+
+  1. To leave out Stripe, turn it off under **App → Settings → Integrations → Stripe**. The next iOS build omits the native Stripe SDK. [Stripe setup](/payments/stripe/introduction#stripe-and-despia-setup)
+  2. Open **App → Settings → Usage Descriptions** and clear the fields for capabilities your app does not use. For example, if your app never uses the camera, leave **Camera** empty. The next iOS build omits Despia's camera feature code and the iOS camera usage description.
+  3. Rebuild for iOS and test the features you kept before submitting the new binary. Adding a removed capability later requires another native build.
+</Update>
+
 <Update label="November 16, 2026" description="Staging preview of iPhone Duo fullscreen and foldable safe areas">
   ## iPhone Duo fullscreen and foldable safe areas
 

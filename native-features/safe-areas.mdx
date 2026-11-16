@@ -12,7 +12,7 @@ description: "Handle notches, status bars, home indicators, and gesture bars usi
 
 Despia reports four independent safe-area insets when the WebView draws edge to edge. They account for system UI and display cutouts such as the status bar, camera region, and home indicator. Use `--safe-area-top`, `--safe-area-right`, `--safe-area-bottom`, and `--safe-area-left` in CSS. The aliases `--safe-area-inset-top`, `--safe-area-inset-right`, `--safe-area-inset-bottom`, and `--safe-area-inset-left` contain the same values.
 
-The insets update as the native WebView geometry changes. An edge that no longer overlaps system UI can drop back to zero. CSS fallbacks cover the time before the native values arrive and let the same styles run in a browser.
+CSS fallbacks cover the time before the native values arrive and let the same styles run in a browser. See the [foldable devices section](#foldable-devices) for live window updates in the staging runtime.
 
 ---
 
@@ -207,11 +207,15 @@ Inside Despia, the runtime variable takes precedence. Outside Despia, the browse
 
 ## Foldable devices
 
+<Note>
+  iPhone Duo fullscreen, live safe-area updates as the window resizes, the JavaScript events below, and Android fold and hinge bounds are in staging preview. These features require a Despia V3 staging build with the updated runtime. Device verification is pending.
+</Note>
+
 On a foldable, the safe area belongs to the current app window. It can change when the user opens or closes the device, rotates it, or moves the app into a different multitasking layout. Apply each edge to the matching physical side. A vertical status bar can reserve space on the right or left even when the top inset is zero.
 
 ### Enable fullscreen on iPhone Duo
 
-1. Rebuild your iOS app with the updated Despia runtime. Apple's full-display behavior requires a build made with the iOS 27.1 SDK or later.
+1. Use a Despia V3 staging build with the updated iOS runtime. Apple's full-display behavior requires a build made with the iOS 27.1 SDK or later.
 2. Add `viewport-fit=cover` to the page's existing viewport meta tag in `<head>`. Keep one viewport tag per page.
 3. Apply safe-area padding to the parts of your layout that contain text, controls, and other essential content. Despia's automatic fullscreen mode looks for both the viewport declaration and CSS that uses the safe-area values.
 4. Keep the background on a full-width element. Put the edge padding on that element's contents or on the element itself so the background can continue behind the system UI.

@@ -4,17 +4,17 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-<Update label="November 16, 2026" description="Fullscreen iPhone Duo layouts and live safe areas for foldables">
+<Update label="November 16, 2026" description="Staging preview of iPhone Duo fullscreen and foldable safe areas">
   ## iPhone Duo fullscreen and foldable safe areas
 
-  Your Despia web app can fill the inner and outer iPhone Duo displays while keeping buttons and navigation clear of the system UI. Despia brings UIKit safe-area geometry, the same platform input that native iOS apps use in Xcode, into your web layout. The support is built into the runtime.
+  This staging preview brings fullscreen iPhone Duo layouts and live foldable safe areas to the Despia V3 runtime. On iPhone Duo, a web app can draw across the inner and outer displays and position controls using the same UIKit safe-area geometry that native iOS apps use in Xcode.
 
   - The top, right, bottom, and left safe areas update independently as the WebView resizes. This lets your layout follow a vertical status bar on either side of the display and also works with resizable iPad windows.
   - Classic iOS pages fit inside the left and right safe areas in landscape. On iOS 27.1 and later, the classic top gap also follows the system inset.
   - On Android foldables, the runtime reports fold and hinge bounds as well as edge insets. Use the bounds to place content on either side of a separating hinge in book or tabletop layouts.
   - Use CSS safe-area variables for layout and the new `despiasafeareachange` event for canvas, map, or other JavaScript-driven controls. Android also provides `despiafoldchange`.
 
-  Rebuild with the updated Despia runtime. For iPhone Duo fullscreen, use a build made with the iOS 27.1 SDK or later. Add `viewport-fit=cover` to your viewport meta tag, and apply safe-area padding around your interactive content. Follow the [Safe Areas guide](/native-features/safe-areas#foldable-devices) for the setup and device checks.
+  These features require an updated Despia V3 staging build. Device verification is pending. For iPhone Duo fullscreen, use a build made with the iOS 27.1 SDK or later. Add `viewport-fit=cover` to your viewport meta tag, and apply safe-area padding around your interactive content. Follow the [Safe Areas guide](/native-features/safe-areas#foldable-devices) for the setup and device checks.
 </Update>
 
 <Update label="November 04, 2026" description="Home Widgets - open your app on the right screen from a widget tap">

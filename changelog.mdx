@@ -4,6 +4,18 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="November 19, 2026" description="Offline PWA startup and Android GIF splash fixes">
+  ## Offline startup and Android GIF splash
+
+  Despia V3 now gives cached PWA content a chance to load before showing the connection screen on iOS and Android.
+
+  - **iOS:** offline startup waits for the registered service worker to become ready and recovers an initial network failure before showing the offline fallback.
+  - **Android:** the app attempts to load cached content before showing offline recovery, including when service-worker registration finished after the previous page load.
+  - **Android GIF splash:** the separate, cropped app-icon screen no longer appears before your configured GIF. Android may briefly show the system launch background while the app starts drawing the GIF.
+
+  Rebuild your iOS and Android apps to get these fixes. For offline use, your web app must provide a working service worker and cache the resources it needs, with service-worker support enabled in Despia. Open the updated app online and let caching finish before testing an offline launch. Content that has not been cached still needs a connection.
+</Update>
+
 <Update label="November 16, 2026" description="Despia V3 builds iOS binaries with the native features each app uses">
   ## An iOS binary built for your app
 

@@ -89,7 +89,7 @@ if (isDespiaAndroid) {
 ```
 
 <ResponseField name="healthConnectStatus.status" type="string">
-  `available`, `update_required` (the Health Connect app must be updated), `unavailable` (not installed, or Android older than 9), or `not_included` (the app was built without Health Connect)
+  `available`, `update_required` (the Health Connect app must be updated), `unavailable` (not installed, or Android 8), `requires_android_8` (Android 7), or `not_included` (the app was built without Health Connect)
 </ResponseField>
 
 <ResponseField name="healthConnectStatus.available" type="boolean">
@@ -115,6 +115,8 @@ if (isDespiaAndroid) {
 <ResponseField name="healthConnectStatus.historyRead" type="boolean">
   Whether reads older than 30 days are granted
 </ResponseField>
+
+On Android 7 (API 24 and 25), which the Health Connect library does not support, every health call answers at once with the same shapes as a build without Health Connect, using the code `health_connect_requires_android_8` (status `requires_android_8`). Android 8 answers `unavailable`.
 
 `healthConnectInstall` is `{ opened, status }`. When Health Connect is not usable, reads answer `{ "error": "health_connect_unavailable" }` or `{ "error": "health_connect_update_required" }` in `healthkitResponse`.
 

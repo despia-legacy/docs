@@ -243,7 +243,7 @@ Types can be HealthKit identifiers or Health Connect record names. When a read i
 despia('writehealthkit://HKQuantityTypeIdentifierBodyMass//74.5')
 ```
 
-`healthconnect://write` writes by Health Connect record name in the record's own unit, with an optional time range:
+`healthconnect://write` writes by Health Connect record name, with the value in the same unit a read of that type returns (for example kg for `WeightRecord`, a 0 to 1 fraction for `BodyFatRecord`), and an optional time range:
 
 ```javascript
 despia('healthconnect://write?type=HydrationRecord&value=0.25&start=2026-11-20T08:00:00Z&end=2026-11-20T08:05:00Z')

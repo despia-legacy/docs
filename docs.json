@@ -158,14 +158,6 @@
         ]
       },
       {
-        "group": "Custom Code",
-        "icon": "code",
-        "hidden": true,
-        "pages": [
-          "custom-code/extensions"
-        ]
-      },
-      {
         "group": "Analytics",
         "icon": "chart-mixed",
         "pages": [
@@ -347,9 +339,23 @@
           "native-features/screenshot",
           "native-features/notification-sounds",
           "native-features/audio-player",
-          "native-features/bluetooth",
           "native-features/age-assurance",
           "native-features/sandbox"
+        ]
+      },
+      {
+        "group": "Experiments",
+        "icon": "flask",
+        "pages": [
+          "experiments/v3-extensions",
+          {
+            "group": "Samples",
+            "icon": "vial",
+            "pages": [
+              "experiments/samples/recorder",
+              "experiments/samples/bluetooth"
+            ]
+          }
         ]
       },
       {
@@ -514,10 +520,6 @@
           {
             "group": "OneSignal",
             "pages": []
-          },
-          {
-            "group": "Stream VoIP",
-            "pages": []
           }
         ]
       }
@@ -571,6 +573,8 @@
     "indexing": "all"
   },
   "redirects": [
+    { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
+    { "source": "/native-features/bluetooth", "destination": "/experiments/samples/bluetooth" },
     { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
     { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]

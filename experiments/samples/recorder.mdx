@@ -14,7 +14,7 @@ The page only ever sees a recording id and its state. The audio never crosses th
 </Warning>
 
 <Note>
-  **Proof level:** built into the V3 app for iOS and Android. Tested on a real iPhone 15 (iOS 26.1) and on an Android emulator: record, stop and upload, upload again, recording in the background, upload after the app was killed, and discard.
+  **Tested on:** an iPhone 15, an Android emulator and a Samsung Galaxy S21.
 </Note>
 
 {/* TODO(merge gate): the device and emulator runs sent commands through the runtime's internal transport. In those test builds the documented `window.despia = "extension://..."` call got no answer (custom.js replaces the window.despia setter). Do not merge this page until that fix lands and the documented call is proven. */}
@@ -28,7 +28,9 @@ Copy every file to the path in its title. Paths are under `public/despia/recorde
 Before you build, change these values to your own:
 
 - `client_id`, `ios_bundle_id` and `android_package` in `public/despia/extensions.json`;
-- the upload host `upload.nx-pilot.example` in both `hosts` lists in `manifest.json`.
+- the upload host `upload.example.com` in both `hosts` lists in `manifest.json`.
+
+The approval policy is a file you send to Despia with your approval request. It is not served from your site. Despia reviews and approves these exact files before a build includes them.
 
 <Tabs>
   <Tab title="Manifest">
@@ -37,7 +39,6 @@ Before you build, change these values to your own:
 
 ```json manifest.json
 {
-  "id": "recorder",
   "version": "1.0.0",
   "bridge": {
     "routes": [
@@ -47,7 +48,7 @@ Before you build, change these values to your own:
           "upload": {
             "type": "https_url",
             "hosts": [
-              "upload.nx-pilot.example"
+              "upload.example.com"
             ],
             "required": true
           }
@@ -109,7 +110,7 @@ Before you build, change these values to your own:
           "upload": {
             "type": "https_url",
             "hosts": [
-              "upload.nx-pilot.example"
+              "upload.example.com"
             ],
             "required": true
           }
@@ -262,11 +263,10 @@ Before you build, change these values to your own:
 
 ```json public/despia/extensions.json
 {
-  "manifest_version": 1,
   "app": {
-    "client_id": "nx-pilot",
-    "ios_bundle_id": "com.despia.nxpilot",
-    "android_package": "com.despia.nxpilot"
+    "client_id": "com.example.app",
+    "ios_bundle_id": "com.example.app",
+    "android_package": "com.example.app"
   },
   "extensions": [
     "recorder"
@@ -551,7 +551,7 @@ final class RecorderExtension: NSObject, NativeExtension {
             case .failed(let why):
                 ctx.log("recorder audio session not released after stop: \(why)")
             case let kept:
-                // Not an error (another client holds the session), but visible: device row D3 reads it.
+                // Not an error (another client holds the session), but visible in the device log.
                 ctx.log("recorder audio session left active after stop: \(kept)")
             }
         } else if r.state == "recording" || r.state == "interrupted" {
@@ -1092,7 +1092,7 @@ final class RecorderStore {
 }
 
 /// Uploads queued recordings with an in-process ephemeral session whose delegate refuses every
-/// HTTP redirect (R0), so the body and `X-Recording-Id` reach only the host of the validated URL.
+/// HTTP redirect, so the body and `X-Recording-Id` reach only the host of the validated URL.
 /// Uploads run only while this process runs; a terminated or suspended process leaves the record
 /// `uploading` with its file, and the next `drain()` restarts it from byte 0.
 ///
@@ -1403,7 +1403,7 @@ final class RecorderUploader: NSObject, URLSessionTaskDelegate, URLSessionDataDe
         timer = next
     }
 
-    /// R0: every redirect is refused, so the 3xx becomes the task's response. The refusal is
+    /// Every redirect is refused, so the 3xx becomes the task's response. The refusal is
     /// recorded for the current attempt only. The target is never logged.
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
@@ -3114,7 +3114,7 @@ public final class UploadWorker extends Worker {
                     return Result.success();
                 } catch (RecorderStore.StorageException e) {
                     // The 2xx is real; only its write failed. Remember it so the rerun saves it
-                    // instead of sending the body again (review F9).
+                    // instead of sending the body again.
                     RecorderStore.notSaved(id, "uploaded", e);
                     RecorderStore.receivedUnsaved(id, String.valueOf(gen), code);
                     return Result.retry();
@@ -3256,6 +3256,43 @@ public final class UploadWorker extends Worker {
     android:resizeMode="horizontal"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen|keyguard" />
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="Approval policy">
+
+<CodeGroup>
+
+```json recorder.policy.json
+{
+  "exposed_components": {
+    "android": [
+      {
+        "enabled": null,
+        "exported": true,
+        "intent_filters": [
+          {
+            "attrs": {},
+            "children": [
+              {
+                "attrs": {
+                  "name": "android.appwidget.action.APPWIDGET_UPDATE"
+                },
+                "tag": "action"
+              }
+            ],
+            "tag": "intent-filter"
+          }
+        ],
+        "name": "despia.ext.recorder.StatusWidgetProvider",
+        "permission": null,
+        "tag": "receiver"
+      }
+    ]
+  }
+}
 ```
 
 </CodeGroup>

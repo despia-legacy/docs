@@ -353,7 +353,12 @@
             "icon": "vial",
             "pages": [
               "experiments/samples/recorder",
-              "experiments/samples/bluetooth"
+              "experiments/samples/bluetooth",
+              "experiments/samples/live-activities",
+              "experiments/samples/media-picker",
+              "experiments/samples/home-widgets",
+              "experiments/samples/stream-calling",
+              "experiments/samples/meta-glasses"
             ]
           }
         ]

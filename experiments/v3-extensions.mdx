@@ -13,6 +13,20 @@ window.despia = "extension://recorder/start?upload=" + encodeURIComponent(upload
 
 Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The [Samples](/experiments/samples/recorder) are complete templates you can copy and change.
 
+## Samples
+
+Each sample is a complete template: copy its files, change the values the page names, and call it from your web app.
+
+| Sample | What it adds | Tested on |
+| ------ | ------------ | --------- |
+| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Android emulator, Samsung Galaxy S21 |
+| [Bluetooth LE](/experiments/samples/bluetooth) | Central and peripheral Bluetooth Low Energy | Peripheral on iPhone 15. Central not yet |
+| [Live Activities and Live Updates](/experiments/samples/live-activities) | Live Activities on iOS and Live Updates on Android, from your page or OneSignal | Android emulator, iOS simulator |
+| [Media Picker](/experiments/samples/media-picker) | The platforms' own file pickers, video transcoding and a durable upload | Android emulator, iPhone 15 (picker) |
+| [Home Screen Widgets](/experiments/samples/home-widgets) | Native stat and list widgets your page fills with JSON | iOS simulator |
+| [Stream Audio Calling](/experiments/samples/stream-calling) | Audio calls through Stream Video, ringing with the app closed | Build only |
+| [Meta Glasses Camera](/experiments/samples/meta-glasses) | The camera of Meta glasses, live in your web view | Build only |
+
 <Warning>
   **Experimental. V3 only.**
 
@@ -79,7 +93,11 @@ public/despia/
 }
 ```
 
-The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder, for example `ios/app/RecorderExtension.swift`.
+`extensions.json` holds the app identity (`client_id`, `ios_bundle_id` and `android_package`) and lists the extension folders. It lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, and so is a folder listed twice.
+
+The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
+
+To add a sample to your app, copy its folder under `public/despia/` and add its name to `extensions.json`. Despia approves `extensions.json` and every other file, each `manifest.json` included. A change to any of them needs a new approval.
 
 <Note>
   Calls are accepted only from the top-level page of your app's own HTTPS origin, or from origins you list in `bridge.allowed_origins`. Iframes, other origins, popups and page sheets get no answer.
@@ -133,6 +151,8 @@ Parameters are declared per route. Anything not declared is refused with `bad_re
 | `bool`      | `true` or `false`                                        |
 | `enum`      | One of a declared list of values                         |
 | `https_url` | An `https` URL whose host is in the route's `hosts` list |
+
+An `int` may declare `min` and `max` anywhere in the range -(2^53-1) to 2^53-1 (the default is -2^31 to 2^31-1), and a value outside it is refused. A `string`'s `max` is at most 4096.
 
 Keep large data on the native side and pass identifiers through the bridge. A call URL is at most 8192 characters, and each extension accepts up to 20 calls per second.
 
@@ -219,6 +239,7 @@ An error carries a code and a message, and nothing else. If the page must tell f
 | `rate_limited`     | More than 20 calls per second to one extension                             |
 | `timeout`          | The handler did not answer within the route's `timeout_ms`                 |
 | `unavailable`      | The capability is not available right now                                 |
+| `platform_limit`   | This platform or OS version has no such capability. Every route of an Android extension answers it on a device below the extension's `android.min_sdk` |
 | `handler_error`    | Your handler failed                                                        |
 | Your own codes     | Any code your handler returns, for example `busy` or `permission_denied`   |
 
@@ -331,11 +352,43 @@ public final class RecorderExtension implements NativeExtension {
 
 ---
 
+## Patterns the samples use
+
+The bridge answer is a JavaScript string with typed parameters. These conventions keep that workable.
+
+- **Bytes.** A parameter named `hex` (hex digits, even length) or `b64` (standard or URL-safe base64), exactly one of them, and lower-case `hex` in answers. See [Bluetooth LE](/experiments/samples/bluetooth).
+- **UUIDs and lists.** UUIDs are `string` parameters in 16-bit, 32-bit or 128-bit form, and answers give lower-case 128-bit. Lists are comma-separated strings.
+- **A table in one parameter.** One `string` parameter, with entries separated by `,` and fields by `~`. The extension parses it and refuses it whole.
+- **Answers the platform needs at once.** A page cannot answer inside a Bluetooth read, so the extension answers from a native value store that the page sets, and reports each write as an event.
+- **Events a page may miss.** An event sent while no page is loaded is dropped. Keep each event in a native journal with a sequence number, offer a route that reads it (`events?after=<seq>`), and keep state readable through its own route.
+- **Files.** File bytes never belong in a bridge answer. Serve the file from the extension on `127.0.0.1` with a random per-file token in the URL, and answer with that URL. See [Media Picker](/experiments/samples/media-picker) and [Meta Glasses Camera](/experiments/samples/meta-glasses).
+
+---
+
+## Declaring native work
+
+Both ways are declared in an extension's `manifest.json`.
+
+- **Typed.** On iOS, `targets[].kind` is a preset: `widgetkit`, `notification-service`, `notification-content`, `share` or `intents`. On Android, a module with `kind: "typed"` lists sources, resources, permissions and components (`service`, `receiver`, `provider`, `activity`) from a fixed vocabulary, and the build writes the Gradle file and manifest.
+- **Custom.** On iOS, `kind: "custom"` takes a product type, build settings, script phases, a full `info_plist`, `entitlements`, link targets and packages. On Android, `kind: "custom"` points `dir` at your own module with its own `build.gradle`, `AndroidManifest.xml`, sources and resources.
+
+Your build logic runs in an offline compile job, so dependencies must be pinned files in the approval. Nothing is downloaded at build time.
+
+Both ways may also declare:
+
+- **Android `min_sdk`** (21 to 36, typed modules). The module builds at that level. On a device below it, the extension is never created and every route answers `platform_limit`.
+- **Android `meta_data`.** Application `<meta-data>` entries, each a `name` and exactly one of `value` or `resource`. A name the app already declares, or another extension declares, is refused. Keep account values in your config, not in a public repository.
+- **iOS `packages[].weak: true`.** Every product of that package is linked as optional, so an app whose deployment target is below the package's minimum still launches. Guard its use with `#available`.
+
+Files are accepted by type: source and text formats, assets and binaries. Every file must be named in its `manifest.json`, and an unreferenced file is refused. Hidden files (names that start with a dot) are always refused. Binaries need approval.
+
+---
+
 ## What the build owns
 
 You cannot set these. The build sets them for you: bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia (declare them under `requires`), and push and associated-domain entitlements. App Groups are logical names. A group named `nativeext` becomes `group.<bundle id>.nx.nativeext`.
 
-Build errors in your files are reported as `<extension>:<your path>:<line>:<column>`.
+Build errors in your files are reported by their served path, `<extension>/<ios|android>/<your path>:<line>:<column>`, for example `recorder/ios/app/RecorderExtension.swift:42:17`. Secrets, tokens and build machine paths are redacted.
 
 ---
 
@@ -343,4 +396,9 @@ Build errors in your files are reported as `<extension>:<your path>:<line>:<colu
 
 - **iOS.** Background audio continues only while the audio session stays active. Recording must start in the foreground, and a force-quit ends it. Lock Screen widget families need iOS 16 and update on WidgetKit's budget. App Groups and new App IDs are manual steps in the Apple Developer portal.
 - **Android.** Android 14 and later only start a microphone foreground service while the app is visible. Lock Screen widgets depend on the device, so the foreground service notification is the guaranteed Lock Screen presence. Google Play requires foreground service type declarations.
+- **Bluetooth LE.** iOS sets no scan mode, cannot request an MTU, and delivers no scan in the background without a service filter. Android needs `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` from Android 12. Real scans and links need a phone and a second Bluetooth device. See [Bluetooth LE](/experiments/samples/bluetooth).
+- **Live Activities.** iOS 16.1 and later, push-to-start 17.2. Attributes and state together are at most 4 KB. Android Live Updates need Android 16, and below that the same ongoing notification shows. See [Live Activities and Live Updates](/experiments/samples/live-activities).
+- **Files.** Android WorkManager stops a regular worker after 10 minutes, and an upload restarts from its first byte. See [Media Picker](/experiments/samples/media-picker).
+- **Home screen widgets.** iOS has no API that adds a widget for the person, and the App Group must be enabled on both App IDs by hand. See [Home Screen Widgets](/experiments/samples/home-widgets).
+- **Meta glasses.** Meta's toolkit needs iOS 17.2 and Android 10 (API 29). Below those the extension answers `platform_limit`. See [Meta Glasses Camera](/experiments/samples/meta-glasses).
 - **Both.** Apple managed capabilities and restricted Android permissions need approval from Apple or Google and pass the store's own review.

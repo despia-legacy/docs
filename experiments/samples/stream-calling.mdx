@@ -1,0 +1,3277 @@
+---
+title: "Stream Audio Calling"
+description: "A copy-paste V3 Extension for audio calls through Stream Video, with incoming calls that ring as a real system call while the app is closed."
+icon: "phone"
+tag: "Experimental"
+---
+
+This sample adds audio calls through Stream Video. Your page configures the client, starts or joins a call, leaves it, mutes and switches the loudspeaker. Incoming calls ring with the app closed, as a real system call on both platforms.
+
+- **iOS:** CallKit and a VoIP push (the system call screen, Lock Screen, Bluetooth and CarPlay routing).
+- **Android:** a self-managed Telecom call with Stream's call notification and a full-screen ring.
+
+<Warning>
+  **Experimental. V3 only.** This is a template, not a Despia feature. It is never migrated to V4. You own and maintain this code once it is in your app. Despia does not support customised code. Read [V3 Extensions](/experiments/v3-extensions) first.
+</Warning>
+
+<Note>
+  **Tested on:** build only. The iOS and Android apps holding the sample were built, with the app's own Stream option turned off as described below. It has not run on a simulator, an emulator or a device.
+</Note>
+
+---
+
+## Set it up
+
+<Steps>
+  <Step title="Stream dashboard">
+    Create the APN VoIP configuration (its name is `voip_provider`, default `ios-voip`) with your VoIP key or certificate, and the Firebase configuration (its name is `fcm_provider`, default `firebase`). Turn ringing on for the call type you use.
+  </Step>
+  <Step title="Apple Developer portal">
+    Turn on Push Notifications for your App ID, and create the VoIP certificate or APNs key.
+  </Step>
+  <Step title="Despia">
+    Turn the built-in Stream option off. An app has one VoIP owner, and with this template it is the template. Turn on the microphone purpose string (iOS), push for Android with your own `google-services.json`, and `RECORD_AUDIO` and `BLUETOOTH_CONNECT` (Android). The manifest lists them under `requires`.
+  </Step>
+  <Step title="Your server">
+    Run the token endpoint. The Stream API secret stays on your server and never goes into the app.
+  </Step>
+  <Step title="Your files">
+    Copy the files below, then change the values listed under Files.
+  </Step>
+</Steps>
+
+---
+
+## Files
+
+Copy every extension file to the path in its title. Paths are under `public/despia/streamcall/` in your web app, except `extensions.json`, which goes in `public/despia/`. `public/` is the folder your site serves from its root (in SvelteKit, write `static/`). The paths must stay as written, because the manifest names them. Despia reviews and approves these exact files before a build includes them.
+
+Before you build:
+
+- In `public/despia/extensions.json`, set `client_id`, `ios_bundle_id` and `android_package` to your own. The sample's `com.example.app` is a placeholder.
+- In `manifest.json`, in the `configure` route, replace `tokens.example.com` in `token_url.hosts` with the host of your token server.
+
+The two files in "Your own code" are yours. Put them in your own bundle and on your own server. Despia never fetches or approves them. The approval policy is a file you send to Despia with your approval request. It is not served from your site.
+
+The Android dependencies must be the versions your app's base build already resolves. The build refuses others. This sample uses Stream Android 1.35.0 and push-firebase 1.3.4, which are on Maven Central. Newer versions are published only on Stream's own Maven repository, which this template does not add. You may use them by adding that repository in your own build. On iOS it uses StreamVideo 1.57.0, pinned in `ios/Package.resolved`.
+
+<Tabs>
+  <Tab title="Manifest">
+
+<CodeGroup>
+
+```json manifest.json
+{
+  "version": "1.0.0",
+  "bridge": {
+    "routes": [
+      {
+        "name": "configure",
+        "timeout_ms": 20000,
+        "params": {
+          "api_key": {
+            "type": "string",
+            "max": 64,
+            "required": true
+          },
+          "user_id": {
+            "type": "string",
+            "max": 128,
+            "required": true
+          },
+          "user_name": {
+            "type": "string",
+            "max": 256
+          },
+          "token": {
+            "type": "string",
+            "max": 4096,
+            "required": true
+          },
+          "token_url": {
+            "type": "https_url",
+            "hosts": [
+              "tokens.example.com"
+            ]
+          },
+          "voip_provider": {
+            "type": "string",
+            "max": 64
+          },
+          "fcm_provider": {
+            "type": "string",
+            "max": 64
+          }
+        },
+        "output": {
+          "variable": "streamcallConfigure",
+          "callback": "onStreamcallConfigure"
+        }
+      },
+      {
+        "name": "set_token",
+        "timeout_ms": 5000,
+        "params": {
+          "token": {
+            "type": "string",
+            "max": 4096,
+            "required": true
+          }
+        },
+        "output": {
+          "variable": "streamcallSetToken",
+          "callback": "onStreamcallSetToken"
+        }
+      },
+      {
+        "name": "logout",
+        "timeout_ms": 10000,
+        "params": {},
+        "output": {
+          "variable": "streamcallLogout",
+          "callback": "onStreamcallLogout"
+        }
+      },
+      {
+        "name": "permissions",
+        "timeout_ms": 25000,
+        "params": {
+          "request": {
+            "type": "bool"
+          }
+        },
+        "output": {
+          "variable": "streamcallPermissions",
+          "callback": "onStreamcallPermissions"
+        }
+      },
+      {
+        "name": "join",
+        "timeout_ms": 5000,
+        "params": {
+          "call_type": {
+            "type": "string",
+            "max": 64,
+            "required": true
+          },
+          "call_id": {
+            "type": "string",
+            "max": 64,
+            "required": true
+          },
+          "create": {
+            "type": "bool"
+          },
+          "ring": {
+            "type": "bool"
+          },
+          "members": {
+            "type": "string",
+            "max": 4096
+          }
+        },
+        "output": {
+          "variable": "streamcallJoin",
+          "callback": "onStreamcallJoin"
+        }
+      },
+      {
+        "name": "leave",
+        "timeout_ms": 5000,
+        "params": {},
+        "output": {
+          "variable": "streamcallLeave",
+          "callback": "onStreamcallLeave"
+        }
+      },
+      {
+        "name": "set_muted",
+        "timeout_ms": 5000,
+        "params": {
+          "muted": {
+            "type": "bool",
+            "required": true
+          }
+        },
+        "output": {
+          "variable": "streamcallSetMuted",
+          "callback": "onStreamcallSetMuted"
+        }
+      },
+      {
+        "name": "set_speaker",
+        "timeout_ms": 5000,
+        "params": {
+          "on": {
+            "type": "bool",
+            "required": true
+          }
+        },
+        "output": {
+          "variable": "streamcallSetSpeaker",
+          "callback": "onStreamcallSetSpeaker"
+        }
+      },
+      {
+        "name": "status",
+        "params": {},
+        "output": {
+          "variable": "streamcallStatus",
+          "callback": "onStreamcallStatus"
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "incoming",
+        "callback": "onStreamcallIncoming",
+        "scope": "app"
+      },
+      {
+        "name": "connecting",
+        "callback": "onStreamcallConnecting",
+        "scope": "app"
+      },
+      {
+        "name": "joined",
+        "callback": "onStreamcallJoined",
+        "scope": "app"
+      },
+      {
+        "name": "ended",
+        "callback": "onStreamcallEnded",
+        "scope": "app"
+      },
+      {
+        "name": "muted",
+        "callback": "onStreamcallMuted",
+        "scope": "app"
+      },
+      {
+        "name": "audio_route",
+        "callback": "onStreamcallAudioRoute",
+        "scope": "app"
+      },
+      {
+        "name": "error",
+        "callback": "onStreamcallError",
+        "scope": "app"
+      },
+      {
+        "name": "token_needed",
+        "callback": "onStreamcallTokenNeeded",
+        "scope": "app"
+      }
+    ]
+  },
+  "ios": {
+    "packages": [
+      {
+        "name": "stream-video-swift",
+        "remote": {
+          "url": "https://github.com/GetStream/stream-video-swift",
+          "revision": "5fda355f0a682ebbf1e131d80d38386acd4c4406"
+        },
+        "products": [
+          "StreamVideo"
+        ]
+      }
+    ],
+    "package_resolved": "ios/Package.resolved",
+    "app": {
+      "entry_type": "StreamCallExtension",
+      "sources": [
+        "ios/app/StreamCallExtension.swift",
+        "ios/app/StreamCallEngine.swift",
+        "ios/app/StreamCallLedger.swift",
+        "ios/app/StreamCallRules.swift",
+        "ios/app/StreamCallCredentials.swift"
+      ],
+      "frameworks": [
+        "AVFAudio",
+        "CallKit",
+        "Security",
+        "UserNotifications"
+      ],
+      "packages": [
+        "StreamVideo"
+      ],
+      "requires": {
+        "usage_descriptions": [
+          "NSMicrophoneUsageDescription"
+        ]
+      },
+      "info_plist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      },
+      "claims": {
+        "voip": true
+      },
+      "lifecycle": [
+        "launch",
+        "voip_push",
+        "terminate"
+      ]
+    }
+  },
+  "android": {
+    "entry_class": "despia.ext.streamcall.StreamCallExtension",
+    "requires": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "lifecycle": [
+      "application_create",
+      "activity_lifecycle"
+    ],
+    "modules": [
+      {
+        "kind": "custom",
+        "name": "streamcall",
+        "dir": "android/streamcall",
+        "link": "implementation"
+      }
+    ]
+  }
+}
+```
+
+```json public/despia/extensions.json
+{
+  "app": {
+    "client_id": "com.example.app",
+    "ios_bundle_id": "com.example.app",
+    "android_package": "com.example.app"
+  },
+  "extensions": [
+    "streamcall"
+  ]
+}
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="iOS">
+
+<CodeGroup>
+
+```json ios/Package.resolved
+{
+  "pins" : [
+    {
+      "identity" : "stream-core-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/GetStream/stream-core-swift.git",
+      "state" : {
+        "revision" : "880e48dc91ea15de2f104ae4f6da38d185846a0d",
+        "version" : "0.18.0"
+      }
+    },
+    {
+      "identity" : "stream-video-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/GetStream/stream-video-swift",
+      "state" : {
+        "revision" : "5fda355f0a682ebbf1e131d80d38386acd4c4406",
+        "version" : "1.57.0"
+      }
+    },
+    {
+      "identity" : "stream-video-swift-webrtc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/GetStream/stream-video-swift-webrtc.git",
+      "state" : {
+        "revision" : "e313c8689d98c4bf8ef9d77e2574d3e9115dce38",
+        "version" : "156.0.7"
+      }
+    },
+    {
+      "identity" : "swift-protobuf",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-protobuf.git",
+      "state" : {
+        "revision" : "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
+        "version" : "1.38.1"
+      }
+    }
+  ],
+  "version" : 2
+}
+```
+
+```swift ios/app/StreamCallCredentials.swift
+import Foundation
+import Security
+
+/// What `configure` stores, so a VoIP push can be answered when iOS launches the app in the
+/// background with no web page loaded. Nothing here is built into the app: every value comes from
+/// the page, which got the token from the developer's own server.
+struct StreamCallCredentials: Codable, Equatable {
+    var apiKey: String
+    var userId: String
+    var userName: String?
+    var token: String
+    /// https URL the engine may POST to for a fresh token; re-checked with `isApprovedURL` before use.
+    var tokenURL: String?
+    /// The VoIP push provider name configured in the Stream dashboard.
+    var voipProvider: String
+    /// The VoIP token last registered with Stream, so a new one replaces it and logout removes it.
+    var registeredVoipToken: String?
+}
+
+/// One Keychain generic-password item, readable after the first unlock, on this device only (a VoIP
+/// push can arrive while the phone is locked). The token is never logged.
+enum StreamCallKeychain {
+    private static let service = "despia.ext.streamcall"
+    private static let account = "credentials"
+
+    private static var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account]
+    }
+
+    static func load() -> StreamCallCredentials? {
+        var q = query
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return nil }
+        // A corrupt item reads as "not configured"; the next configure replaces it.
+        return try? JSONDecoder().decode(StreamCallCredentials.self, from: data)
+    }
+
+    /// True when the item was written.
+    @discardableResult
+    static func save(_ c: StreamCallCredentials) -> Bool {
+        guard let data = try? JSONEncoder().encode(c) else { return false }
+        let update: [String: Any] = [kSecValueData as String: data,
+                                     kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        let status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
+        if status == errSecSuccess { return true }
+        guard status == errSecItemNotFound else { return false }
+        var add = query
+        add.merge(update) { $1 }
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
+    }
+
+    static func delete() {
+        SecItemDelete(query as CFDictionary)
+    }
+}
+```
+
+```swift ios/app/StreamCallEngine.swift
+import AVFAudio
+import Combine
+import Foundation
+import StreamVideo
+
+/// The only file of the template that talks to Stream (StreamVideo 1.57.0, product `StreamVideo`
+/// only, no Stream UI). Main actor, like the extension that owns it.
+///
+/// Ownership, each one stated once:
+/// - PushKit: the app's VoIP push handler owns the app's one PKPushRegistry and hands the token and every VoIP push to
+///   the extension. The template never sets `CallKitAdapter.streamVideo` and never calls
+///   `registerForIncomingCalls`, which would create Stream's own second registry.
+/// - CallKit: Stream's `CallKitService` is the app's one CXProvider. The template gives it the
+///   client and reports each push through it, so CallKit's audio activation reaches Stream's audio
+///   stack through Stream's own delegate.
+/// - Audio session: the template never configures, activates or deactivates it. CallKit and Stream
+///   do; the template only reads it (release only what you activated, and this file activates
+///   nothing).
+@MainActor
+final class StreamCallEngine {
+    /// Page events, without `seq` (the extension adds it).
+    var emit: (String, [String: Any]) -> Void = { _, _ in }
+    var log: (String) -> Void = { _ in }
+    /// The bridge's https rule for a stored URL (NativeExtContext.isApprovedURL for configure.token_url).
+    var isApprovedTokenURL: (String) -> Bool = { _ in false }
+
+    private(set) var ledger = StreamCallLedger()
+    private(set) var credentials: StreamCallCredentials?
+    private var client: StreamVideo?
+    /// The SDK call object of the live ledger call.
+    private var call: Call?
+    private var subscriptions = Set<AnyCancellable>()
+    /// The PushKit token as Stream registers it; nil until PushKit gives one.
+    private var voipToken: String?
+    private var voipInvalidated = false
+    private var pendingTokenWaiters: [(String?) -> Void] = []
+    private var routeObserver: NSObjectProtocol?
+
+    @Injected(\.callKitService) private var callKit
+    /// Used only for its `callSettings` (audio on, video off) and the CallKit appearance; its
+    /// `streamVideo` is never set (that would register a second PushKit registry).
+    @Injected(\.callKitAdapter) private var callKitAdapter
+
+    // MARK: - Launch and credentials
+
+    /// Process start, including a background launch for a VoIP push: rebuild the client from what
+    /// `configure` stored, so the push that woke the app can be reported and answered.
+    func restore() {
+        callKitAdapter.callSettings = CallSettings(audioOn: true, videoOn: false, speakerOn: false)
+        callKit.supportsVideo = false
+        routeObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification,
+                                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.routeChanged() }
+        }
+        guard let stored = StreamCallKeychain.load() else { return }
+        credentials = stored
+        attach(build(stored))
+        _ = ledger.configure()
+    }
+
+    private func build(_ c: StreamCallCredentials) -> StreamVideo {
+        StreamVideo(apiKey: c.apiKey,
+                    user: User(id: c.userId, name: c.userName),
+                    token: UserToken(rawValue: c.token),
+                    pushNotificationsConfig: .make(pushProviderName: "ios-apn", voipProviderName: c.voipProvider),
+                    tokenProvider: { [weak self] done in
+                        Task { @MainActor in
+                            guard let self else { return done(.failure(StreamCallError.notConfigured)) }
+                            self.refreshToken { token in
+                                if let token { done(.success(UserToken(rawValue: token))) } else { done(.failure(StreamCallError.tokenExpired)) }
+                            }
+                        }
+                    })
+    }
+
+    private func attach(_ c: StreamVideo) {
+        subscriptions.removeAll()
+        client = c
+        callKit.streamVideo = c
+        c.eventPublisher()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in MainActor.assumeIsolated { self?.handle(event) } }
+            .store(in: &subscriptions)
+        c.state.$activeCall
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] active in MainActor.assumeIsolated { self?.activeCallChanged(active) } }
+            .store(in: &subscriptions)
+        callKit.eventPipeline
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in MainActor.assumeIsolated { self?.callKitEvent(event) } }
+            .store(in: &subscriptions)
+    }
+
+    /// Stores the credentials and connects. Replies with the push state; throws a code.
+    func configure(_ c: StreamCallCredentials) async throws -> String {
+        // A new client replaces the one carrying the live call, so nothing is reconfigured under a call.
+        if ledger.live != nil { throw StreamCallError.busy }
+        var next = c
+        if credentials?.userId == c.userId { next.registeredVoipToken = credentials?.registeredVoipToken }
+        let fresh = build(next)
+        do {
+            try await fresh.connect()
+        } catch {
+            await fresh.disconnect()
+            throw StreamCallError.connectFailed
+        }
+        // A call that rang while connecting keeps its client.
+        if ledger.live != nil {
+            await fresh.disconnect()
+            throw StreamCallError.busy
+        }
+        // Nothing of the old user is removed until the new user is connected and stored: a failed
+        // save leaves the old client, its credentials and its VoIP device as they were.
+        let previous = credentials
+        guard StreamCallKeychain.save(next) else {
+            await fresh.disconnect()
+            throw StreamCallError.storageFailed
+        }
+        if let old = client, old !== fresh {
+            if previous?.userId != next.userId, let registered = previous?.registeredVoipToken {
+                _ = try? await old.deleteDevice(id: registered)
+            }
+            await old.disconnect()
+        }
+        credentials = next
+        attach(fresh)
+        _ = ledger.configure()
+        await registerVoipToken()
+        return pushState
+    }
+
+    func setToken(_ token: String) throws {
+        guard var c = credentials else { throw StreamCallError.notConfigured }
+        c.token = token
+        guard StreamCallKeychain.save(c) else { throw StreamCallError.storageFailed }
+        credentials = c
+        let waiters = pendingTokenWaiters
+        pendingTokenWaiters = []
+        waiters.forEach { $0(token) }
+    }
+
+    func logout() async {
+        let live = ledger.live
+        if let l = live { endSDKCall(l) }
+        _ = ledger.logout()
+        if let l = live { emit("ended", ["call_cid": l.cid, "reason": "logout"]) }
+        call = nil
+        subscriptions.removeAll()
+        let c = client
+        client = nil
+        callKit.streamVideo = nil
+        let registered = credentials?.registeredVoipToken
+        credentials = nil
+        StreamCallKeychain.delete()
+        if let c {
+            // No further ring on this device: the VoIP device leaves Stream before the client goes.
+            if let registered { _ = try? await c.deleteDevice(id: registered) }
+            await c.disconnect()
+        }
+        let waiters = pendingTokenWaiters
+        pendingTokenWaiters = []
+        waiters.forEach { $0(nil) }
+    }
+
+    /// Token refresh, in this order: the developer's `token_url` when one was configured (it works
+    /// with no page loaded), then the page (`token_needed`, answered by `set_token`, 10 s), else the
+    /// call ends with `token_expired`. The developer's server decides whether to issue a token.
+    private func refreshToken(_ reply: @escaping (String?) -> Void) {
+        // No token: the live call cannot go on. It ends for real (Stream leaves or rejects, which
+        // ends the CallKit call) before the page hears `ended` with `token_expired`.
+        let done: (String?) -> Void = { [weak self] token in
+            if token == nil, let self, let l = self.ledger.live {
+                self.endSDKCall(l)
+                self.endedFromSDK(l, reason: "token_expired")
+            }
+            reply(token)
+        }
+        guard let c = credentials else { return done(nil) }
+        Task { @MainActor in
+            if let url = c.tokenURL, isApprovedTokenURL(url), let token = await StreamCallTokenFetch.post(url, userId: c.userId, expired: c.token) {
+                try? setToken(token)
+                return done(token)
+            }
+            var finished = false
+            let finish: (String?) -> Void = { token in
+                guard !finished else { return }
+                finished = true
+                done(token)
+            }
+            pendingTokenWaiters.append(finish)
+            emit("token_needed", ["user_id": c.userId])
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            finish(nil)
+        }
+    }
+
+    var pushState: String {
+        if voipInvalidated { return "unavailable" }
+        guard let t = voipToken else { return "pending" }
+        return credentials?.registeredVoipToken == t ? "registered" : "pending"
+    }
+
+    // MARK: - VoIP push (the app's VoIP push handler calls these through the extension)
+
+    func didUpdateVoIPToken(_ token: Data?) {
+        voipInvalidated = token == nil
+        voipToken = token.map(StreamCallRules.hexToken)
+        Task { await registerVoipToken() }
+    }
+
+    private func registerVoipToken() async {
+        guard let c = client, var creds = credentials else { return }
+        let old = creds.registeredVoipToken
+        guard let token = voipToken else {
+            if voipInvalidated, let old { _ = try? await c.deleteDevice(id: old); creds.registeredVoipToken = nil }
+            if creds != credentials ?? creds, StreamCallKeychain.save(creds) { credentials = creds }
+            return
+        }
+        guard token != old else { return }
+        do {
+            try await c.setVoipDevice(id: token)
+        } catch {
+            log("VoIP device registration failed; it is retried at the next configure or token update")
+            return
+        }
+        if let old { _ = try? await c.deleteDevice(id: old) }
+        creds.registeredVoipToken = token
+        if StreamCallKeychain.save(creds) { credentials = creds }
+    }
+
+    /// Reports the push to CallKit through Stream's provider in this same main-queue turn, and runs
+    /// PushKit's completion only inside CallKit's completion. There is no path that skips the report:
+    /// with no client Stream still reports, then ends the call (`notConfigured`).
+    func reportIncoming(_ payload: [AnyHashable: Any], completion: @escaping () -> Void) {
+        let push = StreamCallRules.Push(payload)
+        let tracked = push.isCallCid ? ledger.incoming(push.cid) : .error("bad_request")
+        let once = StreamCallOnce(completion)
+        callKit.reportIncomingCall(push.cid, localizedCallerName: push.callerName, callerId: push.callerId,
+                                   hasVideo: false) { [weak self] error in
+            once.run()
+            Task { @MainActor in self?.reported(push, tracked: tracked, error: error) }
+        }
+    }
+
+    private func reported(_ push: StreamCallRules.Push, tracked: StreamCallLedger.Outcome, error: Error?) {
+        switch tracked {
+        case .ok:
+            guard let l = ledger.live, l.cid == push.cid else { return }
+            if error != nil {
+                endedFromSDK(l, reason: "failed")
+                return
+            }
+            if let parts = StreamCallRules.splitCid(push.cid), let c = client {
+                call = c.call(callType: parts.type, callId: parts.id)
+            }
+            emit("incoming", ["call_cid": push.cid, "caller_id": push.callerId, "caller_name": push.callerName])
+        case .error("busy"):
+            // One live call: the push was reported (Apple's duty), now it is declined as busy.
+            if error == nil { callKit.callEnded(push.cid, ringingTimedOut: false, leaveReason: "busy") }
+        default:
+            // duplicate (Stream reuses its entry for the same cid), not configured (Stream already
+            // ended it as notConfigured) or a payload with no call: nothing more to do.
+            break
+        }
+    }
+
+    // MARK: - Page commands
+
+    /// `audio_busy` when a recording holds the session; else the ledger's answer. The SDK join runs
+    /// after the reply; its outcome arrives as `joined` or `ended`.
+    func join(type: String, id: String, create: Bool, ring: Bool, members: [String]) -> StreamCallLedger.Outcome {
+        guard let c = client else { return .error("not_configured") }
+        let session = AVAudioSession.sharedInstance()
+        if ledger.live == nil,
+           !StreamCallRules.mayJoin(category: session.category.rawValue, recordCategory: AVAudioSession.Category.record.rawValue) {
+            return .error("audio_busy")
+        }
+        let cid = "\(type):\(id)"
+        let outcome = ledger.join(cid)
+        guard case .ok = outcome, let l = ledger.live else { return outcome }
+        let sdkCall = c.call(callType: type, callId: id,
+                             callSettings: CallSettings(audioOn: true, videoOn: false, speakerOn: false))
+        call = sdkCall
+        emit("connecting", ["call_cid": cid, "direction": "outgoing"])
+        let options = members.isEmpty ? nil : CreateCallOptions(memberIds: members)
+        Task { @MainActor in
+            do {
+                _ = try await sdkCall.join(create: create, options: options, ring: ring)
+                self.joinFinished(l, sdkCall)
+            } catch {
+                self.endedFromSDK(l, reason: "failed")
+            }
+        }
+        return outcome
+    }
+
+    private func joinFinished(_ l: StreamCallLedger.Live, _ sdkCall: Call) {
+        switch ledger.connected(l.cid, epoch: l.epoch) {
+        case .ok:
+            let wanted = ledger.live?.wantedMuted
+            emit("joined", ["call_cid": l.cid, "muted": wanted ?? false, "audio_route": currentRoute])
+            if let wanted { applyMute(wanted, epoch: l.epoch) }
+        default:
+            // drop: the page left, or this attempt is not current. Leave the SDK call, unless a newer
+            // attempt for the same cid is live (Stream caches one Call object per cid).
+            if ledger.live?.cid != l.cid { sdkCall.leave() }
+        }
+    }
+
+    func leave() -> StreamCallLedger.Outcome {
+        guard let l = ledger.live else { return .error("no_call") }
+        let outcome = ledger.leave()
+        endSDKCall(l)
+        call = nil
+        if case .ok(let detail) = outcome {
+            emit("ended", ["call_cid": l.cid, "reason": String(detail.dropFirst("ended:".count))])
+        }
+        return outcome
+    }
+
+    /// A call CallKit knows (every incoming call) ends through CallKit, which rejects a ringing call
+    /// and leaves an active one; a page-started call is left directly.
+    private func endSDKCall(_ l: StreamCallLedger.Live) {
+        if l.incoming {
+            callKit.callEnded(l.cid, ringingTimedOut: false)
+        } else {
+            call?.leave()
+        }
+    }
+
+    func setMuted(_ muted: Bool) -> StreamCallLedger.Outcome {
+        let outcome = ledger.setMuted(muted)
+        if outcome == .ok("apply"), let l = ledger.live { applyMute(muted, epoch: l.epoch) }
+        return outcome
+    }
+
+    private func applyMute(_ muted: Bool, epoch: Int) {
+        guard let c = call else { return }
+        Task { @MainActor in
+            do {
+                if muted { try await c.microphone.disable() } else { try await c.microphone.enable() }
+            } catch {
+                emit("error", ["code": "mute_failed", "message": "the microphone could not be changed",
+                               "call_cid": c.cId])
+                return
+            }
+            if case .ok = ledger.muteApplied(epoch: epoch, muted: muted) {
+                emit("muted", ["call_cid": c.cId, "muted": muted])
+            }
+        }
+    }
+
+    /// Through the SDK only; the reply carries the route the session reports afterwards.
+    func setSpeaker(_ on: Bool) async throws -> [String: Any] {
+        guard let c = call, ledger.live?.state == .joined || ledger.live?.state == .connecting else { throw StreamCallError.noCall }
+        do {
+            if on { try await c.speaker.enableSpeakerPhone() } else { try await c.speaker.disableSpeakerPhone() }
+        } catch {
+            throw StreamCallError.routeFailed
+        }
+        return ["speaker": c.speaker.status == .enabled, "audio_route": currentRoute]
+    }
+
+    func status() -> [String: Any] {
+        var out: [String: Any] = ["configured": ledger.configured, "state": ledger.status, "push": pushState,
+                                  "audio_route": currentRoute]
+        out["user_id"] = credentials?.userId ?? NSNull()
+        out["call_cid"] = ledger.live?.cid ?? NSNull()
+        out["muted"] = ledger.live?.muted ?? false
+        out["speaker"] = call?.speaker.status == .enabled
+        return out
+    }
+
+    func terminate() {
+        if let l = ledger.live { endSDKCall(l) }
+        _ = ledger.reset()
+    }
+
+    // MARK: - SDK and system state
+
+    private func callKitEvent(_ event: CallKitService.Event) {
+        guard let l = ledger.live, l.incoming else { return }
+        switch event {
+        case .accept:
+            if case .ok = ledger.answered(l.cid) {
+                emit("connecting", ["call_cid": l.cid, "direction": "incoming"])
+            }
+        case .joining(let c):
+            if c.cId == l.cid { call = c }
+        case .joined:
+            if let c = call, c.cId == l.cid { joinFinished(l, c) }
+        case .reject:
+            endedFromSDK(l, reason: "declined")
+        case .idle:
+            break
+        }
+    }
+
+    private func handle(_ event: VideoEvent) {
+        guard let l = ledger.live else { return }
+        switch event {
+        case .typeCallEndedEvent(let e) where e.callCid == l.cid:
+            endedFromSDK(l, reason: l.state == .ringing && l.incoming ? "cancelled" : "remote")
+        case .typeCallAcceptedEvent(let e) where e.callCid == l.cid && l.incoming && l.state == .ringing
+            && e.user.id == credentials?.userId:
+            endedFromSDK(l, reason: "answered_elsewhere")
+        case .typeCallRejectedEvent(let e) where e.callCid == l.cid:
+            if l.incoming, l.state == .ringing {
+                endedFromSDK(l, reason: e.user.id == credentials?.userId ? "declined" : "cancelled")
+            } else if !l.incoming, l.state != .joined {
+                // Ringing an outgoing call: every rejection is a member's; the caller stays until
+                // the SDK ends the call or the page leaves.
+                emit("error", ["code": "rejected", "message": "a member declined the call", "call_cid": l.cid])
+            }
+        case .typeCallMissedEvent(let e) where e.callCid == l.cid && l.incoming:
+            endedFromSDK(l, reason: "missed")
+        default:
+            break
+        }
+    }
+
+    private func activeCallChanged(_ active: Call?) {
+        guard let l = ledger.live, l.state == .joined, active?.cId != l.cid else { return }
+        // The joined call is no longer the SDK's active call: hung up in the system UI or left by
+        // the SDK (a remote end arrives first as a call.ended event and is handled there).
+        endedFromSDK(l, reason: "local")
+    }
+
+    private func endedFromSDK(_ l: StreamCallLedger.Live, reason: String) {
+        guard case .ok = ledger.ended(l.cid, epoch: l.epoch, reason: reason) else { return }
+        call = nil
+        emit("ended", ["call_cid": l.cid, "reason": reason])
+    }
+
+    private func routeChanged() {
+        guard ledger.live != nil else { return }
+        emit("audio_route", ["call_cid": ledger.live?.cid ?? "", "audio_route": currentRoute])
+    }
+
+    /// Read only: reading the route is not ownership.
+    var currentRoute: String {
+        guard let port = AVAudioSession.sharedInstance().currentRoute.outputs.first?.portType else { return "none" }
+        return StreamCallRules.routeName(portType: port.rawValue,
+                                         builtInReceiver: AVAudioSession.Port.builtInReceiver.rawValue,
+                                         builtInSpeaker: AVAudioSession.Port.builtInSpeaker.rawValue,
+                                         headphones: AVAudioSession.Port.headphones.rawValue,
+                                         bluetooth: [AVAudioSession.Port.bluetoothHFP.rawValue,
+                                                     AVAudioSession.Port.bluetoothA2DP.rawValue,
+                                                     AVAudioSession.Port.bluetoothLE.rawValue])
+    }
+}
+
+enum StreamCallError: Error {
+    case notConfigured, tokenExpired, busy, connectFailed, storageFailed, noCall, routeFailed
+
+    var code: String {
+        switch self {
+        case .notConfigured: return "not_configured"
+        case .tokenExpired: return "token_expired"
+        case .busy: return "busy"
+        case .connectFailed: return "connect_failed"
+        case .storageFailed: return "storage_failed"
+        case .noCall: return "no_call"
+        case .routeFailed: return "route_failed"
+        }
+    }
+}
+
+/// PushKit's completion, run exactly once from CallKit's completion (which may arrive on any queue).
+final class StreamCallOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var body: (() -> Void)?
+
+    init(_ body: @escaping () -> Void) { self.body = body }
+
+    func run() {
+        lock.lock()
+        let b = body
+        body = nil
+        lock.unlock()
+        b?()
+    }
+}
+
+/// The optional token refresh endpoint: POST {"user_id", "expired_token"}, reply {"token"}. An
+/// ephemeral session that refuses every redirect, so the expired token never leaves the approved host.
+enum StreamCallTokenFetch {
+    private final class NoRedirect: NSObject, URLSessionTaskDelegate {
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                        newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+            completionHandler(nil)
+        }
+    }
+
+    static func post(_ url: String, userId: String, expired: String) async -> String? {
+        guard let u = URL(string: url), u.scheme == "https",
+              let body = try? JSONSerialization.data(withJSONObject: ["user_id": userId, "expired_token": expired]) else { return nil }
+        var req = URLRequest(url: u, timeoutInterval: 10)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        let session = URLSession(configuration: .ephemeral, delegate: NoRedirect(), delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        guard let (data, resp) = try? await session.data(for: req), (resp as? HTTPURLResponse)?.statusCode == 200,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = obj["token"] as? String, !token.isEmpty, token.count <= 4096 else { return nil }
+        return token
+    }
+}
+```
+
+```swift ios/app/StreamCallExtension.swift
+import AVFAudio
+import Foundation
+import UserNotifications
+
+/// Stream audio calling for a V3 app: a template the app's developer owns. Audio only; the call
+/// screen is the system's own (CallKit). The page starts or joins a call, leaves it, mutes and
+/// switches between earpiece and loudspeaker; incoming calls ring through a VoIP push and CallKit,
+/// also with the app closed.
+///
+/// No key or token is built into the app: `configure` takes the API key, the user and a token the
+/// developer's own server issued. They are stored in the Keychain so a VoIP push can be answered
+/// with no page loaded, and `logout` removes them. The token never appears in a reply, an event or
+/// a log line.
+///
+/// This is the app's one VoIP owner (`claims.voip`): the app's VoIP push handler calls
+/// `didUpdateVoIPToken` and `didReceiveIncomingVoIPPush`, and every push is reported to CallKit
+/// before its completion runs. It builds only with the dashboard's built-in Stream option off
+/// (the build checks that an app has one VoIP owner).
+///
+/// Each command answers once. `join` answers as soon as the call is accepted into the ledger; the
+/// outcome arrives as `joined` or `ended`. After every await, `call.isActive` is checked before a
+/// new side effect. Events carry `call_cid` and `seq` (a counter that only grows); `status` is the
+/// truth, since an event sent while no page is loaded is dropped.
+///
+/// Main actor, as NativeExtension requires (the build checks it).
+@MainActor
+final class StreamCallExtension: NativeExtension, NativeExtVoIPHandler {
+    private var ctx: NativeExtContext!
+    private let engine = StreamCallEngine()
+    private var seq = 0
+
+    required init() {}
+
+    func didLaunch(_ context: NativeExtContext) {
+        ctx = context
+        engine.emit = { [weak self] name, data in self?.send(name, data) }
+        engine.log = { [weak self] message in self?.ctx.log(message) }
+        engine.isApprovedTokenURL = { [weak self] url in
+            self?.ctx.isApprovedURL(url, route: "configure", param: "token_url") ?? false
+        }
+        engine.restore()
+    }
+
+    func willTerminate() {
+        engine.terminate()
+    }
+
+    private func send(_ name: String, _ data: [String: Any]) {
+        seq += 1
+        var payload = data
+        payload["seq"] = seq
+        ctx.emit(name, payload)
+    }
+
+    func handle(_ call: NativeExtCall) async -> NativeExtResult {
+        switch call.route {
+        case "configure": return await configure(call)
+        case "set_token": return setToken(call)
+        case "logout":
+            await engine.logout()
+            return .ok([:])
+        case "permissions": return await permissions(call)
+        case "join": return join(call)
+        case "leave":
+            let cid = engine.ledger.live?.cid
+            switch engine.leave() {
+            case .ok: return .ok(["call_cid": cid ?? "", "state": "ended"])
+            case .error(let code): return .error(code: code, message: StreamCallRules.message(code))
+            case .drop, .ignored: return .error(code: "failed", message: "the call was not changed")
+            }
+        case "set_muted":
+            guard let muted = call.params["muted"] as? Bool else { return .error(code: "bad_request", message: "muted is required") }
+            switch engine.setMuted(muted) {
+            case .error(let code): return .error(code: code, message: "there is no call")
+            default: return .ok(["muted": muted, "call_cid": engine.ledger.live?.cid ?? ""])
+            }
+        case "set_speaker": return await setSpeaker(call)
+        case "status": return .ok(engine.status())
+        default: return .error(code: "not_registered", message: call.route)
+        }
+    }
+
+    private func configure(_ call: NativeExtCall) async -> NativeExtResult {
+        guard let apiKey = call.params["api_key"] as? String, StreamCallRules.isName(apiKey),
+              let userId = call.params["user_id"] as? String, StreamCallRules.isUserId(userId),
+              let token = call.params["token"] as? String, !token.isEmpty else {
+            return .error(code: "bad_request", message: "api_key, user_id and token are required")
+        }
+        let provider = call.params["voip_provider"] as? String ?? "ios-voip"
+        guard StreamCallRules.isName(provider) else { return .error(code: "bad_request", message: "voip_provider is malformed") }
+        let creds = StreamCallCredentials(apiKey: apiKey, userId: userId, userName: call.params["user_name"] as? String,
+                                          token: token, tokenURL: call.params["token_url"] as? String,
+                                          voipProvider: provider, registeredVoipToken: nil)
+        do {
+            let push = try await engine.configure(creds)
+            guard call.isActive else { return .error(code: "timeout", message: "configure completed after the route timed out") }
+            return .ok(["user_id": userId, "push": push])
+        } catch let e as StreamCallError {
+            return .error(code: e == .connectFailed ? "connect_failed" : e.code, message: "the Stream client was not configured")
+        } catch {
+            return .error(code: "connect_failed", message: "the Stream client was not configured")
+        }
+    }
+
+    private func setToken(_ call: NativeExtCall) -> NativeExtResult {
+        guard let token = call.params["token"] as? String, !token.isEmpty else {
+            return .error(code: "bad_token", message: "token is required")
+        }
+        do {
+            try engine.setToken(token)
+            return .ok([:])
+        } catch let e as StreamCallError {
+            return .error(code: e.code, message: "the token was not stored")
+        } catch {
+            return .error(code: "storage_failed", message: "the token was not stored")
+        }
+    }
+
+    private func permissions(_ call: NativeExtCall) async -> NativeExtResult {
+        let session = AVAudioSession.sharedInstance()
+        if call.params["request"] as? Bool == true, session.recordPermission == .undetermined {
+            _ = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+                session.requestRecordPermission { c.resume(returning: $0) }
+            }
+            guard call.isActive else { return .error(code: "timeout", message: "the permission answer came after the route timed out") }
+        }
+        let mic: String
+        switch session.recordPermission {
+        case .granted: mic = "granted"
+        case .denied: mic = "denied"
+        default: mic = "undetermined"
+        }
+        // CallKit rings without notification permission; it is reported, never requested here.
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard call.isActive else { return .error(code: "timeout", message: "the permission read came after the route timed out") }
+        let notes: String
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: notes = "granted"
+        case .denied: notes = "denied"
+        default: notes = "undetermined"
+        }
+        return .ok(["microphone": mic, "notifications": notes])
+    }
+
+    private func join(_ call: NativeExtCall) -> NativeExtResult {
+        guard let type = call.params["call_type"] as? String, StreamCallRules.isName(type),
+              let id = call.params["call_id"] as? String, StreamCallRules.isName(id) else {
+            return .error(code: "bad_request", message: "call_type and call_id are letters, digits, '_' or '-'")
+        }
+        let ring = call.params["ring"] as? Bool ?? false
+        guard let members = StreamCallRules.members(call.params["members"] as? String ?? ""), !ring || !members.isEmpty else {
+            return .error(code: "bad_request", message: "members is a comma-separated list of user ids; ring needs at least one")
+        }
+        if AVAudioSession.sharedInstance().recordPermission == .denied {
+            return .error(code: "permission_denied", message: "microphone access is denied")
+        }
+        return reply(engine.join(type: type, id: id, create: call.params["create"] as? Bool ?? false, ring: ring, members: members),
+                     ["state": "connecting"])
+    }
+
+    private func setSpeaker(_ call: NativeExtCall) async -> NativeExtResult {
+        guard let on = call.params["on"] as? Bool else { return .error(code: "bad_request", message: "on is required") }
+        do {
+            let out = try await engine.setSpeaker(on)
+            guard call.isActive else { return .error(code: "timeout", message: "the route changed after the call timed out") }
+            return .ok(out)
+        } catch let e as StreamCallError {
+            return .error(code: e.code, message: e == .noCall ? "there is no call" : "the audio route could not be changed")
+        } catch {
+            return .error(code: "route_failed", message: "the audio route could not be changed")
+        }
+    }
+
+    private func reply(_ outcome: StreamCallLedger.Outcome, _ data: [String: Any]) -> NativeExtResult {
+        switch outcome {
+        case .ok:
+            var out = data
+            out["call_cid"] = engine.ledger.live?.cid ?? NSNull()
+            return .ok(out)
+        case .error(let code): return .error(code: code, message: StreamCallRules.message(code))
+        case .drop, .ignored: return .error(code: "failed", message: "the call was not changed")
+        }
+    }
+
+    // MARK: - NativeExtVoIPHandler (called by the app's VoIP push handler on the main queue)
+
+    func didUpdateVoIPToken(_ token: Data?) {
+        engine.didUpdateVoIPToken(token)
+    }
+
+    /// Every push is reported to CallKit, through Stream's provider, before `completion` runs; the
+    /// completion runs inside CallKit's completion. No branch skips the report.
+    func didReceiveIncomingVoIPPush(_ payload: [AnyHashable: Any], completion: @escaping () -> Void) {
+        engine.reportIncoming(payload, completion: completion)
+    }
+}
+```
+
+```swift ios/app/StreamCallLedger.swift
+import Foundation
+
+/// The call state machine of the Stream calling template. Pure: Foundation only, so it can be tested
+/// on its own with swiftc against the same state table as the Java StreamCallLedger. One call is live at a time (Stream holds one active call; its CallKit provider has one call
+/// group). Every attempt gets an epoch from a counter the ledger owns, and every asynchronous result
+/// carries the epoch it was started under, so a result that arrives after `leave`, or for an earlier
+/// attempt of the same call id, never changes the current call. Main actor only.
+struct StreamCallLedger {
+    enum State: String {
+        case ringing, connecting, joined
+    }
+
+    enum Outcome: Equatable {
+        case ok(String)
+        case error(String)
+        /// A join result for an attempt that is no longer current: the engine leaves that SDK call.
+        case drop
+        /// A late callback that changes nothing.
+        case ignored
+
+        var line: String {
+            switch self {
+            case .ok(let detail): return "ok:\(detail)"
+            case .error(let code): return "error:\(code)"
+            case .drop: return "drop"
+            case .ignored: return "ignored"
+            }
+        }
+    }
+
+    struct Live: Equatable {
+        let cid: String
+        let epoch: Int
+        let incoming: Bool
+        var state: State
+        /// The mute the page asked for; nil until it asks.
+        var wantedMuted: Bool?
+        var muted = false
+    }
+
+    private(set) var configured = false
+    private(set) var live: Live?
+    private var epochs = 0
+
+    var status: String { live?.state.rawValue ?? "idle" }
+
+    mutating func configure() -> Outcome {
+        configured = true
+        return .ok("configured")
+    }
+
+    mutating func logout() -> Outcome {
+        configured = false
+        let n = live == nil ? 0 : 1
+        live = nil
+        return .ok("logout:\(n)")
+    }
+
+    mutating func join(_ cid: String) -> Outcome {
+        guard configured else { return .error("not_configured") }
+        guard live == nil else { return .error("busy") }
+        epochs += 1
+        live = Live(cid: cid, epoch: epochs, incoming: false, state: .connecting)
+        return .ok("connecting:\(epochs)")
+    }
+
+    mutating func incoming(_ cid: String) -> Outcome {
+        guard configured else { return .error("not_configured") }
+        if let l = live { return .error(l.cid == cid ? "duplicate" : "busy") }
+        epochs += 1
+        live = Live(cid: cid, epoch: epochs, incoming: true, state: .ringing)
+        return .ok("ringing:\(epochs)")
+    }
+
+    mutating func answered(_ cid: String) -> Outcome {
+        guard var l = live, l.cid == cid, l.state == .ringing else { return .ignored }
+        l.state = .connecting
+        live = l
+        return .ok("connecting:\(l.epoch)")
+    }
+
+    mutating func connected(_ cid: String, epoch: Int) -> Outcome {
+        guard var l = live, l.cid == cid, l.epoch == epoch, l.state == .connecting else { return .drop }
+        l.state = .joined
+        live = l
+        return .ok("joined")
+    }
+
+    mutating func ended(_ cid: String, epoch: Int, reason: String) -> Outcome {
+        guard let l = live, l.cid == cid, l.epoch == epoch else { return .ignored }
+        live = nil
+        return .ok("ended:\(reason)")
+    }
+
+    mutating func leave() -> Outcome {
+        guard let l = live else { return .error("no_call") }
+        live = nil
+        return .ok(l.state == .ringing ? "ended:declined" : "ended:local")
+    }
+
+    mutating func setMuted(_ muted: Bool) -> Outcome {
+        guard var l = live else { return .error("no_call") }
+        l.wantedMuted = muted
+        live = l
+        return .ok(l.state == .joined ? "apply" : "pending")
+    }
+
+    func wanted() -> Outcome {
+        guard let l = live else { return .error("no_call") }
+        return .ok("wanted:" + (l.wantedMuted.map { $0 ? "true" : "false" } ?? "none"))
+    }
+
+    mutating func muteApplied(epoch: Int, muted: Bool) -> Outcome {
+        guard var l = live, l.epoch == epoch, l.state == .joined else { return .ignored }
+        l.muted = muted
+        live = l
+        return .ok("muted:\(muted)")
+    }
+
+    mutating func reset() -> Outcome {
+        let n = live == nil ? 0 : 1
+        live = nil
+        return .ok("reset:\(n)")
+    }
+}
+```
+
+```swift ios/app/StreamCallRules.swift
+import Foundation
+
+/// Pure rules of the Stream calling template (Foundation only, so they can be tested on their own
+/// with swiftc). Nothing here touches the network, the audio session
+/// or CallKit.
+enum StreamCallRules {
+    /// A Stream VoIP push, decoded with Stream's own keys and fallbacks
+    /// (StreamVideo 1.57.0, CallKit/CallKitPushNotificationAdapter.swift `decodePayload`), so the
+    /// template reports exactly what Stream's own adapter would report.
+    struct Push: Equatable {
+        let cid: String
+        let callerName: String
+        let callerId: String
+
+        static let unknownText = "Unknown Caller"
+
+        init(cid: String, callerName: String, callerId: String) {
+            self.cid = cid
+            self.callerName = callerName
+            self.callerId = callerId
+        }
+
+        init(_ payload: [AnyHashable: Any]) {
+            guard let stream = payload["stream"] as? [String: Any] else {
+                self.init(cid: "unknown", callerName: Push.unknownText, callerId: Push.unknownText)
+                return
+            }
+            let display = stream["call_display_name"] as? String ?? ""
+            self.init(cid: stream["call_cid"] as? String ?? "unknown",
+                      callerName: display.isEmpty ? (stream["created_by_display_name"] as? String ?? Push.unknownText) : display,
+                      callerId: stream["created_by_id"] as? String ?? Push.unknownText)
+        }
+
+        /// A cid the page can name: "<type>:<id>" with both parts non-empty.
+        var isCallCid: Bool { StreamCallRules.splitCid(cid) != nil }
+    }
+
+    /// "<type>:<id>" into its parts, or nil.
+    static func splitCid(_ cid: String) -> (type: String, id: String)? {
+        guard let i = cid.firstIndex(of: ":") else { return nil }
+        let type = String(cid[..<i]), id = String(cid[cid.index(after: i)...])
+        guard !type.isEmpty, !id.isEmpty else { return nil }
+        return (type, id)
+    }
+
+    /// The PushKit token as Stream registers it: lower-case hex, two digits per byte
+    /// (CallKitPushNotificationAdapter.swift, `didUpdate pushCredentials`).
+    static func hexToken(_ token: Data) -> String {
+        token.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Whether a page-started join may proceed, judged from the audio session configuration that is
+    /// in place now (the only in-process witness). The recorder template records
+    /// under the `record` category; joining would reconfigure the session under a recording in flight,
+    /// so the join is refused with `audio_busy`. Every other configuration, the process default and a
+    /// call's own included, is allowed: the template never takes the session from anyone else, it
+    /// simply never configures it (Stream and CallKit do).
+    static func mayJoin(category: String, recordCategory: String) -> Bool {
+        category != recordCategory
+    }
+
+    /// The page's name for an audio output port. Platform port names not listed here pass through
+    /// unchanged, so the list stays open.
+    static func routeName(portType: String, builtInReceiver: String, builtInSpeaker: String,
+                          headphones: String, bluetooth: [String]) -> String {
+        if portType == builtInReceiver { return "earpiece" }
+        if portType == builtInSpeaker { return "speaker" }
+        if portType == headphones { return "wired" }
+        if bluetooth.contains(portType) { return "bluetooth" }
+        return portType
+    }
+
+    /// A call type, call id, API key or provider name: 1 to 64 of letters, digits, '_' and '-'
+    /// (the characters Stream accepts in call ids and call type names).
+    static func isName(_ s: String) -> Bool {
+        !s.isEmpty && s.count <= 64 && s.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-").contains($0) }
+    }
+
+    /// A Stream user id: 1 to 128 of letters, digits, '@', '_' and '-'.
+    static func isUserId(_ s: String) -> Bool {
+        !s.isEmpty && s.count <= 128 && s.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@_-").contains($0) }
+    }
+
+    /// The `members` parameter, comma-separated user ids, at most 32; nil when one is malformed.
+    static func members(_ raw: String) -> [String]? {
+        if raw.isEmpty { return [] }
+        let ids = raw.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard ids.count <= 32, ids.allSatisfy(isUserId) else { return nil }
+        return ids
+    }
+
+    /// The message that goes with one of the template's error codes.
+    static func message(_ code: String) -> String {
+        switch code {
+        case "not_configured": return "call configure first"
+        case "busy": return "another call is live"
+        case "no_call": return "there is no call"
+        case "audio_busy": return "a recording holds the audio session"
+        default: return "the call was not changed"
+        }
+    }
+}
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="Android">
+
+<CodeGroup>
+
+```groovy android/streamcall/build.gradle
+// Engineer-owned module build. Stream Video Android 1.35.0 and stream-android-push-firebase 1.3.4 are
+// the newest versions on Maven Central (read 2026-11-20:
+// https://repo1.maven.org/maven2/io/getstream/stream-video-android-core/maven-metadata.xml, release
+// 1.35.0, lastUpdated 20260929153335; .../stream-android-push-firebase/maven-metadata.xml, release 1.3.4,
+// lastUpdated 20260310195827; GitHub releases https://github.com/GetStream/stream-video-android/releases/tag/v1.35.0
+// of 2026-09-29 and https://github.com/GetStream/stream-android-push/releases/tag/1.3.4 of 2026-03-10).
+// Newer versions (1.36.0 to 1.38.0, push 1.3.5) are published only on Stream's own Maven repository; the
+// Despia build accepts only the default Maven repositories, so this template takes Central's newest.
+// A customer may use the newer versions by adding Stream's repository in their own build.
+// Firebase uses the base app's own BoM; coroutines, core, activity, appcompat and material are the base's coordinates
+// (the base already resolves coroutines to 1.9.0 or newer through lifecycle 2.10.0, the floor Stream asks for).
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'despia.ext.streamcall'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation project(':nativeext-api')
+    implementation 'io.getstream:stream-video-android-core:1.35.0'
+    implementation 'io.getstream:stream-android-push-firebase:1.3.4'
+    implementation platform('com.google.firebase:firebase-bom:34.11.0')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'androidx.core:core:1.18.0'
+    implementation 'androidx.activity:activity:1.13.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+}
+```
+
+```xml android/streamcall/src/main/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Audio calls only. Stream's library manifest brings its call service, receivers, the Telecom
+     permission MANAGE_OWN_CALLS, USE_FULL_SCREEN_INTENT (restricted: named in the template's approval
+     request) and the phone-call and microphone foreground types. What an audio-only app does not use
+     is removed here, so the app's merged manifest (which Despia approves as built) holds no camera,
+     screen-share or livestream piece. CAMERA, FOREGROUND_SERVICE_MEDIA_PLAYBACK and RECORD_AUDIO stay: the base
+     app already declares them. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature android:name="android.hardware.camera" tools:node="remove" />
+    <uses-feature android:name="android.hardware.camera.autofocus" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
+
+    <application>
+        <!-- Stream's FCM messages only (sender "stream.video"); the base FirebaseMessagingService
+             still receives every message. Only Google Play services holds the SEND permission. -->
+        <receiver
+            android:name="despia.ext.streamcall.StreamPushReceiver"
+            android:exported="true"
+            android:permission="com.google.android.c2dm.permission.SEND">
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name="despia.ext.streamcall.CallIntentActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+            <intent-filter>
+                <action android:name="io.getstream.video.android.action.INCOMING_CALL" />
+                <action android:name="io.getstream.video.android.action.ACCEPT_CALL" />
+                <action android:name="io.getstream.video.android.action.OUTGOING_CALL" />
+                <action android:name="io.getstream.video.android.action.ONGOING_CALL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name="io.getstream.video.android.core.notifications.internal.service.CallService"
+            android:foregroundServiceType="microphone|phoneCall|shortService"
+            tools:replace="android:foregroundServiceType" />
+        <service
+            android:name="io.getstream.video.android.core.screenshare.StreamScreenShareService"
+            tools:node="remove" />
+        <service
+            android:name="io.getstream.video.android.core.notifications.internal.service.LivestreamCallService"
+            tools:node="remove" />
+        <service
+            android:name="io.getstream.video.android.core.notifications.internal.service.LivestreamAudioCallService"
+            tools:node="remove" />
+        <service
+            android:name="io.getstream.video.android.core.notifications.internal.service.LivestreamViewerService"
+            tools:node="remove" />
+        <receiver
+            android:name="io.getstream.video.android.core.notifications.internal.receivers.StopScreenshareBroadcastReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/CallIntentActivity.java
+package despia.ext.streamcall;
+
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+/**
+ * The activity Stream's call notifications open (its intent resolver looks for an activity of this
+ * package that handles each action). The call screen is Stream's notification and Telecom's own
+ * UI; this activity only acts and hands over to the app:
+ * - ACCEPT_CALL (notification Answer): answer, then bring the app forward.
+ * - INCOMING_CALL (full-screen intent over the lock screen): a Material 3 Answer / Decline screen
+ *   (MaterialButton under Theme.Material3.DayNight.NoActionBar, light and dark).
+ * - OUTGOING_CALL, ONGOING_CALL (tapping the notification): bring the app forward.
+ * It is not exported; only the app's own PendingIntents start it.
+ */
+public final class CallIntentActivity extends AppCompatActivity {
+    static final String ACCEPT = "io.getstream.video.android.action.ACCEPT_CALL";
+    static final String INCOMING = "io.getstream.video.android.action.INCOMING_CALL";
+
+    @Override
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        }
+        route(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        route(intent);
+    }
+
+    private void route(Intent intent) {
+        StreamCallExtension ext = StreamCallExtension.instance;
+        String cid = ext == null ? null : ext.callIdOf(intent);
+        String action = intent.getAction();
+        if (ext == null || cid == null) {
+            finish();
+            return;
+        }
+        if (ACCEPT.equals(action)) {
+            ext.answer(cid);
+            openApp();
+        } else if (INCOMING.equals(action)) {
+            setContentView(R.layout.nx_streamcall_incoming);
+            String name = ext.callerNameOf(intent);
+            ((TextView) findViewById(R.id.nx_streamcall_caller)).setText(name == null ? getString(R.string.nx_streamcall_unknown) : name);
+            findViewById(R.id.nx_streamcall_answer).setOnClickListener((View v) -> {
+                ext.answer(cid);
+                openApp();
+            });
+            findViewById(R.id.nx_streamcall_decline).setOnClickListener((View v) -> {
+                ext.decline(cid);
+                finish();
+            });
+        } else {
+            openApp();
+        }
+    }
+
+    private void openApp() {
+        Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(launch);
+        }
+        finish();
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamCallCredentials.java
+package despia.ext.streamcall;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Properties;
+
+/**
+ * What {@code configure} stores, so a Stream push can ring with no page loaded (FCM may start the
+ * process in the background). Nothing is built into the app: every value comes from the page, which
+ * got the token from the developer's own server. The file lives in the extension's own data
+ * directory inside the app sandbox; it is written whole to a temporary file and renamed, so a crash
+ * never leaves half a file. A corrupt or partial file reads as "not configured". The token is never
+ * logged and never leaves this class except to the Stream client.
+ */
+public final class StreamCallCredentials {
+    static final String FILE = "streamcall.properties";
+
+    public final String apiKey;
+    public final String userId;
+    public final String userName;
+    public final String token;
+    public final String tokenUrl;
+    public final String fcmProvider;
+
+    public StreamCallCredentials(String apiKey, String userId, String userName, String token, String tokenUrl, String fcmProvider) {
+        this.apiKey = apiKey;
+        this.userId = userId;
+        this.userName = userName;
+        this.token = token;
+        this.tokenUrl = tokenUrl;
+        this.fcmProvider = fcmProvider;
+    }
+
+    public StreamCallCredentials withToken(String next) {
+        return new StreamCallCredentials(apiKey, userId, userName, next, tokenUrl, fcmProvider);
+    }
+
+    public static StreamCallCredentials load(File dir) {
+        File f = new File(dir, FILE);
+        if (!f.isFile()) return null;
+        Properties p = new Properties();
+        try (InputStream in = new FileInputStream(f)) {
+            p.load(in);
+        } catch (IOException | IllegalArgumentException e) {
+            return null;
+        }
+        String apiKey = p.getProperty("api_key"), userId = p.getProperty("user_id"), token = p.getProperty("token");
+        String provider = p.getProperty("fcm_provider");
+        if (!StreamCallRules.isName(apiKey) || !StreamCallRules.isUserId(userId) || token == null || token.isEmpty()
+                || !StreamCallRules.isName(provider)) return null;
+        return new StreamCallCredentials(apiKey, userId, p.getProperty("user_name"), token, p.getProperty("token_url"), provider);
+    }
+
+    public static boolean save(File dir, StreamCallCredentials c) {
+        if (!dir.isDirectory() && !dir.mkdirs()) return false;
+        Properties p = new Properties();
+        p.setProperty("api_key", c.apiKey);
+        p.setProperty("user_id", c.userId);
+        if (c.userName != null) p.setProperty("user_name", c.userName);
+        p.setProperty("token", c.token);
+        if (c.tokenUrl != null) p.setProperty("token_url", c.tokenUrl);
+        p.setProperty("fcm_provider", c.fcmProvider);
+        File tmp = new File(dir, FILE + ".tmp");
+        try (OutputStream out = new FileOutputStream(tmp)) {
+            p.store(out, null);
+            out.flush();
+            if (out instanceof FileOutputStream) ((FileOutputStream) out).getFD().sync();
+        } catch (IOException e) {
+            tmp.delete();
+            return false;
+        }
+        return tmp.renameTo(new File(dir, FILE));
+    }
+
+    public static void delete(File dir) {
+        new File(dir, FILE).delete();
+        new File(dir, FILE + ".tmp").delete();
+    }
+}
+```
+
+```kotlin android/streamcall/src/main/java/despia/ext/streamcall/StreamCallEngine.kt
+package despia.ext.streamcall
+
+import android.app.Application
+import android.content.Intent
+import android.os.Bundle
+import androidx.core.content.IntentCompat
+import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.RemoteMessage
+import io.getstream.android.push.PushDevice
+import io.getstream.android.push.PushProvider
+import io.getstream.android.push.firebase.FirebaseMessagingDelegate
+import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
+import io.getstream.result.Result
+import io.getstream.video.android.core.Call
+import io.getstream.video.android.core.CreateCallOptions
+import io.getstream.video.android.core.GEO
+import io.getstream.video.android.core.RealtimeConnection
+import io.getstream.video.android.core.RingingState
+import io.getstream.video.android.core.StreamVideo
+import io.getstream.video.android.core.StreamVideoBuilder
+import io.getstream.video.android.core.audio.StreamAudioDevice
+import io.getstream.video.android.core.call.CallType
+import io.getstream.video.android.core.notifications.NotificationConfig
+import io.getstream.video.android.core.notifications.NotificationHandler
+import io.getstream.video.android.core.notifications.internal.service.CallServiceConfigRegistry
+import io.getstream.video.android.core.notifications.internal.service.DefaultCallConfigurations
+import io.getstream.video.android.core.notifications.internal.telecom.TelecomConfig
+import io.getstream.video.android.core.socket.common.token.TokenProvider
+import io.getstream.video.android.model.Device
+import io.getstream.video.android.model.StreamCallId
+import io.getstream.video.android.model.User
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * The only file of the template that talks to Stream (stream-video-android-core 1.35.0 and
+ * stream-android-push-firebase 1.3.4, Maven Central's newest; no Stream UI artifact). Main thread only: every public method
+ * is called on the main looper and every coroutine runs on Dispatchers.Main.
+ *
+ * Ownership, each one stated once:
+ * - Telecom: Stream's Jetpack Telecom integration is enabled for every call type, so the call is a
+ *   real self-managed Telecom call where the device supports it, with Stream's own CallStyle
+ *   notification and phone-call foreground service; Stream falls back to the service and the
+ *   notification by itself where Telecom is unusable.
+ * - Audio: the template never calls AudioManager mode, speakerphone, communication-device or SCO
+ *   methods (Android forbids driving routes outside Telecom); speaker and mute go through the SDK.
+ * - Push: the base app keeps its one FirebaseMessagingService. StreamPushReceiver hands only
+ *   Stream's own FCM messages to Stream.
+ */
+class StreamCallEngine(private val app: Application, private val host: Host) {
+    /** What the engine needs from the extension (a Java interface, so Java implements it). */
+    interface Host {
+        fun emit(event: String, data: JSONObject)
+        fun log(message: String)
+        fun isApprovedTokenUrl(url: String): Boolean
+        fun dataDir(): java.io.File
+    }
+
+    /** One answer per asynchronous command: an error code, or null and the data. */
+    fun interface Reply {
+        fun done(code: String?, data: JSONObject?)
+    }
+
+    val ledger = StreamCallLedger()
+    var credentials: StreamCallCredentials? = null
+        private set
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var client: StreamVideo? = null
+    private var call: Call? = null
+    private var watchers = mutableListOf<Job>()
+    private var callWatchers = mutableListOf<Job>()
+    private var tokenWaiter: CompletableDeferred<String?>? = null
+
+    /** Application.onCreate (also when FCM starts the process): rebuild the client from storage. */
+    fun restore() {
+        val stored = StreamCallCredentials.load(host.dataDir()) ?: return
+        credentials = stored
+        val c = build(stored)
+        attach(c)
+        ledger.configure()
+        scope.launch { registerPush(c, stored) }
+    }
+
+    private fun hasFirebase(): Boolean = FirebaseApp.getApps(app).isNotEmpty()
+
+    private fun registry(): CallServiceConfigRegistry = CallServiceConfigRegistry().apply {
+        // Every call type, the built-in livestream type included, runs on Stream's audio call
+        // service (microphone and phone-call foreground types) with Telecom enabled. The call type
+        // stays the page's choice: nothing here limits which types exist.
+        val audio = DefaultCallConfigurations.audioCall.copy(enableTelecom = true)
+        register(CallType.AnyMarker.name, audio)
+        register(CallType.Livestream.name, audio)
+    }
+
+    /** connect: false when configure() connects itself and waits for the answer. */
+    private fun build(c: StreamCallCredentials, connect: Boolean = true): StreamVideo {
+        StreamVideo.instanceOrNull()?.let { StreamVideo.removeClient() }
+        val generators = if (hasFirebase()) {
+            listOf(FirebasePushDeviceGenerator(providerName = c.fcmProvider, context = app))
+        } else {
+            emptyList()
+        }
+        return StreamVideoBuilder(
+            context = app,
+            apiKey = c.apiKey,
+            geo = GEO.GlobalEdgeNetwork,
+            user = User(id = c.userId, name = c.userName),
+            token = c.token,
+            tokenProvider = object : TokenProvider {
+                // Stream's contract (TokenProvider.loadToken, 1.35.0): "If the token cannot be loaded,
+                // returns an empty string and never throws an exception." NO_TOKEN is that value.
+                override suspend fun loadToken(): String = refreshToken() ?: NO_TOKEN
+            },
+            notificationConfig = NotificationConfig(
+                pushDeviceGenerators = generators,
+                // The page asks for permissions through the `permissions` route; Stream never prompts.
+                requestPermissionOnAppLaunch = { false },
+                requestPermissionOnDeviceRegistration = { false },
+            ),
+            callServiceConfigRegistry = registry(),
+            telecomConfig = TelecomConfig(app.packageName),
+            connectOnInit = connect,
+        ).build()
+    }
+
+    private fun attach(c: StreamVideo) {
+        watchers.forEach { it.cancel() }
+        watchers = mutableListOf(
+            scope.launch { c.state.ringingCall.collect { ringing -> ringingChanged(ringing) } },
+            scope.launch { c.state.activeCall.collect { active -> activeChanged(active) } },
+            scope.launch { c.getDevice().collect { d -> registeredDevice = d } },
+            scope.launch { currentFcmToken() },
+        )
+        client = c
+    }
+
+    fun configure(c: StreamCallCredentials, reply: Reply) {
+        // A new client replaces the one carrying the live call, so nothing is reconfigured under a call.
+        if (ledger.live() != null) return reply.done("busy", null)
+        scope.launch {
+            val old = credentials
+            // Android holds one Stream client, so building the new one replaces the old one. Nothing of
+            // the old user is removed until the new user is connected and stored: on any failure the
+            // old client comes back with its push device untouched, and the old user keeps ringing.
+            val oldDevice = registeredDevice
+            val fresh = build(c, connect = false)
+            client = null
+            val connected = withTimeoutOrNull(15_000) { fresh.connectAsync().await() }
+            if (connected !is Result.Success || !StreamCallCredentials.save(host.dataDir(), c)) {
+                StreamVideo.removeClient()
+                old?.let { attach(build(it)) }
+                return@launch reply.done(if (connected !is Result.Success) "connect_failed" else "storage_failed", null)
+            }
+            credentials = c
+            attach(fresh)
+            ledger.configure()
+            if (old != null && old.userId != c.userId && oldDevice != null) {
+                // Stream stores one push device per app and skips registering a device equal to it,
+                // so the old user's device goes first; then this device registers for the new user.
+                fresh.deleteDevice(oldDevice)
+            }
+            registerPush(fresh, c)
+            reply.done(null, JSONObject().put("user_id", c.userId).put("push", pushState()))
+        }
+    }
+
+    /** Stream's own record of the device it registered (its getDevice()), and this install's FCM token. */
+    private var registeredDevice: Device? = null
+    private var fcmToken: String? = null
+
+    /**
+     * "registered" only when Stream has stored a Firebase device for this install's current FCM
+     * token under the configured provider; "pending" until then; "unavailable" with no Firebase or
+     * with notifications off.
+     */
+    fun pushState(): String {
+        if (!hasFirebase() || !StreamCallPlatform.canNotify(app)) return "unavailable"
+        val c = credentials ?: return "pending"
+        val d = registeredDevice ?: return "pending"
+        val t = fcmToken ?: return "pending"
+        return StreamCallRules.pushState(d.id, d.pushProvider, d.pushProviderName, t, PushProvider.FIREBASE.key, c.fcmProvider)
+    }
+
+    private suspend fun currentFcmToken(): String? {
+        if (!hasFirebase()) return null
+        val token = CompletableDeferred<String?>()
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { t ->
+            token.complete(if (t.isSuccessful) t.result else null)
+        }
+        return withTimeoutOrNull(5_000) { token.await() }.also { fcmToken = it }
+    }
+
+    /** Registers this install's FCM token with Stream for the configured user; Stream records the result. */
+    private suspend fun registerPush(cl: StreamVideo, c: StreamCallCredentials) {
+        val t = currentFcmToken() ?: return
+        val r = cl.createDevice(PushDevice(t, PushProvider.FIREBASE, c.fcmProvider))
+        if (r !is Result.Success) log("Push device registration failed; it is retried at the next configure")
+    }
+
+    fun setToken(token: String): String? {
+        val c = credentials ?: return "not_configured"
+        val next = c.withToken(token)
+        if (!StreamCallCredentials.save(host.dataDir(), next)) return "storage_failed"
+        credentials = next
+        tokenWaiter?.complete(token)
+        return null
+    }
+
+    fun logout(reply: Reply) {
+        val live = ledger.live()
+        if (live != null) endSdkCall(live)
+        ledger.logout()
+        if (live != null) emit("ended", JSONObject().put("call_cid", live.cid).put("reason", "logout"))
+        val c = credentials
+        credentials = null
+        StreamCallCredentials.delete(host.dataDir())
+        tokenWaiter?.complete(null)
+        scope.launch {
+            if (c != null) unregisterPush(c)
+            client?.logOut()
+            StreamVideo.removeClient()
+            watchers.forEach { it.cancel() }
+            client = null
+            call = null
+            reply.done(null, JSONObject())
+        }
+    }
+
+    /** No further ring on this device: the FCM device leaves Stream before the client goes. */
+    private suspend fun unregisterPush(c: StreamCallCredentials) {
+        val cl = client ?: return
+        if (!hasFirebase()) return
+        val token = CompletableDeferred<String?>()
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { t ->
+            token.complete(if (t.isSuccessful) t.result else null)
+        }
+        val id = withTimeoutOrNull(5_000) { token.await() } ?: return
+        cl.deleteDevice(Device(id = id, pushProvider = PushProvider.FIREBASE.key, pushProviderName = c.fcmProvider))
+        registeredDevice = null
+    }
+
+    /**
+     * Token refresh, in this order: the developer's token_url when one was configured (it works
+     * with no page loaded), then the page (token_needed, answered by set_token, 10 s); else the
+     * SDK gets no token and the call ends (token_expired). The developer's server decides.
+     */
+    private suspend fun refreshToken(): String? {
+        val c = credentials ?: return null
+        val url = c.tokenUrl
+        if (url != null && host.isApprovedTokenUrl(url)) {
+            val fetched = withContext(Dispatchers.IO) { postForToken(url, c.userId, c.token) }
+            if (fetched != null) {
+                setToken(fetched)
+                return fetched
+            }
+        }
+        val waiter = CompletableDeferred<String?>()
+        tokenWaiter = waiter
+        emit("token_needed", JSONObject().put("user_id", c.userId))
+        val token = withTimeoutOrNull(10_000) { waiter.await() }
+        if (tokenWaiter === waiter) tokenWaiter = null
+        if (token == null) ledger.live()?.let { l ->
+            // No token: the call cannot go on. It ends for real (Stream leaves or rejects, which ends
+            // the Telecom call, the call service and the microphone) before the page hears it.
+            endSdkCall(l)
+            endedFromSdk(l, "token_expired")
+        }
+        return token
+    }
+
+    /** POST {"user_id", "expired_token"} to the approved token_url; reply {"token"}. No redirects. */
+    private fun postForToken(url: String, userId: String, expired: String): String? = try {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.instanceFollowRedirects = false
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.use {
+                it.write(JSONObject().put("user_id", userId).put("expired_token", expired).toString().toByteArray())
+            }
+            if (conn.responseCode != 200) {
+                null
+            } else {
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                JSONObject(body).optString("token").takeIf { it.isNotEmpty() && it.length <= 4096 }
+            }
+        } finally {
+            conn.disconnect()
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    // ---------------------------------------------------------------- push (StreamPushReceiver)
+
+    /** Hands one of Stream's FCM messages to Stream, exactly once; Stream rings it. */
+    fun handlePush(extras: Bundle): Boolean {
+        // Not configured: there is no client to ring with. Every call type already runs on the
+        // audio service with Telecom (registry()), so nothing is registered per push.
+        if (client == null) return false
+        return FirebaseMessagingDelegate.handleRemoteMessage(RemoteMessage(extras))
+    }
+
+    // ---------------------------------------------------------------- page commands
+
+    fun join(type: String, id: String, create: Boolean, ring: Boolean, members: List<String>): StreamCallLedger.Outcome {
+        val c = client ?: return ledger.join("$type:$id")
+        if (ledger.live() == null && StreamCallPlatform.recordingActive(app)) return StreamCallLedger.Outcome.error("audio_busy")
+        val outcome = ledger.join("$type:$id")
+        val live = ledger.live()
+        if (!outcome.isOk || live == null) return outcome
+        val sdkCall = c.call(type, id)
+        bind(sdkCall)
+        emit("connecting", JSONObject().put("call_cid", live.cid).put("direction", "outgoing"))
+        scope.launch {
+            sdkCall.microphone.setEnabled(live.wantedMuted() != true)
+            val r = sdkCall.join(
+                create = create,
+                createOptions = if (members.isEmpty()) null else CreateCallOptions(memberIds = members),
+                ring = ring,
+            )
+            if (r is Result.Success) joinFinished(live, sdkCall) else endedFromSdk(live, "failed")
+        }
+        return outcome
+    }
+
+    private fun joinFinished(l: StreamCallLedger.Live, sdkCall: Call) {
+        val o = ledger.connected(l.cid, l.epoch)
+        if (o.isOk) {
+            val wanted = ledger.live()?.wantedMuted()
+            emit("joined", JSONObject().put("call_cid", l.cid).put("muted", wanted == true).put("audio_route", route(sdkCall)))
+            if (wanted != null) applyMute(wanted, l.epoch)
+        } else if (ledger.live()?.cid != l.cid) {
+            // drop: the page left or this attempt is not current. Leave the SDK call, unless a newer
+            // attempt for the same cid is live (Stream keeps one Call object per cid).
+            sdkCall.leave()
+        }
+    }
+
+    fun leave(): StreamCallLedger.Outcome {
+        val l = ledger.live() ?: return StreamCallLedger.Outcome.error("no_call")
+        val o = ledger.leave()
+        endSdkCall(l)
+        unbind()
+        if (o.isOk) emit("ended", JSONObject().put("call_cid", l.cid).put("reason", o.value.removePrefix("ended:")))
+        return o
+    }
+
+    /** Ringing: decline (reject); otherwise leave. Stream ends the Telecom call and the notification. */
+    private fun endSdkCall(l: StreamCallLedger.Live) {
+        val c = call ?: client?.let { cl ->
+            val type = StreamCallRules.callType(l.cid) ?: return
+            cl.call(type, StreamCallRules.callId(l.cid))
+        } ?: return
+        if (l.state() == StreamCallLedger.RINGING) {
+            scope.launch {
+                c.reject()
+                c.leave()
+            }
+        } else {
+            c.leave()
+        }
+    }
+
+    fun setMuted(muted: Boolean): StreamCallLedger.Outcome {
+        val o = ledger.setMuted(muted)
+        val l = ledger.live()
+        if (o.isOk && o.value == "apply" && l != null) applyMute(muted, l.epoch)
+        return o
+    }
+
+    private fun applyMute(muted: Boolean, epoch: Int) {
+        val c = call ?: return
+        c.microphone.setEnabled(!muted)
+        if (ledger.muteApplied(epoch, muted).isOk) emit("muted", JSONObject().put("call_cid", c.cid).put("muted", muted))
+    }
+
+    fun setSpeaker(on: Boolean): JSONObject? {
+        val c = call ?: return null
+        val state = ledger.live()?.state() ?: return null
+        if (state == StreamCallLedger.RINGING) return null
+        c.speaker.setSpeakerPhone(on)
+        return JSONObject().put("speaker", on).put("audio_route", route(c))
+    }
+
+    fun status(): JSONObject {
+        val l = ledger.live()
+        return JSONObject()
+            .put("configured", ledger.configured())
+            .put("user_id", credentials?.userId ?: JSONObject.NULL)
+            .put("state", ledger.status())
+            .put("call_cid", l?.cid ?: JSONObject.NULL)
+            .put("muted", l?.muted() ?: false)
+            .put("speaker", call?.speaker?.isEnabled?.value ?: false)
+            .put("audio_route", call?.let { route(it) } ?: "none")
+            .put("push", pushState())
+    }
+
+    fun reset() {
+        ledger.live()?.let { endSdkCall(it) }
+        ledger.reset()
+    }
+
+    // ---------------------------------------------------------------- the lock-screen activity
+
+    /** The call a CallIntentActivity intent names (Stream's own extra), or null. */
+    fun callIdOf(intent: Intent): String? =
+        IntentCompat.getParcelableExtra(intent, NotificationHandler.INTENT_EXTRA_CALL_CID, StreamCallId::class.java)?.cid
+
+    fun callerNameOf(intent: Intent): String? =
+        intent.getStringExtra(NotificationHandler.INTENT_EXTRA_CALL_DISPLAY_NAME)
+
+    /** Answer in the system UI (notification Accept, full-screen Answer): accept, then join. */
+    fun answer(cid: String) {
+        val l = ledger.live() ?: return
+        if (l.cid != cid) return
+        val o = ledger.answered(cid)
+        if (!o.isOk) return
+        val type = StreamCallRules.callType(cid) ?: return
+        val c = call ?: client?.call(type, StreamCallRules.callId(cid)) ?: return
+        bind(c)
+        emit("connecting", JSONObject().put("call_cid", cid).put("direction", "incoming"))
+        scope.launch {
+            val accepted = c.accept()
+            if (accepted !is Result.Success) return@launch endedFromSdk(l, "failed")
+            val joined = c.join()
+            if (joined is Result.Success) joinFinished(l, c) else endedFromSdk(l, "failed")
+        }
+    }
+
+    /** Decline from the full-screen screen. */
+    fun decline(cid: String) {
+        if (ledger.live()?.cid == cid) leave()
+    }
+
+    // ---------------------------------------------------------------- SDK state
+
+    private fun ringingChanged(ringing: Call?) {
+        if (ringing == null) return
+        val state = ringing.state.ringingState.value
+        if (state !is RingingState.Incoming) return
+        val o = ledger.incoming(ringing.cid)
+        if (o.isOk) {
+            bind(ringing)
+            val by = ringing.state.createdBy.value
+            emit("incoming", JSONObject().put("call_cid", ringing.cid)
+                .put("caller_id", by?.id ?: "").put("caller_name", by?.userNameOrId ?: ""))
+        } else if (o.value == "busy") {
+            // One live call: the second ring is declined as busy, the way Stream reports it.
+            scope.launch { ringing.reject() }
+        }
+    }
+
+    private fun activeChanged(active: Call?) {
+        val l = ledger.live() ?: return
+        // The joined call is no longer Stream's active call: hung up in the system UI or left by the
+        // SDK ("local", as on iOS; a remote end arrives as a ringing-state or connection change).
+        if (l.state() == StreamCallLedger.JOINED && active?.cid != l.cid) endedFromSdk(l, "local")
+    }
+
+    private fun bind(c: Call) {
+        unbind()
+        call = c
+        val l = ledger.live() ?: return
+        callWatchers = mutableListOf(
+            scope.launch {
+                c.state.ringingState.collect { rs ->
+                    val now = ledger.live() ?: return@collect
+                    if (now.epoch != l.epoch) return@collect
+                    when (rs) {
+                        is RingingState.RejectedByAll -> endedFromSdk(now, if (now.incoming) "declined" else "rejected")
+                        is RingingState.TimeoutNoAnswer -> endedFromSdk(now, "missed")
+                        else -> Unit
+                    }
+                }
+            },
+            scope.launch {
+                c.state.connection.collect { conn ->
+                    val now = ledger.live() ?: return@collect
+                    if (now.epoch != l.epoch) return@collect
+                    if (conn is RealtimeConnection.Failed || conn is RealtimeConnection.ReconnectingFailed) endedFromSdk(now, "failed")
+                }
+            },
+            scope.launch {
+                c.microphone.selectedDevice.collect {
+                    val now = ledger.live() ?: return@collect
+                    if (now.epoch == l.epoch) emit("audio_route", JSONObject().put("call_cid", now.cid).put("audio_route", route(c)))
+                }
+            },
+        )
+    }
+
+    private fun unbind() {
+        callWatchers.forEach { it.cancel() }
+        callWatchers = mutableListOf()
+        call = null
+    }
+
+    private fun endedFromSdk(l: StreamCallLedger.Live, reason: String) {
+        if (!ledger.ended(l.cid, l.epoch, reason).isOk) return
+        unbind()
+        emit("ended", JSONObject().put("call_cid", l.cid).put("reason", reason))
+    }
+
+    /** The page's name for the selected device; other device kinds pass through by class name. */
+    private fun route(c: Call): String = when (val d = c.microphone.selectedDevice.value) {
+        null -> "none"
+        is StreamAudioDevice.Earpiece -> "earpiece"
+        is StreamAudioDevice.Speakerphone -> "speaker"
+        is StreamAudioDevice.WiredHeadset -> "wired"
+        is StreamAudioDevice.BluetoothHeadset -> "bluetooth"
+        else -> d.javaClass.simpleName
+    }
+
+    private fun emit(event: String, data: JSONObject) = host.emit(event, data)
+
+    private fun log(message: String) = host.log(message)
+
+    private companion object {
+        const val NO_TOKEN = ""
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamCallExtension.java
+package despia.ext.streamcall;
+
+import android.Manifest;
+import android.app.Activity;
+import android.app.Application;
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.despia.nativeext.ExtCall;
+import com.despia.nativeext.ExtContext;
+import com.despia.nativeext.ExtResult;
+import com.despia.nativeext.NativeExtension;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Stream audio calling for a V3 app, the Android twin of ios/app/StreamCallExtension.swift: a
+ * template the app's developer owns. Audio only. The page starts or joins a call, leaves it, mutes
+ * and switches the loudspeaker; incoming calls ring through Stream's FCM push as a real
+ * self-managed Telecom call with Stream's CallStyle notification, also with the app closed.
+ *
+ * <p>No key or token is built into the app: {@code configure} takes them from the page, which got
+ * the token from the developer's own server; they are stored in the extension's data directory so
+ * a push can ring with no page loaded, and {@code logout} removes them. The token never appears in
+ * a reply, an event or a log line.
+ *
+ * <p>Each command answers once. {@code join} answers once the ledger takes the call; the outcome is
+ * the {@code joined} or {@code ended} event. Events carry {@code call_cid} and {@code seq};
+ * {@code status} is the truth, since an event sent while no page is loaded is dropped. Every
+ * method runs on the main thread.
+ */
+public final class StreamCallExtension implements NativeExtension, StreamCallEngine.Host {
+    /** Set in onCreate; the push receiver and the call activity reach the engine through it. */
+    static StreamCallExtension instance;
+
+    private ExtContext ctx;
+    private StreamCallEngine engine;
+    private int seq;
+    private ActivityResultLauncher<String[]> permission;
+    private ComponentActivity registeredOn;
+    private ExtCall pendingPermissions;
+    private ExtResult.Callback pendingReply;
+
+    @Override
+    public void onCreate(ExtContext context) {
+        ctx = context;
+        instance = this;
+        engine = new StreamCallEngine((Application) context.app(), this);
+        engine.restore();
+    }
+
+    // ------------------------------------------------------------------ StreamCallEngine.Host
+
+    @Override
+    public void emit(String event, JSONObject data) {
+        try {
+            data.put("seq", ++seq);
+        } catch (JSONException e) {
+            return;
+        }
+        ctx.emit(event, data);
+    }
+
+    @Override
+    public void log(String message) {
+        ctx.log(message);
+    }
+
+    @Override
+    public boolean isApprovedTokenUrl(String url) {
+        return ctx.isApprovedUrl(url, "configure", "token_url");
+    }
+
+    @Override
+    public File dataDir() {
+        return ctx.dataDir();
+    }
+
+    // ------------------------------------------------------------------ push and the call activity
+
+    void onStreamPush(Bundle extras) {
+        engine.handlePush(extras);
+    }
+
+    String callIdOf(Intent intent) {
+        return engine.callIdOf(intent);
+    }
+
+    String callerNameOf(Intent intent) {
+        return engine.callerNameOf(intent);
+    }
+
+    void answer(String cid) {
+        engine.answer(cid);
+    }
+
+    void decline(String cid) {
+        engine.decline(cid);
+    }
+
+    // ------------------------------------------------------------------ activity lifecycle
+
+    @Override
+    public void onActivityEvent(Activity activity, ActivityEvent event) {
+        if (!(activity instanceof ComponentActivity)) return;
+        ComponentActivity a = (ComponentActivity) activity;
+        if (event == ActivityEvent.CREATED) {
+            if (permission != null) permission.unregister();
+            registeredOn = a;
+            permission = a.getActivityResultRegistry().register(ctx.resultKey("permissions"),
+                    new ActivityResultContracts.RequestMultiplePermissions(), (Map<String, Boolean> result) -> {
+                        ExtCall call = pendingPermissions;
+                        ExtResult.Callback reply = pendingReply;
+                        pendingPermissions = null;
+                        pendingReply = null;
+                        if (call == null) return;
+                        if (!call.isActive()) {
+                            reply.reply(ExtResult.error("timeout", "the permission answer came after the route timed out"));
+                            return;
+                        }
+                        reply.reply(ExtResult.ok(permissionState()));
+                    });
+        } else if (event == ActivityEvent.DESTROYED && registeredOn == a) {
+            if (permission != null) permission.unregister();
+            permission = null;
+            registeredOn = null;
+            if (pendingPermissions != null) {
+                ExtResult.Callback reply = pendingReply;
+                pendingPermissions = null;
+                pendingReply = null;
+                reply.reply(ExtResult.error("unavailable", "the activity was destroyed"));
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ routes
+
+    @Override
+    public void handle(ExtCall call, ExtResult.Callback reply) {
+        try {
+            switch (call.route) {
+                case "configure": configure(call, reply); return;
+                case "set_token": {
+                    String token = string(call, "token");
+                    if (token == null || token.isEmpty()) {
+                        reply.reply(ExtResult.error("bad_token", "token is required"));
+                        return;
+                    }
+                    String code = engine.setToken(token);
+                    reply.reply(code == null ? ExtResult.ok(new JSONObject()) : ExtResult.error(code, "the token was not stored"));
+                    return;
+                }
+                case "logout":
+                    engine.logout((code, data) -> reply.reply(ExtResult.ok(new JSONObject())));
+                    return;
+                case "permissions": permissions(call, reply); return;
+                case "join": join(call, reply); return;
+                case "leave": {
+                    StreamCallLedger.Live l = engine.getLedger().live();
+                    StreamCallLedger.Outcome o = engine.leave();
+                    if (o.isOk()) {
+                        reply.reply(ExtResult.ok(new JSONObject().put("call_cid", l.cid).put("state", "ended")));
+                    } else {
+                        reply.reply(ExtResult.error(o.value, StreamCallRules.message(o.value)));
+                    }
+                    return;
+                }
+                case "set_muted": {
+                    Object m = call.params.get("muted");
+                    if (!(m instanceof Boolean)) {
+                        reply.reply(ExtResult.error("bad_request", "muted is required"));
+                        return;
+                    }
+                    StreamCallLedger.Outcome o = engine.setMuted((Boolean) m);
+                    if (!o.isOk()) {
+                        reply.reply(ExtResult.error(o.value, StreamCallRules.message(o.value)));
+                        return;
+                    }
+                    reply.reply(ExtResult.ok(new JSONObject().put("muted", m).put("call_cid", engine.getLedger().live().cid)));
+                    return;
+                }
+                case "set_speaker": {
+                    Object on = call.params.get("on");
+                    if (!(on instanceof Boolean)) {
+                        reply.reply(ExtResult.error("bad_request", "on is required"));
+                        return;
+                    }
+                    JSONObject out = engine.setSpeaker((Boolean) on);
+                    reply.reply(out == null ? ExtResult.error("no_call", "there is no joined call") : ExtResult.ok(out));
+                    return;
+                }
+                case "status":
+                    reply.reply(ExtResult.ok(engine.status()));
+                    return;
+                default:
+                    reply.reply(ExtResult.error("not_registered", call.route));
+            }
+        } catch (JSONException e) {
+            reply.reply(ExtResult.error("failed", "the reply could not be built"));
+        }
+    }
+
+    private void configure(ExtCall call, ExtResult.Callback reply) {
+        String apiKey = string(call, "api_key"), userId = string(call, "user_id"), token = string(call, "token");
+        if (!StreamCallRules.isName(apiKey) || !StreamCallRules.isUserId(userId) || token == null || token.isEmpty()) {
+            reply.reply(ExtResult.error("bad_request", "api_key, user_id and token are required"));
+            return;
+        }
+        String provider = string(call, "fcm_provider");
+        if (provider == null) provider = "firebase";
+        if (!StreamCallRules.isName(provider)) {
+            reply.reply(ExtResult.error("bad_request", "fcm_provider is malformed"));
+            return;
+        }
+        StreamCallCredentials c = new StreamCallCredentials(apiKey, userId, string(call, "user_name"), token,
+                string(call, "token_url"), provider);
+        engine.configure(c, (code, data) -> {
+            if (!call.isActive()) {
+                reply.reply(ExtResult.error("timeout", "configure completed after the route timed out"));
+            } else if (code != null) {
+                reply.reply(ExtResult.error(code, "the Stream client was not configured"));
+            } else {
+                reply.reply(ExtResult.ok(data));
+            }
+        });
+    }
+
+    private void permissions(ExtCall call, ExtResult.Callback reply) throws JSONException {
+        Application app = (Application) ctx.app();
+        boolean request = Boolean.TRUE.equals(call.params.get("request"));
+        List<String> missing = new ArrayList<>();
+        if (!StreamCallPlatform.micGranted(app)) missing.add(Manifest.permission.RECORD_AUDIO);
+        if (!StreamCallPlatform.bluetoothGranted(app)) missing.add(Manifest.permission.BLUETOOTH_CONNECT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!StreamCallPlatform.canNotify(app)) missing.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (!request || missing.isEmpty()) {
+            reply.reply(ExtResult.ok(permissionState()));
+            return;
+        }
+        if (permission == null) {
+            reply.reply(ExtResult.error("unavailable", "no activity is showing"));
+            return;
+        }
+        if (pendingPermissions != null) {
+            reply.reply(ExtResult.error("busy", "a permission request is already showing"));
+            return;
+        }
+        pendingPermissions = call;
+        pendingReply = reply;
+        permission.launch(missing.toArray(new String[0]));
+    }
+
+    private JSONObject permissionState() {
+        Application app = (Application) ctx.app();
+        try {
+            return new JSONObject()
+                    .put("microphone", StreamCallPlatform.micGranted(app) ? "granted" : "denied")
+                    .put("bluetooth", StreamCallPlatform.bluetoothGranted(app) ? "granted" : "denied")
+                    .put("notifications", StreamCallPlatform.canNotify(app) ? "granted" : "denied");
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
+    }
+
+    private void join(ExtCall call, ExtResult.Callback reply) throws JSONException {
+        String type = string(call, "call_type"), id = string(call, "call_id");
+        if (!StreamCallRules.isName(type) || !StreamCallRules.isName(id)) {
+            reply.reply(ExtResult.error("bad_request", "call_type and call_id are letters, digits, '_' or '-'"));
+            return;
+        }
+        boolean ring = Boolean.TRUE.equals(call.params.get("ring"));
+        String raw = string(call, "members");
+        List<String> members = StreamCallRules.members(raw == null ? "" : raw);
+        if (members == null || (ring && members.isEmpty())) {
+            reply.reply(ExtResult.error("bad_request", "members is a comma-separated list of user ids; ring needs at least one"));
+            return;
+        }
+        if (!StreamCallPlatform.micGranted((Application) ctx.app())) {
+            reply.reply(ExtResult.error("permission_denied", "microphone access is not granted"));
+            return;
+        }
+        StreamCallLedger.Outcome o = engine.join(type, id, Boolean.TRUE.equals(call.params.get("create")), ring, members);
+        if (!o.isOk()) {
+            reply.reply(ExtResult.error(o.value, StreamCallRules.message(o.value)));
+            return;
+        }
+        reply.reply(ExtResult.ok(new JSONObject().put("call_cid", type + ":" + id).put("state", "connecting")));
+    }
+
+    private static String string(ExtCall call, String name) {
+        Object v = call.params.get(name);
+        return v instanceof String ? (String) v : null;
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamCallLedger.java
+package despia.ext.streamcall;
+
+/**
+ * The call state machine of the Stream calling template, the Java twin of the Swift
+ * StreamCallLedger. Pure Java with no Android import, so it can be tested on a plain JVM against
+ * the same state table as the Swift ledger. One call is live at a time. Every attempt gets an epoch from
+ * a counter the ledger owns, and every asynchronous result carries the epoch it was started under,
+ * so a result that arrives after leave, or for an earlier attempt of the same call id, never changes
+ * the current call. Main thread only.
+ */
+public final class StreamCallLedger {
+    public static final String RINGING = "ringing";
+    public static final String CONNECTING = "connecting";
+    public static final String JOINED = "joined";
+
+    /** ok:&lt;detail&gt;, error:&lt;code&gt;, drop (stale join result: leave that SDK call) or ignored. */
+    public static final class Outcome {
+        public final String kind;
+        public final String value;
+
+        private Outcome(String kind, String value) {
+            this.kind = kind;
+            this.value = value;
+        }
+
+        static Outcome ok(String detail) {
+            return new Outcome("ok", detail);
+        }
+
+        static Outcome error(String code) {
+            return new Outcome("error", code);
+        }
+
+        public boolean isOk() {
+            return kind.equals("ok");
+        }
+
+        public boolean isDrop() {
+            return kind.equals("drop");
+        }
+
+        public String line() {
+            return value == null ? kind : kind + ":" + value;
+        }
+    }
+
+    private static final Outcome DROP = new Outcome("drop", null);
+    private static final Outcome IGNORED = new Outcome("ignored", null);
+
+    /** The live call; fields are read by the engine, written only here. */
+    public static final class Live {
+        public final String cid;
+        public final int epoch;
+        public final boolean incoming;
+        String state;
+        Boolean wantedMuted;
+        boolean muted;
+
+        Live(String cid, int epoch, boolean incoming, String state) {
+            this.cid = cid;
+            this.epoch = epoch;
+            this.incoming = incoming;
+            this.state = state;
+        }
+
+        public String state() {
+            return state;
+        }
+
+        public Boolean wantedMuted() {
+            return wantedMuted;
+        }
+
+        public boolean muted() {
+            return muted;
+        }
+    }
+
+    private boolean configured;
+    private Live live;
+    private int epochs;
+
+    public boolean configured() {
+        return configured;
+    }
+
+    public Live live() {
+        return live;
+    }
+
+    public String status() {
+        return live == null ? "idle" : live.state;
+    }
+
+    public Outcome configure() {
+        configured = true;
+        return Outcome.ok("configured");
+    }
+
+    public Outcome logout() {
+        configured = false;
+        int n = live == null ? 0 : 1;
+        live = null;
+        return Outcome.ok("logout:" + n);
+    }
+
+    public Outcome join(String cid) {
+        if (!configured) return Outcome.error("not_configured");
+        if (live != null) return Outcome.error("busy");
+        epochs++;
+        live = new Live(cid, epochs, false, CONNECTING);
+        return Outcome.ok("connecting:" + epochs);
+    }
+
+    public Outcome incoming(String cid) {
+        if (!configured) return Outcome.error("not_configured");
+        if (live != null) return Outcome.error(live.cid.equals(cid) ? "duplicate" : "busy");
+        epochs++;
+        live = new Live(cid, epochs, true, RINGING);
+        return Outcome.ok("ringing:" + epochs);
+    }
+
+    public Outcome answered(String cid) {
+        if (live == null || !live.cid.equals(cid) || !RINGING.equals(live.state)) return IGNORED;
+        live.state = CONNECTING;
+        return Outcome.ok("connecting:" + live.epoch);
+    }
+
+    public Outcome connected(String cid, int epoch) {
+        if (live == null || !live.cid.equals(cid) || live.epoch != epoch || !CONNECTING.equals(live.state)) return DROP;
+        live.state = JOINED;
+        return Outcome.ok("joined");
+    }
+
+    public Outcome ended(String cid, int epoch, String reason) {
+        if (live == null || !live.cid.equals(cid) || live.epoch != epoch) return IGNORED;
+        live = null;
+        return Outcome.ok("ended:" + reason);
+    }
+
+    public Outcome leave() {
+        if (live == null) return Outcome.error("no_call");
+        String state = live.state;
+        live = null;
+        return Outcome.ok(RINGING.equals(state) ? "ended:declined" : "ended:local");
+    }
+
+    public Outcome setMuted(boolean muted) {
+        if (live == null) return Outcome.error("no_call");
+        live.wantedMuted = muted;
+        return Outcome.ok(JOINED.equals(live.state) ? "apply" : "pending");
+    }
+
+    public Outcome wanted() {
+        if (live == null) return Outcome.error("no_call");
+        return Outcome.ok("wanted:" + (live.wantedMuted == null ? "none" : String.valueOf(live.wantedMuted)));
+    }
+
+    public Outcome muteApplied(int epoch, boolean muted) {
+        if (live == null || live.epoch != epoch || !JOINED.equals(live.state)) return IGNORED;
+        live.muted = muted;
+        return Outcome.ok("muted:" + muted);
+    }
+
+    public Outcome reset() {
+        int n = live == null ? 0 : 1;
+        live = null;
+        return Outcome.ok("reset:" + n);
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamCallPlatform.java
+package despia.ext.streamcall;
+
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.media.AudioManager;
+import android.os.Build;
+
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+
+/** Read-only platform facts. Nothing here changes a setting, a route or an audio mode. */
+final class StreamCallPlatform {
+    private StreamCallPlatform() {}
+
+    static boolean micGranted(Context c) {
+        return ContextCompat.checkSelfPermission(c, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** BLUETOOTH_CONNECT exists from API 31; below it a headset route needs no runtime grant. */
+    static boolean bluetoothGranted(Context c) {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+                || ContextCompat.checkSelfPermission(c, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** POST_NOTIFICATIONS exists from API 33; the ring notification needs it there. */
+    static boolean canNotify(Context c) {
+        return NotificationManagerCompat.from(c).areNotificationsEnabled();
+    }
+
+    /**
+     * Whether this app is recording now (the recorder template), read from the platform's own list of
+     * active recordings (API 24). A join under it is refused with audio_busy; the template never
+     * takes the microphone from a recording in flight.
+     */
+    static boolean recordingActive(Context c) {
+        AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+        return am != null && !am.getActiveRecordingConfigurations().isEmpty();
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamCallRules.java
+package despia.ext.streamcall;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Pure rules shared by the extension and the engine, the Java twin of ios/app/StreamCallRules.swift.
+ * No Android class is used, so the JVM suite runs them with javac and java alone.
+ */
+public final class StreamCallRules {
+    private StreamCallRules() {}
+
+    /** Stream's FCM sender value (stream-video-android-core, StreamNotificationManager / push data). */
+    public static final String STREAM_SENDER = "stream.video";
+
+    /** A call type, call id, API key or provider name: 1 to 64 of letters, digits, '_' and '-'. */
+    public static boolean isName(String s) {
+        return matches(s, 64, false);
+    }
+
+    /** A Stream user id: 1 to 128 of letters, digits, '@', '_' and '-'. */
+    public static boolean isUserId(String s) {
+        return matches(s, 128, true);
+    }
+
+    private static boolean matches(String s, int max, boolean at) {
+        if (s == null || s.isEmpty() || s.length() > max) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            boolean ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                    || c == '_' || c == '-' || (at && c == '@');
+            if (!ok) return false;
+        }
+        return true;
+    }
+
+    /** Comma-separated user ids, at most 32; null when one is malformed. */
+    public static List<String> members(String raw) {
+        if (raw == null || raw.isEmpty()) return Collections.emptyList();
+        String[] parts = raw.split(",", -1);
+        if (parts.length > 32) return null;
+        List<String> out = new ArrayList<>();
+        for (String p : parts) {
+            String id = p.trim();
+            if (!isUserId(id)) return null;
+            out.add(id);
+        }
+        return out;
+    }
+
+    /** The type of "<type>:<id>", or null. */
+    public static String callType(String cid) {
+        int i = cid == null ? -1 : cid.indexOf(':');
+        if (i <= 0 || i == cid.length() - 1) return null;
+        return cid.substring(0, i);
+    }
+
+    /** The id of "<type>:<id>", or null. */
+    public static String callId(String cid) {
+        return callType(cid) == null ? null : cid.substring(cid.indexOf(':') + 1);
+    }
+
+    /**
+     * Whether an FCM data message is Stream's: its sender is "stream.video". Every other message is
+     * left to the base app's own FirebaseMessagingService, untouched.
+     */
+    public static boolean isStreamPush(Map<String, String> data) {
+        return data != null && STREAM_SENDER.equals(data.get("sender"));
+    }
+
+    /**
+     * The push state from what Stream really stored: "registered" only when its stored device is this
+     * install's current FCM token, from Firebase, under the configured provider name; else "pending".
+     */
+    public static String pushState(String deviceId, String deviceProvider, String deviceProviderName,
+                                   String fcmToken, String firebaseKey, String providerName) {
+        boolean same = deviceId != null && deviceId.equals(fcmToken)
+                && firebaseKey != null && firebaseKey.equals(deviceProvider)
+                && providerName != null && providerName.equals(deviceProviderName);
+        return same ? "registered" : "pending";
+    }
+
+    /** The message that goes with one of the template's error codes. */
+    public static String message(String code) {
+        switch (code) {
+            case "not_configured": return "call configure first";
+            case "busy": return "another call is live";
+            case "no_call": return "there is no call";
+            case "audio_busy": return "a recording holds the microphone";
+            default: return "the call was not changed";
+        }
+    }
+}
+```
+
+```java android/streamcall/src/main/java/despia/ext/streamcall/StreamPushReceiver.java
+package despia.ext.streamcall;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Hands Stream's own FCM data messages to Stream; every other message is left alone. The base app
+ * keeps its one FirebaseMessagingService and still receives every message (this receiver sits beside
+ * Firebase's receiver on the same broadcast and never aborts it). Only Google Play services holds
+ * com.google.android.c2dm.permission.SEND, so nothing else can deliver here.
+ */
+public final class StreamPushReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        Bundle extras = intent.getExtras();
+        if (extras == null) return;
+        Map<String, String> data = new HashMap<>();
+        for (String k : extras.keySet()) {
+            Object v = extras.get(k);
+            if (v instanceof String) data.put(k, (String) v);
+        }
+        if (!StreamCallRules.isStreamPush(data)) return;
+        StreamCallExtension ext = StreamCallExtension.instance;
+        if (ext == null) return;
+        ext.onStreamPush(extras);
+    }
+}
+```
+
+```xml android/streamcall/src/main/res/layout/nx_streamcall_incoming.xml
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full-screen incoming call over the lock screen: Material 3 components under the activity's
+     Theme.Material3.DayNight.NoActionBar, so it follows the system light and dark setting. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/nx_streamcall_caller"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium"
+        android:textColor="?attr/colorOnSurface" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/nx_streamcall_decline"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:text="@string/nx_streamcall_decline"
+            app:icon="@android:drawable/ic_menu_close_clear_cancel" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/nx_streamcall_answer"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/nx_streamcall_answer"
+            app:icon="@android:drawable/ic_menu_call" />
+    </LinearLayout>
+</LinearLayout>
+```
+
+```xml android/streamcall/src/main/res/values/nx_streamcall_strings.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nx_streamcall_answer">Answer</string>
+    <string name="nx_streamcall_decline">Decline</string>
+    <string name="nx_streamcall_unknown">Unknown Caller</string>
+</resources>
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="Your own code">
+
+<CodeGroup>
+
+```javascript src/lib/streamcall.js
+// Page helper for the streamcall native extension (Despia V3 hosted native extensions). It uses the
+// normal V3 command path: each call sets window.despia to a extension:// URL with a one-off callback
+// and resolves with the reply's data, or rejects with an Error whose .code is the reply's code.
+// Events arrive on the window.onStreamcall… handlers the manifest declares; subscribe with on().
+// status() is the truth: an event sent while no page was loaded is dropped.
+
+const ROUTES = ["configure", "set_token", "logout", "permissions", "join", "leave", "set_muted", "set_speaker", "status"];
+const EVENTS = {
+  incoming: "onStreamcallIncoming",
+  connecting: "onStreamcallConnecting",
+  joined: "onStreamcallJoined",
+  ended: "onStreamcallEnded",
+  muted: "onStreamcallMuted",
+  audio_route: "onStreamcallAudioRoute",
+  error: "onStreamcallError",
+  token_needed: "onStreamcallTokenNeeded",
+};
+
+let next = 0;
+const listeners = {};
+
+function call(route, params = {}) {
+  if (!ROUTES.includes(route)) return Promise.reject(new Error(`unknown route ${route}`));
+  return new Promise((resolve, reject) => {
+    const name = `__streamcall_${route}_${++next}`;
+    window[name] = (result) => {
+      delete window[name];
+      if (result && result.ok) {
+        resolve(result.data || {});
+      } else {
+        const e = new Error((result && result.error) || "the call failed");
+        e.code = (result && result.code) || "failed";
+        reject(e);
+      }
+    };
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === null) continue;
+      q.set(k, Array.isArray(v) ? v.join(",") : String(v));
+    }
+    q.set("callback", name);
+    window.despia = `extension://streamcall/${route}?${q.toString()}`;
+  });
+}
+
+for (const [event, handler] of Object.entries(EVENTS)) {
+  window[handler] = (data) => (listeners[event] || []).forEach((fn) => fn(data));
+}
+
+export function on(event, fn) {
+  if (!EVENTS[event]) throw new Error(`unknown event ${event}`);
+  (listeners[event] = listeners[event] || []).push(fn);
+  return () => { listeners[event] = listeners[event].filter((x) => x !== fn); };
+}
+
+// apiKey, userId and token come from your own server (see server/stream-token.example.js).
+// tokenUrl is optional: an https URL on a host the manifest lists, POSTed {user_id, expired_token}
+// when the token expires, also with no page loaded; it answers {token}.
+export const configure = ({ apiKey, userId, userName, token, tokenUrl, voipProvider, fcmProvider }) =>
+  call("configure", { api_key: apiKey, user_id: userId, user_name: userName, token, token_url: tokenUrl,
+    voip_provider: voipProvider, fcm_provider: fcmProvider });
+export const setToken = (token) => call("set_token", { token });
+export const logout = () => call("logout");
+export const permissions = (request = false) => call("permissions", { request });
+// members: user ids to ring (ring: true needs at least one); create: create the call if it is new.
+export const join = ({ callType = "audio_call", callId, create = true, ring = false, members = [] }) =>
+  call("join", { call_type: callType, call_id: callId, create, ring, members });
+export const leave = () => call("leave");
+export const setMuted = (muted) => call("set_muted", { muted });
+export const setSpeaker = (on) => call("set_speaker", { on });
+export const status = () => call("status");
+
+// With no token_url, answer token_needed within 10 seconds or the call ends with token_expired.
+export function refreshTokensWith(fetchToken) {
+  return on("token_needed", async ({ user_id }) => {
+    try { await setToken(await fetchToken(user_id)); } catch (e) { /* the call ends with token_expired */ }
+  });
+}
+```
+
+```javascript server/stream-token.example.js
+// The developer's token endpoint for the streamcall template (example, Node 18+, Express).
+// The Stream API secret stays on this server, read from the environment; it is never sent to the
+// app. Install: npm install express @stream-io/node-sdk jsonwebtoken
+// Stream user tokens are HS256 JWTs signed with the API secret; the refresh endpoint checks that
+// signature with jsonwebtoken. Check both calls against the SDK versions you install.
+import express from "express";
+import jwt from "jsonwebtoken";
+import { StreamClient } from "@stream-io/node-sdk";
+
+const apiKey = process.env.STREAM_API_KEY;
+const secret = process.env.STREAM_API_SECRET;
+if (!apiKey || !secret) throw new Error("set STREAM_API_KEY and STREAM_API_SECRET");
+const stream = new StreamClient(apiKey, secret);
+const MAX_RENEW_AGE_SECONDS = 7 * 24 * 60 * 60;
+const app = express();
+app.use(express.json({ limit: "8kb" }));
+
+// Your own sign-in decides who the user is. This example trusts a session your middleware set.
+function signedInUser(req) {
+  return req.user && req.user.id;
+}
+
+// The page calls this, then passes { apiKey, userId, token } to streamcall.configure().
+app.post("/stream/token", (req, res) => {
+  const userId = signedInUser(req);
+  if (!userId) return res.status(401).json({ error: "sign in first" });
+  const token = stream.generateUserToken({ user_id: userId, validity_in_seconds: 60 * 60 });
+  res.json({ apiKey, userId, token });
+});
+
+// Optional refresh endpoint (the manifest's token_url host list must name this host). The app POSTs
+// { user_id, expired_token } when a token expires, also with no page loaded. Only a token this
+// server signed for that user is renewed, and only within MAX_RENEW_AGE_SECONDS after it expired:
+// a token found later (in a log, on a lost device) is no longer a credential, and the user signs in
+// again through /stream/token. Shorten the window to your own session policy.
+app.post("/stream/refresh", (req, res) => {
+  const { user_id: userId, expired_token: expired } = req.body || {};
+  if (typeof userId !== "string" || typeof expired !== "string") return res.status(400).json({ error: "bad request" });
+  let claims;
+  try {
+    claims = jwt.verify(expired, secret, { algorithms: ["HS256"], ignoreExpiration: true });
+  } catch (e) {
+    return res.status(401).json({ error: "not our token" });
+  }
+  if (!claims || claims.user_id !== userId) return res.status(401).json({ error: "not our token" });
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof claims.exp !== "number" || now - claims.exp > MAX_RENEW_AGE_SECONDS) {
+    return res.status(401).json({ error: "sign in again" });
+  }
+  const token = stream.generateUserToken({ user_id: userId, validity_in_seconds: 60 * 60 });
+  res.json({ token });
+});
+
+app.listen(process.env.PORT || 8787);
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="Approval policy">
+
+<CodeGroup>
+
+```json streamcall.policy.json
+{
+  "allow_voip": true,
+  "manifest_merge_directives": true,
+  "restricted": [
+    "android.permission.USE_FULL_SCREEN_INTENT"
+  ],
+  "exposed_components": {
+    "android": [
+      {
+        "tag": "receiver",
+        "name": "androidx.core.telecom.internal.MuteStateReceiver",
+        "exported": true,
+        "enabled": null,
+        "permission": null,
+        "intent_filters": [
+          {
+            "tag": "intent-filter",
+            "attrs": {},
+            "children": [
+              {
+                "tag": "action",
+                "attrs": {
+                  "name": "android.media.action.MICROPHONE_MUTE_CHANGED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "receiver",
+        "name": "despia.ext.streamcall.StreamPushReceiver",
+        "exported": true,
+        "enabled": null,
+        "permission": "com.google.android.c2dm.permission.SEND",
+        "intent_filters": [
+          {
+            "tag": "intent-filter",
+            "attrs": {},
+            "children": [
+              {
+                "tag": "action",
+                "attrs": {
+                  "name": "com.google.android.c2dm.intent.RECEIVE"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "service",
+        "name": "androidx.core.telecom.internal.JetpackConnectionService",
+        "exported": true,
+        "enabled": null,
+        "permission": "android.permission.BIND_TELECOM_CONNECTION_SERVICE",
+        "intent_filters": [
+          {
+            "tag": "intent-filter",
+            "attrs": {},
+            "children": [
+              {
+                "tag": "action",
+                "attrs": {
+                  "name": "android.telecom.ConnectionService"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+</CodeGroup>
+
+  </Tab>
+</Tabs>
+
+---
+
+## Using it from your web app
+
+```javascript
+import { configure, join, leave, setMuted, on, refreshTokensWith } from "./lib/streamcall.js";
+
+const getToken = async () => (await fetch("/stream/token", { method: "POST" })).json();
+const { apiKey, userId, token } = await getToken();
+await configure({ apiKey, userId, token, tokenUrl: "https://tokens.example.com/stream/refresh" });
+refreshTokensWith(async () => (await getToken()).token);
+
+on("incoming", (c) => console.log("ringing", c.call_cid, c.caller_name)); // the system call screen rings too
+on("joined", (c) => console.log("in call", c.call_cid, c.audio_route));
+on("ended", (c) => console.log("ended", c.call_cid, c.reason));
+
+await join({ callId: "support-42", ring: true, members: ["agent-7"] });
+// Later: setMuted(true); leave();
+```
+
+The helper in `src/lib/streamcall.js` gives one promise per route and one handler per event: `configure`, `setToken`, `logout`, `permissions`, `join`, `leave`, `setMuted`, `setSpeaker`, `status`, `on(event)` and `refreshTokensWith`. It rejects with an `Error` whose `code` is the answer's code.
+
+### Credentials
+
+Nothing is built into the app. `configure` takes the API key, the user and a token from your page, which got them from your server. They are stored on the device (the Keychain on iOS, the extension's private storage on Android), so a push can ring with no page loaded. `logout` ends a live call, removes the push device from Stream, and deletes them. The token never appears in a reply, an event or a log line.
+
+When the token expires, the app first asks the `token_url` you configured (this works with no page loaded). Without one it sends `token_needed` and waits 10 seconds for `set_token`. If no token comes, the call ends with the reason `token_expired`. The example server renews a token only within 7 days after it expired.
+
+### Routes
+
+Every route answers once in `streamcall<Route>` and `onStreamcall<Route>`, for example `streamcallJoin` and `onStreamcallJoin`.
+
+| Route         | Parameters                                                                                              | Answer `data` |
+| ------------- | ------------------------------------------------------------------------------------------------------- | ------------- |
+| `configure`   | `api_key`, `user_id`, `token` (required), `user_name`, `token_url` (https, an approved host), `voip_provider`, `fcm_provider` | `user_id`, `push` (the push registration state) |
+| `set_token`   | `token` (required)                                                                                      | An empty object |
+| `logout`      | none                                                                                                    | An empty object |
+| `permissions` | `request` (bool)                                                                                        | `microphone`, `notifications` |
+| `join`        | `call_type` (required, the helper defaults to `audio_call`), `call_id` (required), `create`, `ring`, `members` (comma-separated user ids; `ring` needs at least one) | `state: "connecting"` and the call |
+| `leave`       | none                                                                                                    | `call_cid`, `state: "ended"` |
+| `set_muted`   | `muted` (bool, required)                                                                                | `muted`, `call_cid` |
+| `set_speaker` | `on` (bool, required)                                                                                   | The audio route |
+| `status`      | none                                                                                                    | `configured`, `state`, `push`, `audio_route`, `user_id`, `call_cid`, `muted`, `speaker` |
+
+`status` is the truth. An event sent while no page is loaded is dropped.
+
+### Events
+
+Every event carries `call_cid` and a growing `seq`.
+
+| Event          | Callback                    | Scope |
+| -------------- | --------------------------- | ----- |
+| `incoming`     | `onStreamcallIncoming`      | `app` |
+| `connecting`   | `onStreamcallConnecting`    | `app` |
+| `joined`       | `onStreamcallJoined`        | `app` |
+| `ended`        | `onStreamcallEnded`         | `app`. Carries `reason` |
+| `muted`        | `onStreamcallMuted`         | `app` |
+| `audio_route`  | `onStreamcallAudioRoute`    | `app` |
+| `error`        | `onStreamcallError`         | `app` |
+| `token_needed` | `onStreamcallTokenNeeded`   | `app` |
+
+### Error codes
+
+Besides the [standard codes](/experiments/v3-extensions#error-codes): `not_configured`, `busy`, `no_call`, `audio_busy` (a join while the recorder sample records), `permission_denied`, `connect_failed`, `storage_failed`, `bad_token` and, for a failed audio route change, `route_failed`.
+
+---
+
+## Permissions and capabilities
+
+<Tabs>
+  <Tab title="iOS">
+    - **Microphone.** `NSMicrophoneUsageDescription`, under `requires.usage_descriptions`.
+    - **Background mode.** `audio`.
+    - **VoIP.** The manifest claims the app's one VoIP owner (`claims.voip`). Stream's CallKit service handles the system call screen. The sample never creates a second PushKit registry.
+    - **Audio.** The sample never configures the audio session. Stream and the system do.
+  </Tab>
+  <Tab title="Android">
+    - **Permissions.** `RECORD_AUDIO` and `BLUETOOTH_CONNECT`, under `requires.permissions`, and the restricted `USE_FULL_SCREEN_INTENT` for the Lock Screen ring.
+    - **Push.** Your app keeps its one Firebase messaging service. `StreamPushReceiver` hands only Stream's messages to Stream.
+    - **Call screen.** `CallIntentActivity`, opened by Stream's call notification, with Answer and Decline on the Lock Screen.
+    - **Removed pieces.** The module manifest removes Stream's camera, screen-share and livestream pieces.
+    - **Exported components.** The push receiver, and Android Telecom's connection service and mute receiver, listed in the approval policy exactly as the build shows them.
+  </Tab>
+</Tabs>
+
+---
+
+## Platform limits
+
+- **One VoIP owner.** With the built-in Stream option on, the build refuses this template.
+- **Android Stream versions.** Stream's newer Android releases are on its own Maven repository only. See Files.
+- **Switching users on Android.** When you configure another user, the old user's push device on Stream's server may remain. This is not verified.
+- **Not verified yet.** The sample has not run on a device, so incoming ring with the app closed, answering from the Lock Screen and the push receiver beside Firebase's own receiver are all untested.

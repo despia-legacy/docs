@@ -16,9 +16,9 @@ Bytes cross the bridge as lower-case `hex` (or `b64` in parameters). No native o
   **Experimental. V3 only.** This is a template, not a Despia feature. It is never migrated to V4. You own and maintain this code once it is in your app. Despia does not support customised code. Read [V3 Extensions](/experiments/v3-extensions) first.
 </Warning>
 
-<Info>
-  **Not device-tested yet.** The central role has been built into the V3 app for iOS and Android. The peripheral role in this revision has not been built into an app yet. Nothing has run on a phone yet, and Bluetooth cannot run in the iOS simulator. Scan, connect, GATT, the server, advertising, background use and restoration all need a phone and a second Bluetooth device.
-</Info>
+<Note>
+  **Tested on:** the peripheral role on an iPhone 15, against a Mac acting as the central. The central role has not been tested yet, and Android has not been run on an emulator or a device. Bluetooth does not run in the iOS simulator.
+</Note>
 
 ---
 
@@ -26,7 +26,9 @@ Bytes cross the bridge as lower-case `hex` (or `b64` in parameters). No native o
 
 Copy every file to the path in its title. Paths are under `public/despia/ble/` in your web app, except `extensions.json`, which goes in `public/despia/`.
 
-Before you build, change `client_id`, `ios_bundle_id` and `android_package` in `public/despia/extensions.json` to your own.
+Before you build, change `client_id`, `ios_bundle_id` and `android_package` in `public/despia/extensions.json` to your own. `public/` is the folder your site serves from its root (in SvelteKit, write `static/`). The paths must stay as written, because the manifest names them. Despia reviews and approves these exact files before a build includes them.
+
+In Despia, turn on the Bluetooth purpose string (`NSBluetoothAlwaysUsageDescription`) and write the sentence your users see in the permission prompt (iOS), and turn on nearby devices, which grants `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` and `BLUETOOTH_ADVERTISE` on Android 12 and later (Android). The Bluetooth background modes come from the manifest. The two AndroidX libraries must be the versions your app's base build already resolves. The build refuses others.
 
 <Tabs>
   <Tab title="Manifest">
@@ -35,7 +37,6 @@ Before you build, change `client_id`, `ios_bundle_id` and `android_package` in `
 
 ```json manifest.json
 {
-  "id": "ble",
   "version": "1.0.0",
   "bridge": {
     "routes": [
@@ -680,11 +681,10 @@ Before you build, change `client_id`, `ios_bundle_id` and `android_package` in `
 
 ```json public/despia/extensions.json
 {
-  "manifest_version": 1,
   "app": {
-    "client_id": "nx-pilot",
-    "ios_bundle_id": "com.despia.nxpilot",
-    "android_package": "com.despia.nxpilot"
+    "client_id": "com.example.app",
+    "ios_bundle_id": "com.example.app",
+    "android_package": "com.example.app"
   },
   "extensions": [
     "ble"
@@ -1184,7 +1184,7 @@ final class BleCentralRadio: NSObject, @MainActor CBCentralManagerDelegate, @Mai
                 }
             }
             let connected = p.state == .connected
-            let gen = core.restored(id, connected: connected, subscribed: subscribed)
+            let gen = core.restored(id, connected: connected, subscribed: subscribed, pending: p.state == .connecting)
             let s = Session(gen, p)
             s.connected = connected
             s.reconnectWhenOn = p.state == .disconnected
@@ -1216,14 +1216,20 @@ final class BleCentralRadio: NSObject, @MainActor CBCentralManagerDelegate, @Mai
         dispatchPrecondition(condition: .onQueue(.main))
         guard let s = session(peripheral) else { return }
         sessions[peripheral.identifier.uuidString] = nil
-        core.disconnected(peripheral.identifier.uuidString, s.gen, "failed")
+        core.disconnected(peripheral.identifier.uuidString, s.gen, "failed", error: BleCentralRadio.platformError(error))
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         dispatchPrecondition(condition: .onQueue(.main))
         guard let s = session(peripheral) else { return }
         sessions[peripheral.identifier.uuidString] = nil
-        core.disconnected(peripheral.identifier.uuidString, s.gen, "remote")
+        core.disconnected(peripheral.identifier.uuidString, s.gen, "remote", error: BleCentralRadio.platformError(error))
+    }
+
+    /// CoreBluetooth's error as the page sees it: its domain, code and description, never dropped.
+    static func platformError(_ error: Error?) -> BleObj? {
+        guard let e = error as NSError? else { return nil }
+        return BleCore.platformError(e.domain, e.code, e.localizedDescription)
     }
 
     // MARK: CBPeripheralDelegate (main queue)
@@ -1337,7 +1343,7 @@ final class BleCentralRadio: NSObject, @MainActor CBCentralManagerDelegate, @Mai
 import Foundation
 
 /// Every decision of the BLE extension, as one state machine on the main thread. Foundation only:
-/// no CoreBluetooth, so the same vector table (tests/vectors/ble_core.json) runs against this type
+/// no CoreBluetooth, so the same test table runs against this type
 /// with swiftc and against its Java twin BleCore.java. The radio and extension files only translate
 /// platform callbacks into the inputs below and execute what the `BlePort` is asked to do.
 ///
@@ -1433,6 +1439,8 @@ final class BleCore {
     static let queueMax = 64
     static let opMs = 10000
     static let closeMs = 2000
+    /// A connect's timeout when no call gave one (the bridge's `connect` default), in ms.
+    static let connectDefaultMs = 10_000
     static let flushMs = 50
     static let batchMax = 100
     static let journalRecords = 2000
@@ -1445,7 +1453,7 @@ final class BleCore {
     let run: String
     private(set) var epoch = 1
     private(set) var adapterState = "unknown"
-    private var nextGen = 0, nextScan = 0, nextOp = 0, nextSeq = 0
+    private var nextGen = 0, nextScan = 0, nextOp = 0, nextSeq = 0, nextPending = 0
     private(set) var staleDrops = 0
     private var links: [String: Link] = [:]
     private var linkOrder: [String] = []
@@ -1473,6 +1481,8 @@ final class BleCore {
         var background = false
         var mtu = 23
         var connectCall = -1
+        /// The token of the timer bounding an attempt no fresh connect started (restored or adopted).
+        var pendingTimer = 0
         var closed = false
         var queue: [Op] = []
         var inFlight: Op?
@@ -1725,6 +1735,69 @@ final class BleCore {
 
     static func obj(_ pairs: (String, Any)...) -> BleObj {
         BleObj(pairs)
+    }
+
+    /// The platform's own error codes, by domain: the constant's name and a readable reason. From
+    /// the iOS SDK's CBError.h (CBErrorDomain) and the android-36 platform's BluetoothGatt constants;
+    /// a code with no public name (Android's 133, for one) keeps no name and its radio reason.
+    static let errorNames: [String: [Int: (String, String)]] = [
+        "CBErrorDomain": [
+            0: ("CBErrorUnknown", "unknown"),
+            1: ("CBErrorInvalidParameters", "invalid_parameters"),
+            2: ("CBErrorInvalidHandle", "invalid_handle"),
+            3: ("CBErrorNotConnected", "not_connected"),
+            4: ("CBErrorOutOfSpace", "out_of_space"),
+            5: ("CBErrorOperationCancelled", "operation_cancelled"),
+            6: ("CBErrorConnectionTimeout", "connection_timeout"),
+            7: ("CBErrorPeripheralDisconnected", "peripheral_disconnected"),
+            8: ("CBErrorUUIDNotAllowed", "uuid_not_allowed"),
+            9: ("CBErrorAlreadyAdvertising", "already_advertising"),
+            10: ("CBErrorConnectionFailed", "connection_failed"),
+            11: ("CBErrorConnectionLimitReached", "connection_limit_reached"),
+            12: ("CBErrorUnknownDevice", "unknown_device"),
+            13: ("CBErrorOperationNotSupported", "operation_not_supported"),
+            14: ("CBErrorPeerRemovedPairingInformation", "peer_removed_pairing_information"),
+            15: ("CBErrorEncryptionTimedOut", "encryption_timeout"),
+            16: ("CBErrorTooManyLEPairedDevices", "too_many_le_paired_devices"),
+            17: ("CBErrorLeGattExceededBackgroundNotificationLimit", "background_notification_limit_exceeded"),
+            18: ("CBErrorLeGattNearBackgroundNotificationLimit", "background_notification_limit_near"),
+        ],
+        "android.bluetooth.BluetoothGatt": [
+            2: ("GATT_READ_NOT_PERMITTED", "read_not_permitted"),
+            3: ("GATT_WRITE_NOT_PERMITTED", "write_not_permitted"),
+            5: ("GATT_INSUFFICIENT_AUTHENTICATION", "insufficient_authentication"),
+            6: ("GATT_REQUEST_NOT_SUPPORTED", "request_not_supported"),
+            7: ("GATT_INVALID_OFFSET", "invalid_offset"),
+            8: ("GATT_INSUFFICIENT_AUTHORIZATION", "insufficient_authorization"),
+            13: ("GATT_INVALID_ATTRIBUTE_LENGTH", "invalid_attribute_length"),
+            15: ("GATT_INSUFFICIENT_ENCRYPTION", "insufficient_encryption"),
+            143: ("GATT_CONNECTION_CONGESTED", "connection_congested"),
+            147: ("GATT_CONNECTION_TIMEOUT", "connection_timeout"),
+            257: ("GATT_FAILURE", "failure"),
+        ],
+    ]
+
+    /// The platform error of a link that went down, as the radio reports it, with the code's
+    /// platform name when it has one.
+    static func platformError(_ domain: String, _ code: Int, _ message: String) -> BleObj {
+        let e = obj(("domain", domain), ("code", code), ("message", message))
+        if let n = errorNames[domain]?[code] { e["name"] = n.0 }
+        return e
+    }
+
+    /// The link event's reason for an error: the code's readable reason, else the radio's.
+    static func errorReason(_ e: BleObj?, _ fallback: String) -> String {
+        guard let e = e, let d = e["domain"] as? String, let c = e["code"] as? Int,
+              let n = errorNames[d]?[c] else { return fallback }
+        return n.1
+    }
+
+    /// " (domain code name: message)" for a failed call's message, or "" without an error.
+    static func errorText(_ e: BleObj?) -> String {
+        guard let e = e else { return "" }
+        func text(_ k: String) -> String { e[k].map { "\($0)" } ?? "" }
+        let name = e["name"].map { " \($0)" } ?? ""
+        return " (\(text("domain")) \(text("code"))\(name): \(text("message")))"
     }
 
     // MARK: replies and records
@@ -2004,7 +2077,16 @@ final class BleCore {
             fail(call, "unavailable", "Bluetooth is \(adapterState)")
             return
         }
-        if links[id] != nil {
+        if let l = links[id] {
+            // A pending attempt no call owns (restored by iOS, or an automatic reconnect) is
+            // adopted: this call owns it from now on, with its own timeout, and the page's `auto` wins.
+            if l.state == "connecting" && l.connectCall < 0 && !l.closed {
+                l.connectCall = call
+                l.auto = auto
+                l.background = false
+                boundPending(l, seconds * 1000)
+                return
+            }
             fail(call, "busy", "this device is linked or connecting")
             return
         }
@@ -2044,8 +2126,18 @@ final class BleCore {
         updateHold()
     }
 
-    /// iOS state restoration: a peripheral the system kept for this app. Returns its gen.
-    func restored(_ id: String, connected: Bool, subscribed: [String]) -> Int {
+    /// Bounds an attempt no fresh connect started: when the timer ends it still connecting, the
+    /// attempt is closed (the radio cancels it) and reported `timeout`.
+    private func boundPending(_ l: Link, _ ms: Int) {
+        nextPending += 1
+        l.pendingTimer = nextPending
+        port.timer("pending", nextPending, ms)
+    }
+
+    /// iOS state restoration: a peripheral the system kept for this app. Returns its gen. `pending`:
+    /// iOS handed it back still connecting; the attempt is kept, bounded by the default connect
+    /// timeout, and ends there unless a page `connect` adopts it (that call's timeout and `auto`).
+    func restored(_ id: String, connected: Bool, subscribed: [String], pending: Bool = false) -> Int {
         nextGen += 1
         let l = Link(id, nextGen)
         l.auto = true
@@ -2055,7 +2147,12 @@ final class BleCore {
             l.setSub(k, "notify")
         }
         putLink(l)
-        if connected { l.state = "connected" }
+        if connected {
+            l.state = "connected"
+        } else if pending {
+            l.auto = false
+            boundPending(l, BleCore.connectDefaultMs)
+        }
         return l.gen
     }
 
@@ -2093,10 +2190,12 @@ final class BleCore {
     }
 
     /// The platform reported that attempt `gen` disconnected or failed to connect.
-    func disconnected(_ id: String, _ gen: Int, _ reason: String) {
+    /// `error`: the platform's own error, when it gave one ({domain, code, message}); it reaches the
+    /// failed connect call's message and the `link` record unchanged.
+    func disconnected(_ id: String, _ gen: Int, _ reason: String, error: BleObj? = nil) {
         let l = links[id]
         if current(l, gen) {
-            _ = closeLink(l!, reason, down: true)
+            _ = closeLink(l!, BleCore.errorReason(error, reason), down: true, error: error)
             return
         }
         if let c = closing[id], c.gen == gen {
@@ -2125,7 +2224,7 @@ final class BleCore {
     /// The one cleanup owner (rule 4). Runs to the end, idempotent. `down`: the platform already
     /// reported the link down, so nothing is asked of it. Returns whether the close is confirmed now.
     @discardableResult
-    func closeLink(_ l: Link, _ reason: String, down: Bool) -> Bool {
+    func closeLink(_ l: Link, _ reason: String, down: Bool, error: BleObj? = nil) -> Bool {
         if l.closed { return true }
         l.closed = true
         var ops: [Op] = []
@@ -2142,7 +2241,7 @@ final class BleCore {
             let code = reason == "timeout" ? "connect_timeout"
                 : reason == "adapter" ? "unavailable"
                 : reason == "requested" ? "link_lost" : "connect_failed"
-            fail(l.connectCall, code, "the connection ended: \(reason)")
+            fail(l.connectCall, code, "the connection ended: \(reason)" + BleCore.errorText(error))
             l.connectCall = -1
         }
         if links[l.id] === l { removeLink(l.id) }
@@ -2154,7 +2253,9 @@ final class BleCore {
                 port.timer("close", l.gen, BleCore.closeMs)
             }
         }
-        record("link", BleCore.obj(("id", l.id), ("link", l.gen), ("state", "disconnected"), ("reason", reason)))
+        let rec = BleCore.obj(("id", l.id), ("link", l.gen), ("state", "disconnected"), ("reason", reason))
+        if let e = error { rec["error"] = e }
+        record("link", rec)
         if l.auto && reason != "requested" && on {
             if let c = closing[l.id] {
                 c.reconnect = true
@@ -3124,7 +3225,7 @@ final class BleCore {
     /// A JSON value, null when absent (BleObj keeps no nil).
     private static func nul(_ v: Any?) -> Any { v ?? NSNull() }
 
-    /// What this platform really advertises of the request (P3 to P5).
+    /// What this platform really advertises of the request.
     private func applied(_ p: BleObj) -> BleObj {
         BleCore.obj(("name", BleCore.nul(BleCore.isSet(p["name"]) ? (android ? "adapter" : "given") : nil)),
                     ("manufacturer", android && BleCore.isSet(p["manufacturerId"])),
@@ -3280,7 +3381,7 @@ final class BleCore {
         port.timer("persist", 0, BleCore.persistMs)
     }
 
-    /// BL-P12, iOS only. What launch does with ble-server.json once the peripheral manager settled:
+    /// iOS only. What launch does with ble-server.json once the peripheral manager settled:
     /// absent, none; unreadable, move it aside (never overwritten); readable and iOS restored the
     /// server, keep it; readable and no restore call came, an ordinary launch: delete it.
     static func serverFileAction(_ file: String, restored: Bool) -> String {
@@ -3293,7 +3394,7 @@ final class BleCore {
         return "delete"
     }
 
-    /// iOS state restoration of the server (BL-P12). `snapshot`: ble-server.json as JSONSerialization
+    /// iOS state restoration of the server. `snapshot`: ble-server.json as JSONSerialization
     /// read it, nil when missing or unreadable. `restoredServices`: the service UUIDs iOS kept;
     /// `wasAdvertising`: whether iOS kept advertising. A restored service the file does not describe
     /// keeps its UUID with no values: reads of it answer `unlikely`. Records `restored`.
@@ -3354,6 +3455,12 @@ final class BleCore {
                 return
             }
             stale("connect timer \(token)")
+        case "pending":
+            for l in orderedLinks() where l.pendingTimer == token && !l.closed && l.state == "connecting" {
+                closeLink(l, "timeout", down: false)
+                return
+            }
+            stale("pending timer \(token)")
         case "op":
             for l in orderedLinks() {
                 if let o = l.inFlight, o.op == token, !l.closed {
@@ -3462,7 +3569,7 @@ import Foundation
 /// Universal Bluetooth LE for the page: scan, connect, GATT client, GATT server, advertising and raw
 /// bytes. Every decision is `BleCore`'s (shared vector table with the Android twin);
 /// `BleCentralRadio` and `BlePeripheralRadio` talk to CoreBluetooth. This type owns the bridge side: route parameters, the Bluetooth authorization, one
-/// reply per call, events and timers. Main actor, as NativeExtension requires (NX-G032); the core's
+/// reply per call, events and timers. Main actor, as NativeExtension requires; the core's
 /// port is an isolated conformance (`@MainActor BlePort`), so the core runs on the main actor too.
 ///
 /// The CBCentralManager is created only when a route needs Bluetooth (the permission prompt can
@@ -3917,7 +4024,7 @@ final class BlePeripheralRadio: NSObject, @MainActor CBPeripheralManagerDelegate
         if on { manager?.stopAdvertising() }
     }
 
-    // MARK: the server file (BL-P12)
+    // MARK: the server file
 
     func persist(_ snapshot: BleObj?) {
         do {
@@ -3931,6 +4038,27 @@ final class BlePeripheralRadio: NSObject, @MainActor CBPeripheralManagerDelegate
         } catch {
             log("ble-server.json not written: \((error as NSError).domain) \((error as NSError).code)")
         }
+    }
+
+    /// Moved-aside server files are kept for diagnosis, at most this many, the newest.
+    static let asideKept = 3
+
+    /// Removes moved-aside server files beyond the newest `asideKept`.
+    static func pruneAside(_ dir: URL) {
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasPrefix("ble-server.unreadable-") && $0.hasSuffix(".json") }
+        for name in asideOverflow(names) {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+        }
+    }
+
+    /// The moved-aside names to remove: all but the newest `asideKept`, by their time stamp.
+    static func asideOverflow(_ names: [String]) -> [String] {
+        func stamp(_ n: String) -> Int {
+            Int(n.dropFirst("ble-server.unreadable-".count).dropLast(".json".count)) ?? 0
+        }
+        let newest = names.sorted { stamp($0) > stamp($1) }
+        return Array(newest.dropFirst(asideKept))
     }
 
     /// Once the first state settled: adopt what iOS restored, or end an ordinary launch's file.
@@ -3947,9 +4075,10 @@ final class BlePeripheralRadio: NSObject, @MainActor CBPeripheralManagerDelegate
         let restored = restoredServices != nil || restoredAdvertising
         switch BleCore.serverFileAction(state, restored: restored) {
         case "move_aside":
-            let aside = file.deletingLastPathComponent()
-                .appendingPathComponent("ble-server.unreadable-\(Int(Date().timeIntervalSince1970)).json")
+            let dir = file.deletingLastPathComponent()
+            let aside = dir.appendingPathComponent("ble-server.unreadable-\(Int(Date().timeIntervalSince1970)).json")
             try? FileManager.default.moveItem(at: file, to: aside)
+            BlePeripheralRadio.pruneAside(dir)
         case "delete":
             try? FileManager.default.removeItem(at: file)
         default:
@@ -4101,7 +4230,7 @@ final class BlePeripheralRadio: NSObject, @MainActor CBPeripheralManagerDelegate
 
 ```groovy android/ble/build.gradle
 // Engineer-owned module build. It runs only in the offline, credential-free NX compile job. Its
-// dependencies are the base app's own coordinates (d-android app/build.gradle), so the offline
+// dependencies are the base app's own coordinates (the base app's own app/build.gradle), so the offline
 // build resolves them without lock pins.
 apply plugin: 'com.android.library'
 
@@ -4181,6 +4310,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.ParcelUuid;
@@ -4508,8 +4638,15 @@ final class AndroidRadio {
         if (newState == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
             // The platform's own duty: a disconnected BluetoothGatt is closed by its owner.
             closeGatt(s);
-            core.disconnected(s.id, s.gen, status == BluetoothGatt.GATT_SUCCESS ? "remote" : "status " + status);
+            core.disconnected(s.id, s.gen, status == BluetoothGatt.GATT_SUCCESS ? "remote" : "status " + status,
+                    status == BluetoothGatt.GATT_SUCCESS ? null : gattError(status));
         }
+    }
+
+    /** The GATT status of a failed or dropped link as the page sees it (the same shape as iOS's
+     *  NSError domain, code and description). */
+    static java.util.Map<String, Object> gattError(int status) {
+        return BleCore.platformError("android.bluetooth.BluetoothGatt", status, "GATT status " + status);
     }
 
     private void closeGatt(Session s) {
@@ -5115,6 +5252,7 @@ final class AndroidRadio {
             return null;
         }
         if (!foreground) return "not_foreground no activity is started";
+        if (!connectedDeviceAllowed()) return "not_permitted no permission for a connectedDevice foreground service";
         Intent i = new Intent(app, BleLinkService.class).putExtra(BleLinkService.EXTRA_HOLD, hold);
         try {
             if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(i);
@@ -5127,6 +5265,28 @@ final class AndroidRadio {
         }
         return null;
     }
+
+    /**
+     * Android 14 (API 34) refuses {@code startForeground} with type {@code connectedDevice} unless the
+     * app holds one of the permissions that type lists, and a service started with
+     * {@code startForegroundService} that stops before entering the foreground crashes the app. So
+     * the service is only started when the type's prerequisite holds. The list is the platform's,
+     * from the foreground service types page (developer.android.com, read 2026-11-20).
+     */
+    boolean connectedDeviceAllowed() {
+        if (Build.VERSION.SDK_INT < 34) return true;
+        for (String p : CONNECTED_DEVICE_PERMISSIONS) {
+            if (app.checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED) return true;
+        }
+        return false;
+    }
+
+    static final String[] CONNECTED_DEVICE_PERMISSIONS = {
+        "android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_ADVERTISE",
+        "android.permission.BLUETOOTH_SCAN", "android.permission.CHANGE_NETWORK_STATE",
+        "android.permission.CHANGE_WIFI_STATE", "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.NFC", "android.permission.TRANSMIT_IR", "android.permission.UWB_RANGING",
+    };
 }
 ```
 
@@ -5135,6 +5295,7 @@ package despia.ext.ble;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -5145,7 +5306,7 @@ import java.util.Set;
 
 /**
  * Every decision of the BLE extension, as one state machine on the main thread. Pure Java: no
- * android import, so the same vector table (tests/vectors/ble_core.json) runs against this class on a
+ * android import, so the same test table runs against this class on a
  * plain JVM and against its Swift twin BleCore.swift. The radio files only translate platform
  * callbacks into the inputs below and execute what the {@link Port} is asked to do.
  *
@@ -5228,6 +5389,8 @@ public final class BleCore {
     public static final int QUEUE_MAX = 64;
     public static final long OP_MS = 10000;
     public static final long CLOSE_MS = 2000;
+    /** A connect's timeout when no call gave one (the bridge's {@code connect} default), in ms. */
+    public static final int CONNECT_DEFAULT_MS = 10_000;
     public static final long FLUSH_MS = 50;
     public static final int BATCH_MAX = 100;
     public static final int JOURNAL_RECORDS = 2000;
@@ -5240,7 +5403,7 @@ public final class BleCore {
     final String run;
     int epoch = 1;
     String adapter = "unknown";
-    int nextGen, nextScan, nextOp, nextSeq;
+    int nextGen, nextScan, nextOp, nextSeq, nextPending;
     public int staleDrops;
     final Map<String, Link> links = new LinkedHashMap<>();
     final Map<String, Closing> closing = new LinkedHashMap<>();
@@ -5264,6 +5427,8 @@ public final class BleCore {
         boolean background;
         int mtu = 23;
         int connectCall = -1;
+        /** The token of the timer bounding an attempt no fresh connect started (restored or adopted). */
+        int pendingTimer;
         boolean closed;
         final ArrayDeque<Op> queue = new ArrayDeque<>();
         Op inFlight;
@@ -5500,13 +5665,80 @@ public final class BleCore {
         }
     }
 
+    /**
+     * The platform's own error codes, by domain: the constant's name and a readable reason. From the
+     * iOS SDK's CBError.h (CBErrorDomain) and the android-36 platform's BluetoothGatt constants; a
+     * code with no public name (Android's 133, for one) keeps no name and its radio reason.
+     */
+    static final Map<String, Map<Integer, String[]>> ERROR_NAMES = new HashMap<>();
+    static {
+        Map<Integer, String[]> cb = new HashMap<>();
+        cb.put(0, new String[] {"CBErrorUnknown", "unknown"});
+        cb.put(1, new String[] {"CBErrorInvalidParameters", "invalid_parameters"});
+        cb.put(2, new String[] {"CBErrorInvalidHandle", "invalid_handle"});
+        cb.put(3, new String[] {"CBErrorNotConnected", "not_connected"});
+        cb.put(4, new String[] {"CBErrorOutOfSpace", "out_of_space"});
+        cb.put(5, new String[] {"CBErrorOperationCancelled", "operation_cancelled"});
+        cb.put(6, new String[] {"CBErrorConnectionTimeout", "connection_timeout"});
+        cb.put(7, new String[] {"CBErrorPeripheralDisconnected", "peripheral_disconnected"});
+        cb.put(8, new String[] {"CBErrorUUIDNotAllowed", "uuid_not_allowed"});
+        cb.put(9, new String[] {"CBErrorAlreadyAdvertising", "already_advertising"});
+        cb.put(10, new String[] {"CBErrorConnectionFailed", "connection_failed"});
+        cb.put(11, new String[] {"CBErrorConnectionLimitReached", "connection_limit_reached"});
+        cb.put(12, new String[] {"CBErrorUnknownDevice", "unknown_device"});
+        cb.put(13, new String[] {"CBErrorOperationNotSupported", "operation_not_supported"});
+        cb.put(14, new String[] {"CBErrorPeerRemovedPairingInformation", "peer_removed_pairing_information"});
+        cb.put(15, new String[] {"CBErrorEncryptionTimedOut", "encryption_timeout"});
+        cb.put(16, new String[] {"CBErrorTooManyLEPairedDevices", "too_many_le_paired_devices"});
+        cb.put(17, new String[] {"CBErrorLeGattExceededBackgroundNotificationLimit", "background_notification_limit_exceeded"});
+        cb.put(18, new String[] {"CBErrorLeGattNearBackgroundNotificationLimit", "background_notification_limit_near"});
+        ERROR_NAMES.put("CBErrorDomain", cb);
+        Map<Integer, String[]> gatt = new HashMap<>();
+        gatt.put(2, new String[] {"GATT_READ_NOT_PERMITTED", "read_not_permitted"});
+        gatt.put(3, new String[] {"GATT_WRITE_NOT_PERMITTED", "write_not_permitted"});
+        gatt.put(5, new String[] {"GATT_INSUFFICIENT_AUTHENTICATION", "insufficient_authentication"});
+        gatt.put(6, new String[] {"GATT_REQUEST_NOT_SUPPORTED", "request_not_supported"});
+        gatt.put(7, new String[] {"GATT_INVALID_OFFSET", "invalid_offset"});
+        gatt.put(8, new String[] {"GATT_INSUFFICIENT_AUTHORIZATION", "insufficient_authorization"});
+        gatt.put(13, new String[] {"GATT_INVALID_ATTRIBUTE_LENGTH", "invalid_attribute_length"});
+        gatt.put(15, new String[] {"GATT_INSUFFICIENT_ENCRYPTION", "insufficient_encryption"});
+        gatt.put(143, new String[] {"GATT_CONNECTION_CONGESTED", "connection_congested"});
+        gatt.put(147, new String[] {"GATT_CONNECTION_TIMEOUT", "connection_timeout"});
+        gatt.put(257, new String[] {"GATT_FAILURE", "failure"});
+        ERROR_NAMES.put("android.bluetooth.BluetoothGatt", gatt);
+    }
+
+    /** The platform error of a link that went down, as the radio reports it, with the code's name. */
+    public static Map<String, Object> platformError(String domain, int code, String message) {
+        Map<String, Object> e = obj("domain", domain, "code", code, "message", message);
+        Map<Integer, String[]> names = ERROR_NAMES.get(domain);
+        String[] n = names == null ? null : names.get(code);
+        if (n != null) e.put("name", n[0]);
+        return e;
+    }
+
+    /** The link event's reason for an error: the code's readable reason, else the radio's. */
+    static String errorReason(Map<String, Object> e, String fallback) {
+        if (e == null || !(e.get("domain") instanceof String) || !(e.get("code") instanceof Integer)) return fallback;
+        Map<Integer, String[]> names = ERROR_NAMES.get((String) e.get("domain"));
+        String[] n = names == null ? null : names.get((Integer) e.get("code"));
+        return n == null ? fallback : n[1];
+    }
+
+    /** " (domain code name: message)" for a failed call's message, or "" without an error. */
+    static String errorText(Map<String, Object> e) {
+        if (e == null) return "";
+        String name = e.containsKey("name") ? " " + e.get("name") : "";
+        return " (" + e.get("domain") + " " + e.get("code") + name + ": " + e.get("message") + ")";
+    }
+
     public static Map<String, Object> obj(Object... kv) {
         Map<String, Object> m = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], kv[i + 1]);
         return m;
     }
 
-    // ---- Android permissions (BL-P11; the Swift twin has no counterpart: iOS has one authorization) --
+    // ---- Android permissions (the Swift twin has no counterpart: iOS has one authorization) --
 
     /** Install-time and runtime permissions a role needs on an API level; {install, runtime}. */
     public static List<List<String>> permissions(int sdk, String role, boolean neverForLocation) {
@@ -5776,7 +6008,17 @@ public final class BleCore {
             fail(call, "unavailable", "Bluetooth is " + adapter);
             return;
         }
-        if (links.containsKey(id)) {
+        Link pending = links.get(id);
+        if (pending != null) {
+            // A pending attempt no call owns (restored by iOS, or an automatic reconnect) is
+            // adopted: this call owns it from now on, with its own timeout, and the page's `auto` wins.
+            if ("connecting".equals(pending.state) && pending.connectCall < 0 && !pending.closed) {
+                pending.connectCall = call;
+                pending.auto = auto;
+                pending.background = false;
+                boundPending(pending, seconds * 1000);
+                return;
+            }
             fail(call, "busy", "this device is linked or connecting");
             return;
         }
@@ -5813,8 +6055,25 @@ public final class BleCore {
         updateHold();
     }
 
+    /**
+     * Bounds an attempt no fresh connect started: when the timer ends it still connecting, the
+     * attempt is closed (the radio cancels it) and reported {@code timeout}.
+     */
+    private void boundPending(Link l, int ms) {
+        l.pendingTimer = ++nextPending;
+        port.timer("pending", l.pendingTimer, ms);
+    }
+
     /** iOS state restoration: a peripheral the system kept for this app. Returns its gen. */
     public int restored(String id, boolean connected, List<String> subscribed) {
+        return restored(id, connected, subscribed, false);
+    }
+
+    /**
+     * iOS state restoration (the Swift twin's; Android has none). {@code pending}: handed back still
+     * connecting; kept, bounded by the default connect timeout, unless a page connect adopts it.
+     */
+    public int restored(String id, boolean connected, List<String> subscribed, boolean pending) {
         Link l = new Link(id, ++nextGen);
         l.auto = true;
         l.background = true;
@@ -5823,7 +6082,12 @@ public final class BleCore {
             l.subs.put(k, "notify");
         }
         links.put(id, l);
-        if (connected) l.state = "connected";
+        if (connected) {
+            l.state = "connected";
+        } else if (pending) {
+            l.auto = false;
+            boundPending(l, CONNECT_DEFAULT_MS);
+        }
         return l.gen;
     }
 
@@ -5863,9 +6127,15 @@ public final class BleCore {
 
     /** The platform reported that attempt {@code gen} disconnected or failed to connect. */
     public void disconnected(String id, int gen, String reason) {
+        disconnected(id, gen, reason, null);
+    }
+
+    /** {@code error}: the platform's own error, when it gave one ({domain, code, message}); it
+     *  reaches the failed connect call's message and the {@code link} record unchanged. */
+    public void disconnected(String id, int gen, String reason, Map<String, Object> error) {
         Link l = links.get(id);
         if (current(l, gen)) {
-            closeLink(l, reason, true);
+            closeLink(l, errorReason(error, reason), true, error);
             return;
         }
         Closing c = closing.get(id);
@@ -5898,6 +6168,10 @@ public final class BleCore {
      * reported the link down, so nothing is asked of it. Returns whether the close is confirmed now.
      */
     boolean closeLink(Link l, String reason, boolean down) {
+        return closeLink(l, reason, down, null);
+    }
+
+    boolean closeLink(Link l, String reason, boolean down, Map<String, Object> error) {
         if (l.closed) return true;
         l.closed = true;
         List<Op> ops = new ArrayList<>();
@@ -5915,7 +6189,7 @@ public final class BleCore {
             String code = "timeout".equals(reason) ? "connect_timeout"
                     : "adapter".equals(reason) ? "unavailable"
                     : "requested".equals(reason) ? "link_lost" : "connect_failed";
-            fail(l.connectCall, code, "the connection ended: " + reason);
+            fail(l.connectCall, code, "the connection ended: " + reason + errorText(error));
             l.connectCall = -1;
         }
         if (links.get(l.id) == l) links.remove(l.id);
@@ -5928,7 +6202,9 @@ public final class BleCore {
                 port.timer("close", l.gen, CLOSE_MS);
             }
         }
-        record("link", obj("id", l.id, "link", l.gen, "state", "disconnected", "reason", reason));
+        Map<String, Object> rec = obj("id", l.id, "link", l.gen, "state", "disconnected", "reason", reason);
+        if (error != null) rec.put("error", error);
+        record("link", rec);
         if (l.auto && !"requested".equals(reason) && on()) {
             Closing c = closing.get(l.id);
             if (c != null) {
@@ -6938,7 +7214,7 @@ public final class BleCore {
         port.timer("advertise_start", t, OP_MS);
     }
 
-    /** What this platform really advertises of the request (P3 to P5). */
+    /** What this platform really advertises of the request. */
     private Map<String, Object> applied(Map<String, Object> p) {
         Map<String, Object> a = obj();
         a.put("name", p.get("name") == null ? null : android ? "adapter" : "given");
@@ -7127,6 +7403,15 @@ public final class BleCore {
                     }
                 }
                 stale("connect timer " + token);
+                return;
+            case "pending":
+                for (Link l : links.values()) {
+                    if (l.pendingTimer == token && !l.closed && "connecting".equals(l.state)) {
+                        closeLink(l, "timeout", false);
+                        return;
+                    }
+                }
+                stale("pending timer " + token);
                 return;
             case "op":
                 for (Link l : links.values()) {
@@ -7362,8 +7647,10 @@ public final class BleExtension implements NativeExtension, BleCore.Port {
             permission.unregister();
             permission = null;
             registeredOn = null;
-            // Its permission answer can no longer arrive: end the route waiting for it.
-            if (pending != null && !pending.ended) {
+            // Recreated (configuration, or the system reclaimed it): the permission answer reaches
+            // the launcher the new activity registers under the same key, so the route waits.
+            // Finishing: the answer can no longer arrive; the route waiting for it ends.
+            if (pending != null && !pending.ended && a.isFinishing()) {
                 finish(pending, ExtResult.error("unavailable", "the activity was destroyed"));
             }
         }
@@ -7998,14 +8285,16 @@ Every route answers once in its own variable and callback, `ble<Route>` and `onB
   </Tab>
 </Tabs>
 
+Ask for Bluetooth first: call `state` with `prompt=true` before the first scan, connect or server route, so the system prompt is answered before anything waits on it. A route that waited too long answers `timeout` and started nothing. Call it again. A `connect` to a device that is already connecting (for example one iOS brought back after your app relaunched) joins that attempt and resolves with its result.
+
 ### Routes
 
 **Central**
 
 | Route         | Parameters                                                                              | Answer `data`                                    |
 | ------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `state`       | `prompt`                                                                                | `state`, `authorization`, `scanning`, `advertising`, `links`, `centrals`, `keepAlive` |
-| `events`      | `after`, `max` (1 to 200)                                                               | `records`, `next`, `dropped`                     |
+| `state`       | `prompt`                                                                                | `state`, `authorization`, `scanning`, `advertising`, `links`, `centrals`, `keepAlive`, `epoch`, `run` |
+| `events`      | `after` (0 or more), `max` (1 to 200)                                                   | `records`, `next`, `dropped`, `run`              |
 | `scan_start`  | `services` (comma-separated, up to 20), `seconds` (0 to 3600, 0 until `scan_stop`), `duplicates`, `mode` | `scan`                          |
 | `scan_stop`   | none                                                                                    | `scan`, `stopped`                                |
 | `devices`     | none                                                                                    | `devices` (up to 200)                            |
@@ -8051,7 +8340,11 @@ Every route answers once in its own variable and callback, `ble<Route>` and `onB
 | `request`       | `onBleRequest`      | `document` | Writes from centrals, batched                                |
 | `advertise_end` | `onBleAdvertiseEnd` | `document` | Advertising stopped, elapsed, lost the adapter, or failed    |
 
+`restored` carries `peripherals` and `scanning` for the central role, and `services`, `advertising` and `lost` for the server role. Every event is also a journal record, so a page that was not loaded when it happened reads it with `events`. `device` and `value` are batched every 50 ms.
+
 ### Error codes
+
+A failed `connect` answers `connect_failed`. Its message and the `link` event carry the platform's own error: `error: {domain, code, message, name}`, the CoreBluetooth error on iOS and the GATT status on Android. A known code also gives a readable `reason`, such as `encryption_timeout`.
 
 Besides the [standard codes](/experiments/v3-extensions#error-codes): `busy`, `unavailable`, `permission_denied`, `scan_failed`, `bad_value`, `unknown_device`, `not_connected`, `not_found`, `not_permitted`, `too_long`, `connect_failed`, `connect_timeout`, `gatt_error`, `link_lost`, `filter_required` (a scan in the background needs a service filter), `advertise_failed`, `no_subscribers` and `platform_limit` (this platform has no such API; the message names it).
 
@@ -8060,5 +8353,6 @@ Besides the [standard codes](/experiments/v3-extensions#error-codes): `busy`, `u
 ## Platform limits
 
 - **iOS.** No scan `mode` and no MTU request (`mtu` answers `requested: false`). No API to drop a central (`central_drop` answers `platform_limit`). An advertisement carries only service UUIDs and a local name, is always connectable, and in the background carries no name. In the background, a scan without a service filter is stopped, and a new one answers `filter_required`.
+- **iOS, reads.** A characteristic value and a read answer arrive through the same callback, so a notification that lands while a read of the same characteristic is in flight answers that read.
 - **Android.** No state restoration: links, the server and advertising end with the app's process. Use `keep_alive` to keep links while the app is in the background. With `name`, Android advertises the device's own Bluetooth name. A controller without advertising support answers `platform_limit`.
 - **Both.** One GATT operation runs at a time per link, up to 64 wait, and each has a 10 second timeout that closes the link. Writes are at most 512 bytes. A write without response means the bytes were handed to the system, not that they were delivered.

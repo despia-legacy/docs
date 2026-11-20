@@ -210,13 +210,13 @@ const data = await despia(
 const hourlySteps = data.healthkitResponse.StepsRecord
 ```
 
-Types can be HealthKit identifiers or Health Connect record names. When a read includes identifiers that Health Connect has no type for, they return an empty array and `window.healthConnectLimits` names each one with the reason.
+Types can be HealthKit identifiers or Health Connect record names. When a read includes identifiers that Health Connect has no type for, they return an empty array and `window.healthConnectLimits` names each one with the reason. The same happens for skin temperature and mindfulness sessions when the Health Connect version on the device does not offer them yet (updating Health Connect adds them), and for a type whose read fails, with the error message as the reason.
 
 ---
 
 ## Workouts
 
-`healthkit://workouts?days=30` returns Health Connect exercise sessions in the iOS workout shape, newest first, in `healthkitWorkouts` and in `healthkitResponse.HKWorkoutTypeIdentifier`.
+`healthkit://workouts?days=30` returns Health Connect exercise sessions in the iOS workout shape, newest first, in `healthkitWorkouts` and in `healthkitResponse.HKWorkoutTypeIdentifier`. Workouts need only the exercise permission; when the user has not granted calories or distance, that field is `0`, as on iOS.
 
 ```json
 {
@@ -285,6 +285,8 @@ The webhook body matches iOS, with a `source` field:
 ```
 
 `userId` is the Android device ID. Use a query parameter on `server` to identify your own users.
+
+A change counts as sent only when your server answers with a 2xx status. If the request fails, the same changes are sent again on the next check.
 
 ### Change tokens
 

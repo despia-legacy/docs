@@ -38,23 +38,35 @@ No Google Calendar cloud OAuth or server credential is included. Android reads c
 
 ## Call from the page
 
-Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from browser events:
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the exact declared output variable. Call these functions from browser events:
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function requestCalendarAccess() {
-  return callExtension('extension://calendar/permissions?request=true&access=full');
+  const reply = await despia('extension://calendar/permissions?request=true&access=full', ['calendarPermissionsResult']);
+  const answer = reply.calendarPermissionsResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 // After the system permission request finishes, read the actual state.
 async function readCalendarAccess() {
-  return callExtension('extension://calendar/permissions');
+  const reply = await despia('extension://calendar/permissions', ['calendarPermissionsResult']);
+  const answer = reply.calendarPermissionsResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 // Read calendars after the permission result indicates access.
 async function readCalendars() {
-  return callExtension('extension://calendar/calendars');
+  const reply = await despia('extension://calendar/calendars', ['calendarCalendarsResult']);
+  const answer = reply.calendarCalendarsResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 async function saveAppointment(selectedCalendarId) {
@@ -63,8 +75,11 @@ async function saveAppointment(selectedCalendarId) {
     start_ms: Date.now() + 3600000, end_ms: Date.now() + 7200000,
     timezone: 'Europe/Paris', alarms: [{minutes: 15}]
   };
-  return callExtension('extension://calendar/event_save?data='
-    + encodeURIComponent(JSON.stringify(appointment)));
+  const reply = await despia('extension://calendar/event_save?data=' + encodeURIComponent(JSON.stringify(appointment)), ['calendarEventSaveResult']);
+  const answer = reply.calendarEventSaveResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
@@ -74,18 +89,18 @@ Default outputs are `calendar<Route>Result` and `onCalendar<Route>Result`, with 
 
 ## Shared routes
 
-| Route | Parameters | Successful data |
-| --- | --- | --- |
-| capabilities | None | Provider and supported feature booleans |
-| permissions | Optional request boolean, access full, write_only or reminders | Current permission state. A request is acknowledged promptly, then permission event reports the answer. |
-| calendars | Optional entity events or reminders, default events | Calendar rows with common id, title and writable fields. Android also returns raw provider fields under android. Reminders entity is iOS only. |
-| calendar_save | data object with title, optional id; optional entity | Saved calendar id and native metadata where available. New iOS calendars may need source_id. New Android calendars use a local account. |
-| calendar_delete | id, optional entity | deleted: true |
-| events | start_ms and end_ms required; optional calendar_id, offset, limit 1..100 | Event occurrences, next_offset, has_more |
-| event_get | id | Event fields, with platform metadata |
-| event_save | data object; optional span this or future | id, saved: true |
-| event_delete | id; optional span | deleted: true for supported operations |
-| present | Optional id, data and mode view, edit or create | presented: true, which does not mean saved |
+| Route | Parameters | Answer variable | Successful data |
+| --- | --- | --- | --- |
+| capabilities | None | `calendarCapabilitiesResult` | Provider and supported feature booleans |
+| permissions | Optional request boolean, access full, write_only or reminders | `calendarPermissionsResult` | Current permission state. A request is acknowledged promptly, then permission event reports the answer. |
+| calendars | Optional entity events or reminders, default events | `calendarCalendarsResult` | Calendar rows with common id, title and writable fields. Android also returns raw provider fields under android. Reminders entity is iOS only. |
+| calendar_save | data object with title, optional id; optional entity | `calendarCalendarSaveResult` | Saved calendar id and native metadata where available. New iOS calendars may need source_id. New Android calendars use a local account. |
+| calendar_delete | id, optional entity | `calendarCalendarDeleteResult` | deleted: true |
+| events | start_ms and end_ms required; optional calendar_id, offset, limit 1..100 | `calendarEventsResult` | Event occurrences, next_offset, has_more |
+| event_get | id | `calendarEventGetResult` | Event fields, with platform metadata |
+| event_save | data object; optional span this or future | `calendarEventSaveResult` | id, saved: true |
+| event_delete | id; optional span | `calendarEventDeleteResult` | deleted: true for supported operations |
+| present | Optional id, data and mode view, edit or create | `calendarPresentResult` | presented: true, which does not mean saved |
 
 Event data supports id, calendar_id, title, start_ms, end_ms, all_day, timezone, location, notes and alarms. iOS also supports url. New Android events require calendar_id. An update preserves fields not supplied. EventKit requires a writable calendar. Android providers enforce their account and calendar rules.
 
@@ -96,6 +111,14 @@ Recurrence writes use an array of objects with frequency 0 daily, 1 weekly, 2 mo
 EventKit supports this-event and future-event mutations. Android future-series splitting and recurring-series deletion need explicit provider operations through android_table. The shared delete route returns unsupported rather than silently deleting a recurring series. This extension does not implement an atomic Android series-split helper. Use native code when the operation needs a transaction spanning multiple provider rows.
 
 ## Platform methods and native UI
+
+| Route | Answer variable |
+| --- | --- |
+| `android_table` | `calendarAndroidTableResult` |
+| `ios_reminder_delete` | `calendarIosReminderDeleteResult` |
+| `ios_reminder_save` | `calendarIosReminderSaveResult` |
+| `ios_reminders` | `calendarIosRemindersResult` |
+| `ios_sources` | `calendarIosSourcesResult` |
 
 - ios_sources lists EventKit sources after event or reminders access is granted.
 - ios_reminders lists reminder records, optionally filtered by calendar_id and completed, with offset/limit pagination.

@@ -20,67 +20,87 @@ You maintain the native code you copy or customize. This extension is experiment
 2. Add `applock` to the `extensions` array in `public/despia/extensions.json`.
 3. For iOS distribution, the Apple Developer Account Holder must obtain Family Controls approval for the app and the three extension bundle IDs: `<app bundle id>.NXLockMonitor`, `<app bundle id>.NXLockShield` and `<app bundle id>.NXLockAction`. Provision `group.<app bundle id>.nx.applock` for the app and all three extensions. The manifest requests capabilities; it cannot grant signing rights. See [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement).
 4. Approve the source and rebuild through the extension-enabled native build path. The iOS targets require iOS 16.6 or later.
-5. Install `despia-native` in your web project and copy the app-owned `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
+5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
 
 ## Create and select a group
 
-Call the SDK helper from browser events. Authorization and selection can answer before the person finishes the native UI. Read authorization again, and wait for a saved selection before applying the group.
+Call `despia` from browser events and await requests sharing an output variable sequentially. Authorization and selection can answer before the person finishes the native UI. Read authorization again, and wait for a saved selection before applying the group.
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function createFocusGroup() {
-  const saved = await callExtension('extension://applock/group_save?data='
-    + encodeURIComponent(JSON.stringify({
-      id: 'prayer', name: 'Prayer time', domains: [],
-      android: {packages: [], categories: []},
-      shield: {title: 'Prayer time', message: 'Return after your prayer.'}
-    })));
-  return saved.group.id;
+  const definition = {
+    id: 'prayer', name: 'Prayer time', domains: [],
+    android: {packages: [], categories: []},
+    shield: {title: 'Prayer time', message: 'Return after your prayer.'}
+  };
+  const reply = await despia('extension://applock/group_save?data=' + encodeURIComponent(JSON.stringify(definition)), ['appLockGroupSave']);
+  const answer = reply.appLockGroupSave;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.group.id;
 }
 
 async function requestAppLockAccess() {
-  return callExtension('extension://applock/authorization?request=true');
+  const reply = await despia('extension://applock/authorization?request=true', ['appLockAuthorization']);
+  const answer = reply.appLockAuthorization;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 async function selectGroup(groupId) {
-  return callExtension('extension://applock/select?id=' + encodeURIComponent(groupId));
+  const reply = await despia('extension://applock/select?id=' + encodeURIComponent(groupId), ['appLockSelect']);
+  const answer = reply.appLockSelect;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 // From separate user actions, after native authorization/selection completes:
 async function activateGroup(groupId) {
-  return callExtension('extension://applock/apply?id=' + encodeURIComponent(groupId));
+  const reply = await despia('extension://applock/apply?id=' + encodeURIComponent(groupId), ['appLockApply']);
+  const answer = reply.appLockApply;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
+
 async function releaseGroup(groupId) {
-  return callExtension('extension://applock/release?id=' + encodeURIComponent(groupId));
+  const reply = await despia('extension://applock/release?id=' + encodeURIComponent(groupId), ['appLockRelease']);
+  const answer = reply.appLockRelease;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
-The helper returns successful native `data` and checks native failures explicitly. The declared `selection` event reports Save or Cancel. Read `group_get` after selection; do not treat `select`'s `pending` answer as a saved choice. Use browser event registration and cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
+The SDK returns an object keyed by the watched variable. Check its full native envelope before reading `data`; native errors resolve instead of rejecting the SDK promise. The declared `selection` event reports Save or Cancel. Read `group_get` after selection; do not treat `select`'s `pending` answer as a saved choice. Use browser event registration and cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
 
 ## Routes
 
 All routes use `extension://applock/<route>`. The table lists successful payloads inside the V3 result envelope.
 
-| Route | Parameters | Successful payload |
-| --- | --- | --- |
-| `capabilities` | None | Provider and platform capability fields |
-| `authorization` | Optional `request`, `revoke`; iOS `member`: `individual` or `child` | Current authorization and pending state |
-| `groups` | None | `groups` |
-| `group_get` | Required `id` | `group` |
-| `group_save` | Required JSON string `data` | Stored `group` |
-| `group_delete` | Required `id` | `id`, `deleted` |
-| `select` | Required `id` | `group_id`, `pending`; completion through `selection` |
-| `apply` | Required `id` | `group_id`, `manual_enabled`, effective `active` |
-| `release` | Required `id` | `group_id`, `manual_enabled`, effective `active` |
-| `release_all` | None | `released` |
-| `schedules` | None | Stored `schedules` |
-| `schedule_save` | Required JSON string `data` | Stored `schedule` |
-| `schedule_delete` | Required `id` | `id`, `deleted` |
-| `events` | Optional `clear` Boolean | Retained `events`; clear removes returned entries |
-| `android_apps` | None | Visible launcher `apps`, with package, label and category |
-| `android_accessibility` | Optional `request` Boolean | Current Accessibility/VPN authorization state |
-| `android_vpn` | Optional `action`: `status`, `start` or `stop`; optional JSON string `data` | Running/pending state, counters and config |
+| Route | Parameters | Answer variable | Successful payload |
+| --- | --- | --- | --- |
+| `capabilities` | None | `appLockCapabilities` | Provider and platform capability fields |
+| `authorization` | Optional `request`, `revoke`; iOS `member`: `individual` or `child` | `appLockAuthorization` | Current authorization and pending state |
+| `groups` | None | `appLockGroups` | `groups` |
+| `group_get` | Required `id` | `appLockGroupGet` | `group` |
+| `group_save` | Required JSON string `data` | `appLockGroupSave` | Stored `group` |
+| `group_delete` | Required `id` | `appLockGroupDelete` | `id`, `deleted` |
+| `select` | Required `id` | `appLockSelect` | `group_id`, `pending`; completion through `selection` |
+| `apply` | Required `id` | `appLockApply` | `group_id`, `manual_enabled`, effective `active` |
+| `release` | Required `id` | `appLockRelease` | `group_id`, `manual_enabled`, effective `active` |
+| `release_all` | None | `appLockReleaseAll` | `released` |
+| `schedules` | None | `appLockSchedules` | Stored `schedules` |
+| `schedule_save` | Required JSON string `data` | `appLockScheduleSave` | Stored `schedule` |
+| `schedule_delete` | Required `id` | `appLockScheduleDelete` | `id`, `deleted` |
+| `events` | Optional `clear` Boolean | `appLockEvents` | Retained `events`; clear removes returned entries |
+| `android_apps` | None | `appLockAndroidApps` | Visible launcher `apps`, with package, label and category |
+| `android_accessibility` | Optional `request` Boolean | `appLockAndroidAccessibility` | Current Accessibility/VPN authorization state |
+| `android_vpn` | Optional `action`: `status`, `start` or `stop`; optional JSON string `data` | `appLockAndroidVpn` | Running/pending state, counters and config |
 
 JSON `data` parameters are limited to 4096 characters. Group IDs are app-owned strings of 1 to 128 Unicode code points. `group_save` requires `name`, generates an ID when omitted and preserves the existing native iOS selection. Optional `domains` are DNS hostnames, without schemes, paths, ports or wildcards. International names use punycode. Android groups use `android.packages` and `android.categories`; `android_apps` reports visible launcher apps, not every installed package.
 

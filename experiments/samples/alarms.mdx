@@ -20,21 +20,29 @@ You maintain the native code you copy or customize. This extension is experiment
 2. Add `alarms` to the `extensions` array in `public/despia/extensions.json`.
 3. Set the app's alarm purpose text. The prepared manifest includes `ios.app.custom_keys: true`, `ios.app.info_plist.NSAlarmKitUsageDescription` and the matching `requires.usage_descriptions` entry. It depends on the approved-purpose-text runtime change described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text). Nonempty app-configured text takes priority.
 4. Approve the source and rebuild through the extension-enabled native build path. The iOS manifest includes the `NXAlarmCountdown` target. Android permissions and private alarm components are declared by its module.
-5. Install `despia-native` in your web project and copy the app-owned `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Website changes alone do not add native code to an installed app.
+5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
 
 ## Create an alarm
 
 Call from browser click handlers or client lifecycle hooks. Permission requests can answer with `pending: true` before the system dialog finishes. Read `permissions` again after the person responds, before scheduling an alarm.
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function requestAlarmAccess() {
-  return callExtension('extension://alarms/permissions?request=true&delivery=system');
+  const reply = await despia('extension://alarms/permissions?request=true&delivery=system', ['alarmsPermissions']);
+  const answer = reply.alarmsPermissions;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 async function readAlarmAccess() {
-  return callExtension('extension://alarms/permissions');
+  const reply = await despia('extension://alarms/permissions', ['alarmsPermissions']);
+  const answer = reply.alarmsPermissions;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 
 async function createMovementAlarm() {
@@ -44,39 +52,45 @@ async function createMovementAlarm() {
     snooze_seconds: 300,
     challenge: {kind: 'pushups', target: 10}
   };
-  const saved = await callExtension('extension://alarms/save?alarm='
-    + encodeURIComponent(JSON.stringify(definition)));
-  return saved.alarm.id;
+  const reply = await despia('extension://alarms/save?alarm=' + encodeURIComponent(JSON.stringify(definition)), ['alarmsSave']);
+  const answer = reply.alarmsSave;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.alarm.id;
 }
 
 async function reportProgress(alarmId, progress) {
-  return callExtension('extension://alarms/challenge?id=' + encodeURIComponent(alarmId)
-    + '&progress=' + encodeURIComponent(progress));
+  const reply = await despia('extension://alarms/challenge?id=' + encodeURIComponent(alarmId)
+    + '&progress=' + encodeURIComponent(progress), ['alarmsChallenge']);
+  const answer = reply.alarmsChallenge;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
-The helper checks the native envelope and returns its successful `data`. Its timeout is separate from the native operation. The challenge above records progress supplied by your app; it does not detect push-ups or verify that exercise occurred.
+Read the full native envelope from the watched variable before using `data`. Native errors resolve in the SDK; a single watched variable becomes `undefined` after 30 seconds without an answer, without canceling native work. The challenge above records progress supplied by your app; it does not detect push-ups or verify that exercise occurred.
 
 ## Routes
 
 All routes use `extension://alarms/<route>`. JSON parameters must be serialized and URL-encoded. The table lists successful payloads inside the V3 result envelope.
 
-| Route | Parameters | Successful payload |
-| --- | --- | --- |
-| `capabilities` | None | Provider and platform capability fields |
-| `permissions` | Optional `request` Boolean; iOS `delivery`: `system` or `notification` | Current authorization and optional `pending` |
-| `save` | Required JSON string `alarm` | `alarm` |
-| `get` | Required UUID `id` | `alarm`, with refreshed AlarmKit state where available |
-| `list` | Optional `group` | `alarms` |
-| `cancel` | Required `id` | Removed definition under `alarm` |
-| `stop` | Required `id`; optional `emergency` Boolean | `alarm` after stopping |
-| `snooze` | Required `id`; optional positive integer `seconds` | `alarm` with its next trigger |
-| `pause` | Required `id` | `alarm` after pausing |
-| `resume` | Required `id` | `alarm` after resuming |
-| `challenge` | Required `id` and `progress`, finite decimal numeric text up to 64 characters | Updated `alarm`; reaching the target stops it |
-| `events` | None | Retained `events` |
-| `events_ack` | Required JSON string `ids`, an array of receipt IDs | `acknowledged` count |
-| `android_access` | Required `access`: `exact_alarms`, `full_screen` or `notifications` | Access state and `opened` when a system screen opened |
+| Route | Parameters | Answer variable | Successful payload |
+| --- | --- | --- | --- |
+| `capabilities` | None | `alarmsCapabilities` | Provider and platform capability fields |
+| `permissions` | Optional `request` Boolean; iOS `delivery`: `system` or `notification` | `alarmsPermissions` | Current authorization and optional `pending` |
+| `save` | Required JSON string `alarm` | `alarmsSave` | `alarm` |
+| `get` | Required UUID `id` | `alarmsGet` | `alarm`, with refreshed AlarmKit state where available |
+| `list` | Optional `group` | `alarmsList` | `alarms` |
+| `cancel` | Required `id` | `alarmsCancel` | Removed definition under `alarm` |
+| `stop` | Required `id`; optional `emergency` Boolean | `alarmsStop` | `alarm` after stopping |
+| `snooze` | Required `id`; optional positive integer `seconds` | `alarmsSnooze` | `alarm` with its next trigger |
+| `pause` | Required `id` | `alarmsPause` | `alarm` after pausing |
+| `resume` | Required `id` | `alarmsResume` | `alarm` after resuming |
+| `challenge` | Required `id` and `progress`, finite decimal numeric text up to 64 characters | `alarmsChallenge` | Updated `alarm`; reaching the target stops it |
+| `events` | None | `alarmsEvents` | Retained `events` |
+| `events_ack` | Required JSON string `ids`, an array of receipt IDs | `alarmsEventsAck` | `acknowledged` count |
+| `android_access` | Required `access`: `exact_alarms`, `full_screen` or `notifications` | `alarmsAndroidAccess` | Access state and `opened` when a system screen opened |
 
 The `alarm` and `ids` JSON strings are limited to 4096 characters by the manifest. `save` generates a UUID when `id` is omitted; saving an existing ID replaces its definition. `group` is an optional app-defined string used by `list`.
 

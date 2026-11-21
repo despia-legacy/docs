@@ -42,34 +42,41 @@ ATT permission is separate. The extension does not request ATT or treat Firebase
 
 ## Calls
 
-Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Run this from a client event after your consent flow has an answer:
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the exact declared output variable. Run this from a client event after your consent flow has an answer:
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function reportLead(hasAnalyticsConsent) {
-  await callExtension('extension://googleads/configure');
-  const consent = new URLSearchParams({
-    enabled: String(hasAnalyticsConsent), ad_storage: 'false',
-    ad_user_data: 'false', ad_personalization: 'false'
-  });
-  await callExtension('extension://googleads/consent?' + consent);
+  const configuredReply = await despia('extension://googleads/configure', ['googleadsConfigureResult']);
+  const configured = configuredReply.googleadsConfigureResult;
+  if (configured === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!configured.ok) { console.error(configured.code, configured.error); return; }
+  const consentReply = await despia('extension://googleads/consent?enabled=' + String(hasAnalyticsConsent)
+    + '&ad_storage=false&ad_user_data=false&ad_personalization=false', ['googleadsConsentResult']);
+  const consent = consentReply.googleadsConsentResult;
+  if (consent === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!consent.ok) { console.error(consent.code, consent.error); return; }
   if (!hasAnalyticsConsent) return;
-  return callExtension('extension://googleads/event?name=generate_lead&properties='
-    + encodeURIComponent(JSON.stringify({currency: 'USD', value: 12.5})));
+  const reply = await despia('extension://googleads/event?name=generate_lead&properties='
+    + encodeURIComponent(JSON.stringify({currency: 'USD', value: 12.5})), ['googleadsEventResult']);
+  const answer = reply.googleadsEventResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
-| Route | Parameters | Successful payload |
-| --- | --- | --- |
-| `status` | None | `configured`, adapter `enabled`, `sdk` |
-| `configure` | None | `configured: true`, adapter `enabled` |
-| `consent` | Required `enabled` Boolean; optional `ad_storage`, `ad_user_data`, `ad_personalization` Booleans | `enabled` |
-| `event` | Required `name`; optional JSON string `properties` | `accepted: true` |
-| `purchase` | Required `amount`, uppercase three-letter `currency`, `transaction_id`; optional JSON string `properties` | `accepted: true` |
-| `user` | Optional `id`; omit to clear | `accepted: true` |
-| `property` | Required `name`; optional `value`; omit to clear | `accepted: true` |
-| `reset` | None | `accepted: true` |
+| Route | Parameters | Answer variable | Successful payload |
+| --- | --- | --- | --- |
+| `status` | None | `googleadsStatusResult` | `configured`, adapter `enabled`, `sdk` |
+| `configure` | None | `googleadsConfigureResult` | `configured: true`, adapter `enabled` |
+| `consent` | Required `enabled` Boolean; optional `ad_storage`, `ad_user_data`, `ad_personalization` Booleans | `googleadsConsentResult` | `enabled` |
+| `event` | Required `name`; optional JSON string `properties` | `googleadsEventResult` | `accepted: true` |
+| `purchase` | Required `amount`, uppercase three-letter `currency`, `transaction_id`; optional JSON string `properties` | `googleadsPurchaseResult` | `accepted: true` |
+| `user` | Optional `id`; omit to clear | `googleadsUserResult` | `accepted: true` |
+| `property` | Required `name`; optional `value`; omit to clear | `googleadsPropertyResult` | `accepted: true` |
+| `reset` | None | `googleadsResetResult` | `accepted: true` |
 
 Results use the V3 bridge envelope. `status.sdk` is `10.29.0` on iOS and `BOM34.11.0` on Android. `accepted` means the call was handed to the SDK. It does not confirm event ingestion, attribution or a recorded conversion.
 

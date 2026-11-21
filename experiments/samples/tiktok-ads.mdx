@@ -37,30 +37,43 @@ The Swift package is pinned to commit 2a3a35560c2c0547f74869c58160946e29c0932c. 
 
 ## Call from the page
 
-Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Run the function from a client event after obtaining the person's collection choice:
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the exact declared output variable. Run the function from a client event after obtaining the person's collection choice:
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function reportPurchase(hasAnalyticsConsent) {
-  await callExtension('extension://tiktokads/configure');
-  await callExtension('extension://tiktokads/consent?enabled=' + String(hasAnalyticsConsent));
+  const configuredReply = await despia('extension://tiktokads/configure', ['tiktokadsConfigureResult']);
+  const configured = configuredReply.tiktokadsConfigureResult;
+  if (configured === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!configured.ok) { console.error(configured.code, configured.error); return; }
+  const consentReply = await despia('extension://tiktokads/consent?enabled=' + String(hasAnalyticsConsent), ['tiktokadsConsentResult']);
+  const consent = consentReply.tiktokadsConsentResult;
+  if (consent === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!consent.ok) { console.error(consent.code, consent.error); return; }
   if (!hasAnalyticsConsent) return;
-  await callExtension('extension://tiktokads/event?name=LaunchAPP');
-  return callExtension('extension://tiktokads/purchase?amount=12.50&currency=USD'
-    + '&properties=' + encodeURIComponent(JSON.stringify({content_id: 'example-product'})));
+  const eventReply = await despia('extension://tiktokads/event?name=LaunchAPP', ['tiktokadsEventResult']);
+  const event = eventReply.tiktokadsEventResult;
+  if (event === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!event.ok) { console.error(event.code, event.error); return; }
+  const reply = await despia('extension://tiktokads/purchase?amount=12.50&currency=USD'
+    + '&properties=' + encodeURIComponent(JSON.stringify({content_id: 'example-product'})), ['tiktokadsPurchaseResult']);
+  const answer = reply.tiktokadsPurchaseResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
-| Route | Parameters | Successful data |
-| --- | --- | --- |
-| configure | None | configured, enabled. Initializes SDK with transmission disabled. |
-| status | None | configured, enabled, sdk |
-| consent | enabled boolean required | iOS: enabled. Android: configured, enabled. |
-| event | name required, optional properties JSON object string, value numeric string, event_id string | accepted: true |
-| purchase | amount numeric string and currency uppercase three-letter code required, optional properties, event_id | accepted: true. Uses TikTok Purchase event. |
-| user | Optional id, omit to log out | accepted: true |
-| flush | None | accepted: true. Requests SDK transmission, not a server receipt. |
+| Route | Parameters | Answer variable | Successful data |
+| --- | --- | --- | --- |
+| configure | None | `tiktokadsConfigureResult` | configured, enabled. Initializes SDK with transmission disabled. |
+| status | None | `tiktokadsStatusResult` | configured, enabled, sdk |
+| consent | enabled boolean required | `tiktokadsConsentResult` | iOS: enabled. Android: configured, enabled. |
+| event | name required, optional properties JSON object string, value numeric string, event_id string | `tiktokadsEventResult` | accepted: true |
+| purchase | amount numeric string and currency uppercase three-letter code required, optional properties, event_id | `tiktokadsPurchaseResult` | accepted: true. Uses TikTok Purchase event. |
+| user | Optional id, omit to log out | `tiktokadsUserResult` | accepted: true |
+| flush | None | `tiktokadsFlushResult` | accepted: true. Requests SDK transmission, not a server receipt. |
 
 Properties are a JSON object and preserve nested ecommerce objects, arrays and null values for the SDK. The route limits the encoded properties string to 4096 characters. Explicit value and amount parameters must be finite numbers. Read manifest.json for each string length limit. Errors include not_configured, already_configured, consent_required, bad_request, sdk_error and busy during initialization. iOS can time out if initialization finishes after the bridge deadline. No event is started after that late initialization answer.
 

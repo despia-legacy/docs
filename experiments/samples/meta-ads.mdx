@@ -37,35 +37,44 @@ The Swift package is pinned to commit 7c3fb7856063fa1074d330616f4070f2ed10a49b. 
 
 ## Call from the page
 
-Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call this after the person makes the collection choice in your browser UI:
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the exact declared output variable. Call this after the person makes the collection choice in your browser UI:
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function reportRegistration(hasAnalyticsConsent) {
-  await callExtension('extension://metaads/configure');
-  const consent = new URLSearchParams({
-    enabled: String(hasAnalyticsConsent), advertiser_id: 'false', automatic_events: 'false'
-  });
-  await callExtension('extension://metaads/consent?' + consent);
+  const configuredReply = await despia('extension://metaads/configure', ['metaadsConfigureResult']);
+  const configured = configuredReply.metaadsConfigureResult;
+  if (configured === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!configured.ok) { console.error(configured.code, configured.error); return; }
+  const consentReply = await despia('extension://metaads/consent?enabled=' + String(hasAnalyticsConsent) + '&advertiser_id=false&automatic_events=false', ['metaadsConsentResult']);
+  const consent = consentReply.metaadsConsentResult;
+  if (consent === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!consent.ok) { console.error(consent.code, consent.error); return; }
   if (!hasAnalyticsConsent) return;
-  await callExtension('extension://metaads/activate');
-  return callExtension('extension://metaads/event?name='
-    + encodeURIComponent('fb_mobile_complete_registration')
-    + '&properties=' + encodeURIComponent(JSON.stringify({registration_method: 'email'})));
+  const activatedReply = await despia('extension://metaads/activate', ['metaadsActivateResult']);
+  const activated = activatedReply.metaadsActivateResult;
+  if (activated === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!activated.ok) { console.error(activated.code, activated.error); return; }
+  const reply = await despia('extension://metaads/event?name=' + encodeURIComponent('fb_mobile_complete_registration')
+    + '&properties=' + encodeURIComponent(JSON.stringify({registration_method: 'email'})), ['metaadsEventResult']);
+  const answer = reply.metaadsEventResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 
-| Route | Parameters | Successful data |
-| --- | --- | --- |
-| configure | None | configured, enabled. Initializes once and leaves collection disabled. |
-| status | None | configured, enabled, sdk |
-| consent | enabled boolean required, advertiser_id and automatic_events optional booleans | iOS: enabled. Android: configured, enabled. Optional flags default false. |
-| activate | None | accepted: true. Logs app activation through Meta. |
-| event | name required, optional properties JSON string, value numeric string | accepted: true |
-| purchase | amount numeric string and currency uppercase three-letter code required, optional properties JSON string | accepted: true |
-| user | Optional id, omit it to clear the SDK user id | accepted: true |
-| flush | None | accepted: true. Requests a flush, not a delivery receipt. |
+| Route | Parameters | Answer variable | Successful data |
+| --- | --- | --- | --- |
+| configure | None | `metaadsConfigureResult` | configured, enabled. Initializes once and leaves collection disabled. |
+| status | None | `metaadsStatusResult` | configured, enabled, sdk |
+| consent | enabled boolean required, advertiser_id and automatic_events optional booleans | `metaadsConsentResult` | iOS: enabled. Android: configured, enabled. Optional flags default false. |
+| activate | None | `metaadsActivateResult` | accepted: true. Logs app activation through Meta. |
+| event | name required, optional properties JSON string, value numeric string | `metaadsEventResult` | accepted: true |
+| purchase | amount numeric string and currency uppercase three-letter code required, optional properties JSON string | `metaadsPurchaseResult` | accepted: true |
+| user | Optional id, omit it to clear the SDK user id | `metaadsUserResult` | accepted: true |
+| flush | None | `metaadsFlushResult` | accepted: true. Requests a flush, not a delivery receipt. |
 
 Properties are a flat object with at most 25 entries, nonempty keys up to 40 characters and string, number or boolean values. Name limits and parameter types are declared in manifest.json. Numbers must be finite. accepted means handed to the SDK, not received or attributed by Meta. Errors include not_configured, already_configured, consent_required and bad_request; Android can also return sdk_error. Unknown routes are rejected by the runtime before dispatch.
 

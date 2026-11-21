@@ -20,9 +20,9 @@ icon: "clock-rotate-left"
   - Add your own files, such as source, assets and binaries. Every file must be named in its manifest, and binaries need approval.
   - Hook into the app lifecycle, send events from native code to the page, set an Android `min_sdk`, or link an iOS package as optional.
 
-  ### Packages, pinned and approved
+  ### Swift packages and Maven libraries, no downloads
 
-  Declare Swift packages and Android dependencies in your manifest. Your build logic runs in an offline compile job, so dependencies must be pinned files in the approval. Nothing is downloaded at build time. Any change to a manifest or native file needs a new approval and a new native build, and cannot be applied over-the-air. Extensions are enabled per app by Despia.
+  Name a Swift package by its GitHub URL, or an Android Maven library by its coordinate, and Despia fetches and pins it, with everything it depends on, when it approves your extension. You never download a library yourself. See [Adding a Swift package or a Maven library](/experiments/v3-extensions#adding-a-swift-package-or-a-maven-library). Any change to a manifest or native file needs a new approval and a new native build, and cannot be applied over-the-air. Extensions are enabled per app by Despia.
 
   ### What stays owned by the build
 

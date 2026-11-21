@@ -376,7 +376,55 @@ Both ways are declared in an extension's `manifest.json`.
 - **Typed.** On iOS, `targets[].kind` is a preset: `widgetkit`, `notification-service`, `notification-content`, `share` or `intents`. On Android, a module with `kind: "typed"` lists sources, resources, permissions and components (`service`, `receiver`, `provider`, `activity`) from a fixed vocabulary, and the build writes the Gradle file and manifest.
 - **Custom.** On iOS, `kind: "custom"` takes a product type, build settings, script phases, a full `info_plist`, `entitlements`, link targets and packages. On Android, `kind: "custom"` points `dir` at your own module with its own `build.gradle`, `AndroidManifest.xml`, sources and resources.
 
-Your build logic runs in an offline compile job, so dependencies must be pinned files in the approval. Nothing is downloaded at build time.
+### Adding a Swift package or a Maven library
+
+You never download a library yourself. Name it in your files, and when Despia approves the extension it fetches the library and everything it depends on and pins those exact copies. The build then uses the pinned copies, so nothing is downloaded while your app builds.
+
+**iOS: a Swift package from GitHub.** List it under `ios.packages` in `manifest.json` with its GitHub URL, the full commit `revision` of the release you want, and the products you use. Then link the product in your app target under `ios.app.packages`. From the Stream calling template:
+
+```json
+{
+  "ios": {
+    "packages": [
+      {
+        "name": "stream-video-swift",
+        "remote": {
+          "url": "https://github.com/GetStream/stream-video-swift",
+          "revision": "5fda355f0a682ebbf1e131d80d38386acd4c4406"
+        },
+        "products": ["StreamVideo"]
+      }
+    ],
+    "app": {
+      "packages": ["StreamVideo"]
+    }
+  }
+}
+```
+
+Swift packages come from `github.com` over https.
+
+**Android: a Maven library.** Add a `custom` module in `manifest.json` that points at your own module folder, and list the libraries in that module's `build.gradle` with `implementation`, the same way as in Android Studio:
+
+```json
+{
+  "android": {
+    "modules": [
+      { "kind": "custom", "name": "streamcall", "dir": "android/streamcall", "link": "implementation" }
+    ]
+  }
+}
+```
+
+```groovy
+// public/despia/streamcall/android/streamcall/build.gradle
+dependencies {
+    implementation project(':nativeext-api')
+    implementation 'io.getstream:stream-video-android-core:1.35.0'
+}
+```
+
+Maven libraries come from Google's Maven repository and Maven Central. A library published only on a vendor's own Maven server is not accepted yet.
 
 Both ways may also declare:
 

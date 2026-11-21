@@ -351,7 +351,7 @@
           "experiments/extension-authoring",
           "experiments/extension-troubleshooting",
           {
-            "group": "Samples",
+            "group": "Despia V3 Extensions",
             "icon": "vial",
             "pages": [
               "experiments/samples/recorder",

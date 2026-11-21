@@ -1,0 +1,394 @@
+---
+title: "V3 Extensions"
+description: "Add your own Swift and Kotlin or Java code to a Despia V3 app and call it from your web app with one extension:// scheme."
+icon: "puzzle-piece"
+tag: "Experimental"
+---
+
+V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. Despia builds them into your app. Your web code then calls them with one scheme:
+
+```javascript
+window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
+```
+
+Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The [Samples](/experiments/samples/recorder) are complete templates you can copy and change.
+
+## Samples
+
+Each sample is a complete template: copy its files, change the values the page names, and call it from your web app.
+
+| Sample | What it adds | Tested on |
+| ------ | ------------ | --------- |
+| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Android emulator, Samsung Galaxy S21 |
+
+<Warning>
+  **Experimental. V3 only.**
+
+  - V3 Extensions work only in Despia V3. They are never migrated to V4. V4 has its own first-party plugins and plugin system instead. You can stay on V3 as long as you want.
+  - You own and maintain the native code. That includes the code you copy from a sample.
+  - Despia provides the templates and the extension system. Despia does not support code you have customised.
+</Warning>
+
+---
+
+## Which tool to use
+
+Native code is best written in a coding agent that works on your repository: **Claude Code**, **Codex** or **Cursor**. Copy a sample page into the agent, then ask it to change the code for your app.
+
+No-code tools such as Lovable or Base44 are not a good fit for writing native code. If your app lives in one of them, connect it to GitHub and make the native changes from Claude Code, Codex or Cursor on that repository. Pasting a sample unchanged into a no-code tool can work, because the files only need to be placed at the right paths.
+
+---
+
+## How it works
+
+<Steps>
+  <Step title="The manifest declares the extension">
+    Each extension has a `manifest.json`. It declares the extension id, its routes, the typed parameters of each route, the answer variable and callback of each route, its events, and the native files for each platform.
+  </Step>
+  <Step title="Despia builds it into your app">
+    Your files are served from your app's own HTTPS origin. Despia reads them and compiles them into a new native build of your app. Extensions are enabled per app by Despia. Any change to the manifest or to a native file needs to be approved again and needs a new native build. It cannot be applied over-the-air.
+  </Step>
+  <Step title="Your web app calls a route">
+    The page sends `extension://<id>/<route>?<params>`. The runtime first checks the call: the extension and route exist, only declared parameters are present, and each value has the declared type. Only then does it call your native handler.
+  </Step>
+  <Step title="The answer comes back once">
+    Every call answers exactly once, in the page that made it. The runtime sets the route's answer variable on `window` and then calls the route's callback with it.
+  </Step>
+</Steps>
+
+---
+
+## Folder layout in your web app
+
+Put the files in your web app's `public` folder, so they are served from your app's own origin:
+
+```text
+public/despia/
+├── extensions.json              # your app identity and the list of extension folders
+└── recorder/                    # one folder per extension; the folder name is the extension id
+    ├── manifest.json            # routes, parameters, outputs, events and native files
+    ├── ios/
+    │   └── ...                  # Swift sources and targets
+    └── android/
+        └── ...                  # Java or Kotlin sources and resources
+```
+
+`extensions.json` names your app and lists the extension folders:
+
+```json public/despia/extensions.json
+{
+  "manifest_version": 1,
+  "app": {
+    "client_id": "<your client id>",
+    "ios_bundle_id": "com.example.app",
+    "android_package": "com.example.app"
+  },
+  "extensions": ["recorder"]
+}
+```
+
+`extensions.json` holds the app identity (`client_id`, `ios_bundle_id` and `android_package`) and lists the extension folders. It lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, and so is a folder listed twice.
+
+The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
+
+To add a sample to your app, copy its folder under `public/despia/` and add its name to `extensions.json`. Despia approves `extensions.json` and every other file, each `manifest.json` included. A change to any of them needs a new approval.
+
+<Note>
+  Calls are accepted only from the top-level page of your app's own HTTPS origin, or from origins you list in `bridge.allowed_origins`. Iframes, other origins, popups and page sheets get no answer.
+</Note>
+
+---
+
+## Declaring routes, outputs and events
+
+Each route in `manifest.json` declares its parameters and its output. The output names the `window` variable that receives the answer and the callback that is called with it:
+
+```json public/despia/recorder/manifest.json (excerpt)
+{
+  "name": "start",
+  "params": {
+    "upload": {
+      "type": "https_url",
+      "hosts": ["upload.example.com"],
+      "required": true
+    }
+  },
+  "output": {
+    "variable": "recorderStart",
+    "callback": "onRecorderStart"
+  }
+}
+```
+
+For this route the runtime runs `window.recorderStart = <result>` and then `window.onRecorderStart(window.recorderStart)`.
+
+If you leave `output` out, the defaults are `<id><Route>Result` for the variable and `on<Id><Route>Result` for the callback. For the route above that would be `recorderStartResult` and `onRecorderStartResult`.
+
+Events are declared next to the routes, each with its own callback:
+
+```json
+"events": [
+  { "name": "state", "callback": "onRecorderState", "scope": "document" }
+]
+```
+
+Your native code sends an event with `emit("state", data)`, and the page's `window.onRecorderState(data)` runs. With `scope: "document"` (the default), only pages that have called the extension receive it. With `scope: "app"`, the trusted top-level page that is loaded receives it. Events are notifications only. Always read the current state through a route.
+
+### Parameter types
+
+Parameters are declared per route. Anything not declared is refused with `bad_request`.
+
+| Type        | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| `string`    | Text, with an optional `max` length                      |
+| `int`       | Whole number                                             |
+| `bool`      | `true` or `false`                                        |
+| `enum`      | One of a declared list of values                         |
+| `https_url` | An `https` URL whose host is in the route's `hosts` list |
+
+An `int` may declare `min` and `max` anywhere in the range -(2^53-1) to 2^53-1 (the default is -2^31 to 2^31-1), and a value outside it is refused. A `string`'s `max` is at most 4096.
+
+Keep large data on the native side and pass identifiers through the bridge. A call URL is at most 8192 characters, and each extension accepts up to 20 calls per second.
+
+---
+
+## Calling a route
+
+<Tabs>
+  <Tab title="Promise">
+    With the `despia-native` package, pass the route's answer variable to `despia()` and await it:
+
+    ```javascript
+    import despia from 'despia-native';
+
+    const r = await despia(
+      'extension://recorder/start?upload=' + encodeURIComponent(uploadUrl),
+      ['recorderStart']
+    );
+
+    if (r.recorderStart.ok) {
+      console.log(r.recorderStart.data.recordingId);
+    } else {
+      console.error(r.recorderStart.code, r.recorderStart.error);
+    }
+    ```
+  </Tab>
+  <Tab title="Callback">
+    Define the route's callback, then set `window.despia`:
+
+    ```javascript
+    window.onRecorderStart = (result) => {
+      if (result.ok) {
+        console.log(result.data.recordingId);
+      } else {
+        console.error(result.code, result.error);
+      }
+    };
+
+    window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
+    ```
+  </Tab>
+  <Tab title="Per-call callback">
+    Add `callback=<name>` to replace the route's callback for that one call:
+
+    ```javascript
+    window.onStatusOnce = (result) => console.log(result.data.state);
+
+    window.despia = "extension://recorder/status?id=" + id + "&callback=onStatusOnce";
+    ```
+  </Tab>
+</Tabs>
+
+Variable and callback names must be valid JavaScript names of up to 64 characters, must not start with `__`, and must not be a browser or runtime global.
+
+---
+
+## The result
+
+Every answer has the same shape:
+
+| Field       | Meaning                                                           |
+| ----------- | ----------------------------------------------------------------- |
+| `ok`        | `true` on success, `false` on error                               |
+| `provider`  | The provider of the answer {/* TODO: set the `provider` field's value to what the extension:// rename ships */} |
+| `platform`  | The platform that answered                                        |
+| `runtime`   | `3`                                                               |
+| `bridge`    | `1`                                                               |
+| `extension` | The extension id                                                  |
+| `route`     | The route name                                                    |
+| `data`      | Your handler's data on success, `null` on error                   |
+| `error`     | The error message on error                                        |
+| `code`      | The error code on error                                           |
+
+An error carries a code and a message, and nothing else. If the page must tell failures apart, give each one its own code.
+
+### Error codes
+
+| Code               | When                                                                       |
+| ------------------ | -------------------------------------------------------------------------- |
+| `bad_request`      | An undeclared parameter, a missing required one, or a value of the wrong type |
+| `not_registered`   | This build does not contain the extension or route                         |
+| `forbidden_frame`  | The call did not come from the top-level page                              |
+| `forbidden_origin` | The call came from an origin that is not allowed                           |
+| `rate_limited`     | More than 20 calls per second to one extension                             |
+| `timeout`          | The handler did not answer within the route's `timeout_ms`                 |
+| `unavailable`      | The capability is not available right now                                 |
+| `platform_limit`   | This platform or OS version has no such capability. Every route of an Android extension answers it on a device below the extension's `android.min_sdk` |
+| `handler_error`    | Your handler failed                                                        |
+| Your own codes     | Any code your handler returns, for example `busy` or `permission_denied`   |
+
+A call to an extension or route that this build does not contain answers your `callback` if you gave one. Otherwise it fires the `despia-feature-not-included` event. A build without any extensions does not answer at all. To detect an extension, call a status route with a `callback` and treat no answer as not included.
+
+---
+
+## The iOS handler
+
+The manifest names the entry type in `ios.app.entry_type`. It is a class marked `@MainActor` that conforms to `NativeExtension`. From the [recorder sample](/experiments/samples/recorder):
+
+```swift ios/app/RecorderExtension.swift (excerpt)
+@MainActor
+final class RecorderExtension: NSObject, NativeExtension {
+    required override init() { super.init() }
+
+    func didLaunch(_ context: NativeExtContext) {
+        ctx = context
+        // ...
+    }
+
+    func handle(_ call: NativeExtCall) async -> NativeExtResult {
+        // ...
+        switch call.route {
+        case "start": return await start(call)
+        case "stop": return stop(call.params["id"] as? String ?? "")
+        case "status": return status(call.params["id"] as? String)
+        case "discard": return discard(call.params["id"] as? String ?? "")
+        case "upload": return upload(call.params["id"] as? String ?? "", call.params["upload"] as? String ?? "")
+        default: return .error(code: "not_registered", message: call.route)
+        }
+    }
+}
+```
+
+- `handle(_:)` runs on the main actor for every checked call. Return `.ok([...])` with your data, or `.error(code:message:)`.
+- `didLaunch(_:)` runs once at every launch, before any web view exists, also when iOS launches the app in the background.
+- After any `await` in `handle`, check `call.isActive` before you start something new. Once the route's `timeout_ms` has passed, the page already has its `timeout` answer.
+- Do not mark `handle` `nonisolated` or `@concurrent`. Do background work explicitly and return to the main actor before you touch extension state.
+
+`NativeExtContext` gives you `dataDirectory`, `appGroupIdentifier(_:)`, `appGroupURL(_:)`, `backgroundSessionIdentifier(_:)`, `isApprovedURL(_:route:param:)`, `onExpiration(of:_:)`, `emit(_:_:)` and `log(_:)`. Only these types are supported API.
+
+### Lifecycle hooks
+
+Each hook is called only when its name is listed in `ios.app.lifecycle`. The runtime stays the app's only system delegate.
+
+| `lifecycle` name         | Hook                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `launch`                 | `didLaunch(_:)`                                                               |
+| `scene`                  | `sceneDidChange(_:)`: foreground and background changes                       |
+| `background_task`        | `handleBackgroundTask(name:task:)` for a name in `background_tasks`           |
+| `open_url`               | `openURL(_:)` for a URL scheme your extension claims                          |
+| `user_activity`          | `continueUserActivity(_:)`                                                    |
+| `push_token`             | `didRegisterPushToken(_:)`                                                    |
+| `remote_notification`    | `didReceiveRemoteNotification(_:completion:)`                                 |
+| `notification`           | `willPresentNotification(_:)` and `didReceiveNotificationResponse(_:completion:)` |
+| `bluetooth_restoration`  | `restoreBluetoothCentrals(_:)`                                                |
+| `terminate`              | `willTerminate()`                                                             |
+
+`handleBackgroundURLSession(name:completion:)` receives events for a session declared in `background_url_sessions`. Set a background task's expiration handler with `context.onExpiration(of:_:)`, never `task.expirationHandler`.
+
+---
+
+## The Android handler
+
+The manifest names the entry class in `android.entry_class`. It implements `com.despia.nativeext.NativeExtension`. From the recorder sample:
+
+```java android/recorder/java/despia/ext/recorder/RecorderExtension.java (excerpt)
+public final class RecorderExtension implements NativeExtension {
+    private static volatile ExtContext policy;
+    private ExtContext ctx;
+
+    @Override
+    public void onCreate(ExtContext context) {
+        ctx = context;
+        policy = context;
+        RecorderStore.setListener(snapshot -> ctx.emit("state", snapshot));
+        // ...
+    }
+
+    @Override
+    public void handle(ExtCall call, ExtResult.Callback reply) {
+        Context app = ctx.app();
+        try {
+            switch (call.route) {
+                case "start": {
+                    if (ContextCompat.checkSelfPermission(app, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                        reply.reply(ExtResult.error("permission_denied", "RECORD_AUDIO is not granted; request it from the page first"));
+                        return;
+                    }
+                    // ...
+                }
+                // ...
+                default:
+                    reply.reply(ExtResult.error("not_registered", call.route));
+            }
+        } catch (RecorderStore.StorageException e) {
+            reply.reply(storageFailed(e, "read"));
+        } catch (JSONException e) {
+            reply.reply(ExtResult.error("handler_error", e.getMessage()));
+        }
+    }
+}
+```
+
+- `handle` gets the call and a reply callback. Call `reply.reply(ExtResult.ok(json))` or `reply.reply(ExtResult.error(code, message))` once.
+- `onCreate` runs in `Application.onCreate` of the main process, before any activity or WebView. It also runs when WorkManager or a receiver starts the process. List `application_create` in `android.lifecycle`.
+
+`ExtContext` gives you `app()`, `dataDir()`, `emit(event, json)`, `log(msg)`, `resultKey(name)` and `isApprovedUrl(url, route, param)`. Use `isApprovedUrl` to check a stored URL again before delayed work, such as a `Worker` or a service, sends anything to it.
+
+---
+
+## Patterns the samples use
+
+The bridge answer is a JavaScript string with typed parameters. These conventions keep that workable.
+
+- **Bytes.** A parameter named `hex` (hex digits, even length) or `b64` (standard or URL-safe base64), exactly one of them, and lower-case `hex` in answers.
+- **UUIDs and lists.** UUIDs are `string` parameters in 16-bit, 32-bit or 128-bit form, and answers give lower-case 128-bit. Lists are comma-separated strings.
+- **A table in one parameter.** One `string` parameter, with entries separated by `,` and fields by `~`. The extension parses it and refuses it whole.
+- **Answers the platform needs at once.** When the platform asks for a value the page cannot give in time, the extension answers from a native value store that the page sets, and reports each write as an event.
+- **Events a page may miss.** An event sent while no page is loaded is dropped. Keep each event in a native journal with a sequence number, offer a route that reads it (`events?after=<seq>`), and keep state readable through its own route.
+- **Files.** File bytes never belong in a bridge answer. Serve the file from the extension on `127.0.0.1` with a random per-file token in the URL, and answer with that URL.
+
+---
+
+## Declaring native work
+
+Both ways are declared in an extension's `manifest.json`.
+
+- **Typed.** On iOS, `targets[].kind` is a preset: `widgetkit`, `notification-service`, `notification-content`, `share` or `intents`. On Android, a module with `kind: "typed"` lists sources, resources, permissions and components (`service`, `receiver`, `provider`, `activity`) from a fixed vocabulary, and the build writes the Gradle file and manifest.
+- **Custom.** On iOS, `kind: "custom"` takes a product type, build settings, script phases, a full `info_plist`, `entitlements`, link targets and packages. On Android, `kind: "custom"` points `dir` at your own module with its own `build.gradle`, `AndroidManifest.xml`, sources and resources.
+
+Your build logic runs in an offline compile job, so dependencies must be pinned files in the approval. Nothing is downloaded at build time.
+
+Both ways may also declare:
+
+- **Android `min_sdk`** (21 to 36, typed modules). The module builds at that level. On a device below it, the extension is never created and every route answers `platform_limit`.
+- **Android `meta_data`.** Application `<meta-data>` entries, each a `name` and exactly one of `value` or `resource`. A name the app already declares, or another extension declares, is refused. Keep account values in your config, not in a public repository.
+- **iOS `packages[].weak: true`.** Every product of that package is linked as optional, so an app whose deployment target is below the package's minimum still launches. Guard its use with `#available`.
+
+Files are accepted by type: source and text formats, assets and binaries. Every file must be named in its `manifest.json`, and an unreferenced file is refused. Hidden files (names that start with a dot) are always refused. Binaries need approval.
+
+---
+
+## What the build owns
+
+You cannot set these. The build sets them for you: bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia (declare them under `requires`), and push and associated-domain entitlements. App Groups are logical names. A group named `nativeext` becomes `group.<bundle id>.nx.nativeext`.
+
+Build errors in your files are reported by their served path, `<extension>/<ios|android>/<your path>:<line>:<column>`, for example `recorder/ios/app/RecorderExtension.swift:42:17`. Secrets, tokens and build machine paths are redacted.
+
+---
+
+## Platform limits to plan for
+
+- **iOS.** Background audio continues only while the audio session stays active. Recording must start in the foreground, and a force-quit ends it. Lock Screen widget families need iOS 16 and update on WidgetKit's budget. App Groups and new App IDs are manual steps in the Apple Developer portal.
+- **Android.** Android 14 and later only start a microphone foreground service while the app is visible. Lock Screen widgets depend on the device, so the foreground service notification is the guaranteed Lock Screen presence. Google Play requires foreground service type declarations.
+- **Files.** Android WorkManager stops a regular worker after 10 minutes, and an upload restarts from its first byte.
+- **Both.** Apple managed capabilities and restricted Android permissions need approval from Apple or Google and pass the store's own review.

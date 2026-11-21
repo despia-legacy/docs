@@ -18,7 +18,7 @@ For the Despia V3 runtime. First-party V4 support comes through the new package 
 
 Call the Despia V3 extension bridge from your app's JavaScript. It is independent
 of the web UI framework: React, Vue, Svelte, Next.js, TanStack and HTML5 apps use
-the same `window.despia = "extension://..."` interface.
+the same Despia JS SDK commands from client lifecycle hooks or click handlers.
 
 For Lovable, Base44, Replit or another app builder, use a project that lets you
 add custom JavaScript and serve the extension files at their exact HTTPS paths.
@@ -30,7 +30,7 @@ app. A browser preview alone does not provide native extension features.
 
 1. Copy manifest.json, ios/ and android/ to public/despia/calendar/ in your web app.
 2. Add calendar to public/despia/extensions.json. The prepared minimal index is `{ "extensions": ["calendar"] }`; use it only after the no-app-identity runtime reaches your build. Existing matching legacy identity blocks remain compatible. Do not add manifest_version to the index.
-3. Enable calendar_usage in Despia's permissions. The prepared host emitter maps it to legacy, full-access and write-only iOS calendar descriptions. For the complete iOS sample, also supply DESPIA_NX_REMINDERS_USAGE, mapped to both reminders descriptions. The backend schema and editor deployment for that new child are pending. Purpose strings cannot be placed in ios.app.info_plist by this extension.
+3. Enable calendar_usage in Despia's permissions. The prepared host emitter maps it to legacy, full-access and write-only iOS calendar descriptions. For the complete iOS extension, also supply DESPIA_NX_REMINDERS_USAGE, mapped to both reminders descriptions. The backend schema and editor deployment for that new child are pending. Purpose strings cannot be placed in ios.app.info_plist by this extension.
 4. Send calendar.policy.json with the approval request. It declares the Android READ_CALENDAR and WRITE_CALENDAR permission additions. These declarations are separate from the user's runtime consent. The policy file is not served from your site.
 5. Approve the source and rebuild through the extension-enabled path, then install that artifact.
 
@@ -38,24 +38,39 @@ No Google Calendar cloud OAuth or server credential is included. Android reads c
 
 ## Call from the page
 
+Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from browser events:
+
 ```javascript
-window.onCalendarPermissionsResult = result => console.log(result);
-window.onCalendarPermission = state => console.log(state);
-window.despia = "extension://calendar/permissions?request=true&access=full";
-// Once the permission result event indicates access:
-window.despia = "extension://calendar/calendars";
-const event = {
-  calendar_id: selectedCalendarId,
-  title: "Example appointment",
-  start_ms: Date.now() + 3600000,
-  end_ms: Date.now() + 7200000,
-  timezone: "Europe/Paris",
-  alarms: [{minutes: 15}]
-};
-window.despia = "extension://calendar/event_save?data=" + encodeURIComponent(JSON.stringify(event));
+import {callExtension} from './despia-extension.js';
+
+async function requestCalendarAccess() {
+  return callExtension('extension://calendar/permissions?request=true&access=full');
+}
+
+// After the system permission request finishes, read the actual state.
+async function readCalendarAccess() {
+  return callExtension('extension://calendar/permissions');
+}
+
+// Read calendars after the permission result indicates access.
+async function readCalendars() {
+  return callExtension('extension://calendar/calendars');
+}
+
+async function saveAppointment(selectedCalendarId) {
+  const appointment = {
+    calendar_id: selectedCalendarId, title: 'Example appointment',
+    start_ms: Date.now() + 3600000, end_ms: Date.now() + 7200000,
+    timezone: 'Europe/Paris', alarms: [{minutes: 15}]
+  };
+  return callExtension('extension://calendar/event_save?data='
+    + encodeURIComponent(JSON.stringify(appointment)));
+}
 ```
 
-Register callbacks before calls and wait for dependent answers. Default outputs are ``window.calendar<Route>Result`` and ``onCalendar<Route>Result``, with the route converted to PascalCase and underscores removed. For example, event_save returns calendarEventSaveResult through onCalendarEventSaveResult. Responses use the V3 bridge envelope. IDs are opaque strings, not portable identifiers between platforms or accounts. Dates use Unix milliseconds. The route's data parameter is a JSON object encoded into a string of at most 4096 characters.
+The permission request may answer with pending state before the system dialog finishes. Read `permissions` again or handle the declared `onCalendarPermission` event before making dependent calls. Register event handlers with browser lifecycle cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
+
+Default outputs are `calendar<Route>Result` and `onCalendar<Route>Result`, with the route converted to PascalCase and underscores removed. For example, event_save returns calendarEventSaveResult through onCalendarEventSaveResult. IDs are opaque strings, not portable identifiers between platforms or accounts. Dates use Unix milliseconds. The route's data parameter is a JSON object encoded into a string of at most 4096 characters.
 
 ## Shared routes
 
@@ -78,7 +93,7 @@ Alarm writes use `{minutes: 15}` for a reminder 15 minutes before the event. iOS
 
 Recurrence writes use an array of objects with frequency 0 daily, 1 weekly, 2 monthly or 3 yearly, a positive interval, optional end_count or end_ms, days_of_week objects with day 1 Sunday through 7 Saturday and optional week ordinal, and optional days_of_month, months_of_year, weeks_of_year, days_of_year and set_positions. iOS accepts EventKit recurrence rules. Android accepts one RRULE through the shared writer and returns raw RRULE/RDATE/EXRULE/EXDATE under android metadata. For a recurring Android save, include start_ms and end_ms so duration can be formed.
 
-EventKit supports this-event and future-event mutations. Android future-series splitting and recurring-series deletion need explicit provider operations through android_table. The shared delete route returns unsupported rather than silently deleting a recurring series. This sample does not implement an atomic Android series-split helper. Use native code when the operation needs a transaction spanning multiple provider rows.
+EventKit supports this-event and future-event mutations. Android future-series splitting and recurring-series deletion need explicit provider operations through android_table. The shared delete route returns unsupported rather than silently deleting a recurring series. This extension does not implement an atomic Android series-split helper. Use native code when the operation needs a transaction spanning multiple provider rows.
 
 ## Platform methods and native UI
 

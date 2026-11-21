@@ -29,20 +29,30 @@ alone does not change launch behavior in an installed binary.
 
 ## Request and read status
 
-Register the callback before making a call from the top-level app page:
+Use the Despia JS SDK from a browser click handler. This command has a fixed output variable, so serialize status and request calls, including calls from other components. A status call does not show the prompt.
 
 ```javascript
-window.onDespiaTrackingConsent = result => {
-  console.log(result.status, result.request_id);
-};
-window.despia = "trackingconsent://status?request_id=consent-screen";
-// After the person chooses to continue:
-window.despia = "trackingconsent://request?request_id=consent-choice";
+import despia from 'despia-native';
+
+async function trackingConsent(action) {
+  const requestId = crypto.randomUUID();
+  const responses = await despia(
+    'trackingconsent://' + action + '?request_id=' + encodeURIComponent(requestId),
+    ['despiaTrackingConsent']
+  );
+  const answer = responses.despiaTrackingConsent;
+  if (answer === undefined) throw new Error('No tracking answer within 30 seconds');
+  if (answer.request_id !== requestId) throw new Error('A different tracking request answered');
+  if (!answer.ok) throw new Error(JSON.stringify(answer));
+  return answer;
+}
+
+// In separate client events, await each call before starting another:
+// await trackingConsent('status');
+// await trackingConsent('request');
 ```
 
-The legacy `trackingconsent://` form still requests permission. A status call
-does not show the prompt. The result is also stored in
-`window.despiaTrackingConsent`.
+The legacy `trackingconsent://` form still requests permission. Read the latest stored answer through `despia.despiaTrackingConsent` when needed. A native failure resolves in the SDK; the local function above checks `ok` and throws explicitly.
 
 The answer is a flat object, separate from the extension result envelope:
 

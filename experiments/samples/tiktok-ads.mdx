@@ -18,7 +18,7 @@ For the Despia V3 runtime. First-party V4 support comes through the new package 
 
 Call the Despia V3 extension bridge from your app's JavaScript. It is independent
 of the web UI framework: React, Vue, Svelte, Next.js, TanStack and HTML5 apps use
-the same `window.despia = "extension://..."` interface.
+the same Despia JS SDK commands from client lifecycle hooks or click handlers.
 
 For Lovable, Base44, Replit or another app builder, use a project that lets you
 add custom JavaScript and serve the extension files at their exact HTTPS paths.
@@ -37,17 +37,20 @@ The Swift package is pinned to commit 2a3a35560c2c0547f74869c58160946e29c0932c. 
 
 ## Call from the page
 
-```javascript
-window.onTiktokadsConfigureResult = result => console.log(result);
-window.despia = "extension://tiktokads/configure";
-// Wait for successful configuration, then apply the user's collection choice:
-window.despia = "extension://tiktokads/consent?enabled=true";
-window.despia = "extension://tiktokads/event?name=LaunchAPP";
-window.despia = "extension://tiktokads/purchase?amount=12.50&currency=USD"
-  + "&properties=" + encodeURIComponent(JSON.stringify({content_id: "example-product"}));
-```
+Use the app-local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Run the function from a client event after obtaining the person's collection choice:
 
-Wait for each successful answer before the next dependent call. Default output is `window.tiktokads<Route>Result` and callback `onTiktokads<Route>Result`. All answers use the standard V3 envelope.
+```javascript
+import {callExtension} from './despia-extension.js';
+
+async function reportPurchase(hasAnalyticsConsent) {
+  await callExtension('extension://tiktokads/configure');
+  await callExtension('extension://tiktokads/consent?enabled=' + String(hasAnalyticsConsent));
+  if (!hasAnalyticsConsent) return;
+  await callExtension('extension://tiktokads/event?name=LaunchAPP');
+  return callExtension('extension://tiktokads/purchase?amount=12.50&currency=USD'
+    + '&properties=' + encodeURIComponent(JSON.stringify({content_id: 'example-product'})));
+}
+```
 
 | Route | Parameters | Successful data |
 | --- | --- | --- |

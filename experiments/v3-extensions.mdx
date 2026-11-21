@@ -9,7 +9,7 @@ tag: "Experimental"
   **Requires an extension-enabled build.** Despia must enable extension builds for your app and approve the source before rebuilding the native app. A standard app build does not install extensions.
 </Warning>
 
-V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code then calls them with one scheme:
+V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code calls them with the Despia JS SDK from a client event:
 
 ```javascript
 window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
@@ -23,7 +23,7 @@ Each sample is a native source template. Copying it to your website is preparati
 
 Despia's extension sample repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying a sample requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the sample repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
 
-| Sample | What it adds |
+| Extension | What it adds |
 | ------ | ------------ |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it |
 | [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities |

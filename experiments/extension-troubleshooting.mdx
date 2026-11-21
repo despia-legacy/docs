@@ -1,0 +1,40 @@
+---
+title: "Troubleshooting extension builds"
+description: "Check build inclusion, manifest errors, dependency graphs and native permission requirements."
+---
+
+## My website serves the files, but no route answers
+
+Hosting is preparation, not activation. Confirm with Despia that the app has an approved extension build and install that artifact. A regular app build can complete successfully while including no extension runtime. Do not infer inclusion from a user agent string or from the presence of files on the website.
+
+Then check the exact extension folder name, declared route and callback. Register the callback before assigning `window.despia`. Call from the trusted top-level app page, not an iframe, popup or page sheet. Verify that your page's JavaScript setter reaches the native bridge. Silence is a symptom, not a unique diagnosis.
+
+## Does a successful build validate my extension?
+
+Only a build that actually selected the extension files and approved dependency closure can validate or compile them. A completed normal build is not an extension source check, entitlement check or device test. Ask support to identify the installed artifact and its extension build result before retrying the same generation.
+
+## Which version field belongs in the index?
+
+Do not put `manifest_version` in `extensions.json`. It is not an accepted index key. Each extension folder has its own `manifest.json` and version field. Use the index format documented for the runtime your app actually builds; do not guess an app identity or add fields copied from another manifest format.
+
+## My Swift package has a commit revision. Why is it refused?
+
+Remote packages also require `ios.package_resolved` pointing to a complete `Package.resolved` file inside the extension's ios/ directory. It includes the pinned transitive graph, not just the root package. Missing this reference produces `NX-M100`. Changing the package graph requires approval again. Use a sample's complete graph for that exact dependency set or prepare the graph for your own packages.
+
+## Are HTTP 200 responses enough?
+
+No. Check that each required path returns its actual JSON, source or resource bytes. SPA fallbacks often return index.html with status 200. That fails JSON parsing or the approved size and hash checks. Serve static extension files before the SPA fallback. Also make sure your hosting accepts the build fetcher's requests; the source fetch user agent is `despia-nx-fetch/1`.
+
+## Do native permissions and entitlements come from the extension?
+
+Runtime permission requests, manifest declarations and build configuration are separate. On Android, `android.requires.permissions` checks dashboard-owned base permissions; it does not grant runtime consent. Custom module manifest declarations can carry Android attributes such as `neverForLocation`. To request permissions from an Activity, declare `activity_lifecycle` and use `onActivityEvent` with a namespaced Activity Result Registry key from `ctx.resultKey`.
+
+On iOS, purpose strings are configured through Despia's permissions. An extension cannot override build-owned purpose descriptions. Managed capabilities, such as payment acceptance entitlements, still need the applicable Apple approval and a matching provisioning profile. Declaring an entitlement does not grant eligibility.
+
+## My permission route times out
+
+A route's `timeout_ms` belongs beside name, params and output. The default is 20000 milliseconds and the accepted range is 1000 to 25000 milliseconds. A system dialog can stay open longer. Acknowledge your extension's pending state promptly, emit a declared event when the user answers, and expose a status route. After an asynchronous answer, check `call.isActive` on iOS or `call.isActive()` on Android before starting new work for a waiting call. An empty params object, or omitting params, is accepted for a route without parameters.
+
+## Which compiler settings apply?
+
+The current V3 iOS project uses Swift language mode 5.0; this is different from the installed Swift compiler version. Generated targets inherit the host language mode unless a permitted custom setting changes it. The current Android app uses compileSdk 36. Custom Android modules supply their own Gradle configuration and must remain compatible with the host and the device OS.

@@ -76,7 +76,7 @@ Put the files in your web app's `public` folder, so they are served from your ap
 
 ```text
 public/despia/
-├── extensions.json              # your app identity and the list of extension folders
+├── extensions.json              # the list of extension folders
 └── recorder/                    # one folder per extension; the folder name is the extension id
     ├── manifest.json            # routes, parameters, outputs, events and native files
     ├── ios/
@@ -85,27 +85,15 @@ public/despia/
         └── ...                  # Java or Kotlin sources and resources
 ```
 
-`extensions.json` names your app and lists the extension folders:
+`extensions.json` lists the extension folders:
 
 ```json public/despia/extensions.json
 {
-  "manifest_version": 1,
-  "app": {
-    "client_id": "<your client id>",
-    "ios_bundle_id": "com.example.app",
-    "android_package": "com.example.app"
-  },
   "extensions": ["recorder"]
 }
 ```
 
-`extensions.json` holds the app identity and lists the extension folders. The three identity values:
-
-- **`client_id`**: your app's id in Despia. Open your app in the Despia editor and copy the id from the address bar: in a URL ending `/builder/<id>`, the part after `/builder/` is your client id.
-- **`ios_bundle_id`**: your app's iOS bundle id, the one Despia builds your iOS app with.
-- **`android_package`**: your app's Android package name, the one Despia builds your Android app with.
-
-Despia approves the extensions for exactly this app. If a value does not match the app being built, the build stops with an error that names the value (`NX-L013` for `client_id`).
+Despia takes app identity from the existing build configuration. You do not copy it into this file. A legacy `app` block remains optional and must match the build if present. The signed approval lock must still match the app being built.
 
 `extensions.json` lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, and so is a folder listed twice.
 

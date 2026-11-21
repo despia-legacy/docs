@@ -24,6 +24,16 @@ icon: "clock-rotate-left"
 
   Name a Swift package by its GitHub URL, or an Android Maven library by its coordinate, and Despia fetches and pins it, with everything it depends on, when it approves your extension. You never download a library yourself. See [Adding a Swift package or a Maven library](/experiments/v3-extensions#adding-a-swift-package-or-a-maven-library). Any change to a manifest or native file needs a new approval and a new native build, and cannot be applied over-the-air. Extensions are enabled per app by Despia.
 
+  ### Add an extension without copying app identity
+
+  List the folder names in `public/despia/extensions.json`:
+
+  ```json
+  { "extensions": ["recorder"] }
+  ```
+
+  Despia uses the app identity already configured for the build. Existing files with an `app` block keep working when that block matches the build. The signed approval lock must still match the app being built.
+
   ### What stays owned by the build
 
   The build sets the bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia, and push and associated-domain entitlements. Apple managed capabilities and restricted Android permissions still need approval from Apple or Google. You own and maintain the native code, and Despia does not support code you have customised.

@@ -22,25 +22,33 @@ The manifest adds the `NXWidgets` WidgetKit target on iOS and a custom Glance mo
 
 ## Call it from your web app
 
-Use the local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from client events.
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the route's declared output variable. Call these functions from client events.
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function updateWidget() {
   const widget = {
     title: "Today's orders", value: '12', caption: 'Ready to dispatch',
     progress: 0.6, link: '/orders'
   };
-  const saved = await callExtension('extension://widgets/set?template=stat&data='
-    + encodeURIComponent(JSON.stringify(widget)));
-  console.log(saved.template, saved.stored);
+  const reply = await despia('extension://widgets/set?template=stat&data=' + encodeURIComponent(JSON.stringify(widget)), ['widgetsSet']);
+  const answer = reply.widgetsSet;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  console.log(answer.data.template, answer.data.stored);
 }
 
 async function readWidget() {
-  const widget = await callExtension('extension://widgets/get?template=stat');
-  const queued = await callExtension('extension://widgets/taps');
-  console.log(widget.data, queued.taps);
+  const widgetReply = await despia('extension://widgets/get?template=stat', ['widgetsGet']);
+  const widget = widgetReply.widgetsGet;
+  if (widget === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!widget.ok) { console.error(widget.code, widget.error); return; }
+  const queuedReply = await despia('extension://widgets/taps', ['widgetsTaps']);
+  const queued = queuedReply.widgetsTaps;
+  if (queued === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!queued.ok) { console.error(queued.code, queued.error); return; }
+  console.log(widget.data.data, queued.data.taps);
 }
 ```
 

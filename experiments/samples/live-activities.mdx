@@ -5,13 +5,13 @@ icon: "stopwatch"
 tag: "Experimental"
 ---
 
-This sample starts, updates, ends and lists native activities from your web app. It includes delivery, score and timer templates. On iOS it uses ActivityKit for the Lock Screen and Dynamic Island. On Android it uses ongoing notifications, with Live Updates on Android 16 and later when the system allows promotion.
+This extension starts, updates, ends and lists native activities from your web app. It includes delivery, score and timer templates. On iOS it uses ActivityKit for the Lock Screen and Dynamic Island. On Android it uses ongoing notifications, with Live Updates on Android 16 and later when the system allows promotion.
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
 
 ## Install
 
-1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths. The [sample repository](https://github.com/despia-legacy/despia-extension-live-activities) carries the same template.
+1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths. The [extension repository](https://github.com/despia-legacy/despia-extension-live-activities) carries the same template.
 2. Add `"liveactivity"` to the `extensions` array in `public/despia/extensions.json`, keeping your app identity and any other extension names.
 3. Send the extension for approval and rebuild your native app. Changing the native files needs a new approval and build.
 
@@ -19,30 +19,26 @@ The manifest adds the `NXLiveActivity` WidgetKit target on iOS. The Android cust
 
 ## Call it from your web app
 
-Install the callback before making the call. Times in the timer state are Unix seconds.
+Use the local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from client events. Timer times are Unix seconds.
 
 ```javascript
-window.onLiveActivityStart = (answer) => {
-  if (answer.ok) {
-    console.log(answer.data.activityId, answer.data.state);
-  } else {
-    console.error(answer.code, answer.error);
-  }
-};
+import {callExtension} from './despia-extension.js';
 
-const startedAt = Date.now() / 1000;
-const params = new URLSearchParams({
-  template: "timer",
-  activity_id: "oven-timer",
-  attributes: JSON.stringify({ title: "Pizza oven" }),
-  state: JSON.stringify({ startedAt, endsAt: startedAt + 900, label: "Baking" })
-});
-window.despia = "extension://liveactivity/start?" + params.toString();
-```
+async function startTimer() {
+  const startedAt = Date.now() / 1000;
+  const params = new URLSearchParams({
+    template: 'timer',
+    activity_id: 'oven-timer',
+    attributes: JSON.stringify({title: 'Pizza oven'}),
+    state: JSON.stringify({startedAt, endsAt: startedAt + 900, label: 'Baking'})
+  });
+  const activity = await callExtension('extension://liveactivity/start?' + params);
+  console.log(activity.activityId, activity.state);
+}
 
-```javascript
-window.onLiveActivityEnd = (answer) => console.log(answer);
-window.despia = "extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate";
+async function endTimer() {
+  return callExtension('extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate');
+}
 ```
 
 ## Routes and answers
@@ -86,16 +82,16 @@ Read `list` to recover the current state after a page loads. Do not rely only on
 
 ### Errors
 
-Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), the sample can return `unknown_template`, `activities_disabled`, `exists`, `bad_value`, `too_large` and `unknown_activity`. iOS can also return `activity_failed`, `not_foreground`, `too_many` or `unsupported`. Android can return `storage_failed` or `busy` while a notification permission prompt is open. `settings` can return `unavailable`.
+Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), the extension can return `unknown_template`, `activities_disabled`, `exists`, `bad_value`, `too_large` and `unknown_activity`. iOS can also return `activity_failed`, `not_foreground`, `too_many` or `unsupported`. Android can return `storage_failed` or `busy` while a notification permission prompt is open. `settings` can return `unavailable`.
 
 ## Platform limits
 
-- iOS local starts require the app to be in the foreground. The sample widget target declares iOS 16.6. Push-to-start requires iOS 17.2 or later. ActivityKit and the user's settings control visibility, lifetime and push delivery.
+- iOS local starts require the app to be in the foreground. The extension widget target declares iOS 16.6. Push-to-start requires iOS 17.2 or later. ActivityKit and the user's settings control visibility, lifetime and push delivery.
 - Android 16 and later can promote an eligible ongoing notification to a Live Update. Earlier versions use an ordinary ongoing notification. Promotion is not guaranteed.
 - Android has no ActivityKit relevance score. When you pass `relevance`, Android reports this in `platformDifferences.relevance` instead of applying it.
-- On Android 7, ended notifications are removed immediately because notification timeouts are unavailable. On later Android versions the sample uses a timeout for `default` and `after` dismissal.
+- On Android 7, ended notifications are removed immediately because notification timeouts are unavailable. On later Android versions the extension uses a timeout for `default` and `after` dismissal.
 
-The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this sample.
+The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this extension.
 
 ## Files
 

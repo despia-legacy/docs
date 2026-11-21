@@ -5,6 +5,8 @@ description: "Purchase a specific product directly using RevenueCat through Appl
 hidden: true
 ---
 
+For the current RevenueCat bridge, including localized product prices, identity, unified purchase results, Apple offer codes, and Customer Center, use the [RevenueCat setup guide](/native-features/revenuecat/introduction) and [reference](/native-features/revenuecat/reference). The examples below retain the older purchase-history integration. For a user-initiated restore, open `revenuecat://center`; reading `getpurchasehistory://` alone does not perform that restore flow.
+
 <Card icon="sparkles" title="AI Prompt">
   Add native in-app purchase functionality to my app using the Despia SDK from: https://www.npmjs.com/package/despia-native
 
@@ -26,10 +28,10 @@ hidden: true
     navigator.userAgent.toLowerCase().includes('android');
   ```
 
-  Use platform-specific product IDs. On Android, subscription product IDs must be prefixed with the subscription group name as configured in Google Play billing:
+  Use platform-specific product IDs. On Android, use the catalog product ID in the form `subscriptionId:basePlanId`:
 
   - iOS: `monthly_premium_ios`
-  - Android: `premium:monthly_premium_android` (group name `premium` + `:` + product ID)
+  - Android: `premium:monthly_premium_android` (subscription ID `premium` + `:` + base plan ID)
 
   For the web fallback, redirect to a RevenueCat Web Purchase Link with the user's ID appended:
 
@@ -51,7 +53,7 @@ hidden: true
   In RevenueCat, create a single entitlement (e.g. `"premium"`) and link both the iOS and Android products to it. This means `entitlementId` will be `"premium"` for all platforms - check with `p.entitlementId === "premium"`. For one-time purchases, match the exact `entitlementId` (e.g. `"no_ads"`).
 
   <Note>
-    The Despia Native Runtime will call the global function `onRevenueCatPurchase()` when an in-app purchase or subscription is successfully made on the client side. This should not grant access immediately on its own - but it is the right moment to either poll your backend until the RevenueCat webhook confirms the purchase, or run a client-side entitlement check via `getpurchasehistory://` to instantly verify active entitlements with no backend needed. You should also call `getpurchasehistory://` proactively on app load, page navigation, and before gating any premium feature. These checks are instant, offline-capable, and require no network round-trip to your server.
+    The Despia Native Runtime will call the global function `onRevenueCatPurchase()` when an in-app purchase or subscription is successfully made on the client side. This should not grant access immediately on its own - but it is the right moment to either poll your backend until the RevenueCat webhook confirms the purchase, or run a client-side entitlement check via `getpurchasehistory://` to update client-side entitlement UI. You should also call `getpurchasehistory://` proactively on app load, page navigation, and before gating any premium feature. Store and RevenueCat state may be cached; this is not a guarantee of a fresh network verification. Authenticate and verify protected backend access separately.
   </Note>
 
   <Danger>
@@ -67,9 +69,9 @@ hidden: true
 
   Once the payment is confirmed on the backend, the backend should send a webhook to the frontend to let it know that this user's in-app purchase session was completed.
 
-  Also add a **Restore Purchases** button that calls: `despia("getpurchasehistory://", ["restoredData"])`
+  Also add a **Restore Purchases** button that calls `despia("revenuecat://center")`. Read available purchase rows separately with `despia("getpurchasehistory://", ["restoredData"])`.
 
-  This will query the native app stores and return all purchases associated with the current device/account, including active subscriptions, expired subscriptions, and one-time purchases.
+  This reads store purchase rows available to the native runtime. It is not a complete ledger of expired purchases or consumed products and does not itself initiate a Customer Center restore.
 
   The response array includes objects with:
 
@@ -150,7 +152,7 @@ function handleUpgrade() {
     despia(`revenuecat://purchase?external_id=${userId}&product=monthly_premium_ios`);
 
   } else if (isDespiaAndroid) {
-    // Native Android purchase - prefixed with Play subscription group: group:productId
+    // Native Android purchase - subscriptionId:basePlanId returned by the catalog
     despia(`revenuecat://purchase?external_id=${userId}&product=premium:monthly_premium_android`);
 
   } else {
@@ -163,7 +165,7 @@ function handleUpgrade() {
 ```
 
 <Danger>
-  **Always include the user's ID in the Web Purchase Link URL. This ties the web payment to their account so entitlements are instantly available across both your web app and mobile app - no extra steps needed for the user.**
+  **Always include the user's ID in the Web Purchase Link URL. This ties the web payment to their account so RevenueCat can associate the checkout with the same account used by your mobile app. Refresh customer state after checkout.**
 </Danger>
 
 #### Web Checkout Link (non-Despia fallback)
@@ -214,7 +216,7 @@ window.onRevenueCatPurchase = async () => {
 
 #### Without a backend - run the client-side entitlement check
 
-If you don't have a backend, skip the polling and check the native store directly using `getpurchasehistory://`. This queries Apple or Google in real time and returns the user's active entitlements instantly - no server, no network dependency beyond the store itself.
+If you don't have a backend, skip the polling and check the native store directly using `getpurchasehistory://`. This reads purchase state available to the native runtime. Results may use cached data and are not independent server-side verification.
 
 ```javascript
 window.onRevenueCatPurchase = async () => {
@@ -244,7 +246,7 @@ Don't wait for a purchase event to check entitlements. Call `getpurchasehistory:
 | **Page navigation** | Re-gate features as users move through the app without requiring a full reload |
 | **Before any gated feature** | Catch edge cases where entitlement state changed mid-session (e.g. expiry, refund) |
 
-These checks are instant and offline-capable. Apple and Google cache entitlement state on-device, so they don't require a live network connection to your server.
+Store and RevenueCat responses can use cached state. Handle network and store errors, and verify protected server resources on your backend.
 
 ```javascript
 // Run on app load
@@ -312,7 +314,7 @@ Repeat for any additional entitlements (e.g. `no_ads`).
 
 ### Check entitlements client-side
 
-`getpurchasehistory://` queries the native store directly and returns real-time entitlement state from Apple or Google. No backend required for native purchases.
+`getpurchasehistory://` reads the purchase rows available to the native runtime. For new entitlement checks, use `revenuecat://customer` and its active entitlement IDs. Server-controlled access requires backend verification.
 
 ```javascript
 const data = await despia("getpurchasehistory://", ["restoredData"]);
@@ -356,14 +358,14 @@ const isDespiaAndroid = isDespia &&
 
 // Product ID format:
 //   iOS:     "monthly_premium_ios"             (plain)
-//   Android: "premium:monthly_premium_android"  (Google Play group:productId format)
+//   Android: "premium:monthly_premium_android"  (Google Play subscriptionId:basePlanId format)
 const PRODUCTS = {
   premiumMonthly: isDespiaIOS ? "monthly_premium_ios" : "premium:monthly_premium_android",
   premiumAnnual:  isDespiaIOS ? "annual_premium_ios"  : "premium:annual_premium_android",
   removeAds: "remove_ads",
 };
 
-// Entitlement check - instant and offline-capable
+// Read available purchase state for client-side UI
 async function checkEntitlementsOnLoad() {
   const data = await despia("getpurchasehistory://", ["restoredData"]);
   const active = (data.restoredData ?? []).filter(p => p.isActive);
@@ -455,7 +457,7 @@ Client-side entitlement checks work well for simple apps, but **server-side webh
 - **Sync subscription state** across all platforms and databases in real time
 - **React to cancellations, refunds, and billing issues** automatically
 
-<Card icon="webhook" href="https://setup.despia.com/best-practices/backend/revenue-cat/webhooks" title="Despia Webhook Starter Template">
+<Card icon="webhook" href="/best-practices/backend/revenuecat/webhooks" title="Despia Webhook Starter Template">
   A full backend webhook handler template covering all RevenueCat event types, database schema, and best practices.
 </Card>
 
@@ -601,13 +603,13 @@ CREATE INDEX idx_user_subs_expires ON user_subscriptions(expires_at);
 
 Webhooks can occasionally fail (server downtime, timeouts, etc.). A cron job that periodically syncs subscription status from the RevenueCat API is a reliable safety net - especially important for catching cancellations and expirations that your webhook might have missed.
 
-<Card icon="clock" href="https://setup.despia.com/best-practices/backend/revenue-cat/webhooks" title="Cron Job Template">
-  Our full backend template includes a self-healing cron job that runs every 5 minutes, prioritizes expiring subscriptions, and stays within RevenueCat's API rate limits. Combined with webhooks it gives 99.9%+ sync reliability.
+<Card icon="clock" href="/best-practices/backend/revenuecat/webhooks" title="Cron Job Template">
+  Our full backend template includes a self-healing cron job that runs every 5 minutes, prioritizes expiring subscriptions, and stays within RevenueCat's API rate limits. Monitor webhook and reconciliation failures in your own backend.
 </Card>
 
 ## Restore Purchases
 
-Despia queries the native platform's billing system to retrieve all purchases associated with the current user's App Store or Google Play account. This includes active subscriptions, expired subscriptions, consumables, and non-consumable (lifetime) purchases. The data is normalized into a consistent format across both iOS and Android platforms.
+Despia reads the purchase rows available from the native store and RevenueCat integration. Available history differs by platform and purchase state; it is not an exhaustive ledger of expired or consumed purchases. Use `revenuecat://customer` for active RevenueCat entitlement IDs and Customer Center for an explicit restore.
 
 ### 1. Retrieve Purchase History
 
@@ -763,7 +765,7 @@ Payment integrations are complex and critical for most apps. We hope this docume
 ## Resources
 
 - [**NPM Package**](https://www.npmjs.com/package/despia-native)
-- [RevenueCat Webhooks Template](https://setup.despia.com/best-practices/backend/revenue-cat/webhooks)
+- [RevenueCat Webhooks Template](/best-practices/backend/revenuecat/webhooks)
 - [RevenueCat Webhooks](https://www.revenuecat.com/docs/integrations/webhooks)
 - [Webhook Event Types & Fields](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields)
 - [Sample Webhook Events](https://www.revenuecat.com/docs/integrations/webhooks/sample-events)

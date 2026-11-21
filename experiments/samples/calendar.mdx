@@ -5,7 +5,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  Source preview. This sample requires the prepared runtime changes and an approved extension build path. The hosted build path is not deployed yet. SDK compilation is not device or attribution certification.
+  Source preview. Runtime changes and hosted extension support are pending deployment. An approved extension-enabled native build is required.
 </Warning>
 
 Source repository: [Calendar](https://github.com/despia-legacy/calendar). This repository is private; access is required to read or copy its files.
@@ -13,8 +13,6 @@ Source repository: [Calendar](https://github.com/despia-legacy/calendar). This r
 A Despia V3 extension over iOS EventKit and the Android Calendar Provider. Shared routes cover event and calendar reads, writes, recurrence, alarms, permission state and native editor presentation. Named platform routes expose iOS Reminders and Android provider tables when there is no shared operation.
 
 For the Despia V3 runtime. First-party V4 support comes through the new package registry.
-
-**Source preview.** This sample depends on the prepared modern calendar/reminders purpose-string support and approved extension build path. The new runtime and editor settings are not deployed yet. Hosting these files and running a regular app build does not install them. Hardware behavior is not yet tested.
 
 ## Web frameworks and app builders
 
@@ -27,7 +25,6 @@ add custom JavaScript and serve the extension files at their exact HTTPS paths.
 You can edit those files with Claude Code, Codex, Cursor or your usual editor.
 The native extension must be approved and included in the installed Despia V3
 app. A browser preview alone does not provide native extension features.
-These are integration requirements, not a tested matrix of every builder.
 
 ## Install in an approved extension build
 
@@ -93,11 +90,9 @@ EventKit supports this-event and future-event mutations. Android future-series s
 
 No adapter can grant permissions itself. A system dialog may remain open longer than a route deadline, so permission completion is an event and state remains queryable. Activity recreation uses the same namespaced Android Activity Result Registry key. After the app process dies, query state again rather than relying on a past event. changed is a signal to refresh, not a durable change journal. Read results in small pages; provider data and long notes may exceed bridge output limits.
 
-## Limits and tests
+## Platform limits
 
 Current V3 iOS target is 16.6 and later. Android module minSdk24 and compileSdk36. Providers can reject read-only calendars, remote account writes or unsupported columns. iOS attendee fields are read-only in this adapter. Platform-only routes do not promise that every OS SDK method is already wrapped; the source is supplied so developers can add methods their app requires.
-
-Tested on: real EventKit SDK simulator typecheck, Android module assemble, 3 Android JVM boundary/recurrence tests and Swift value checks only. User-facing permission dialogs, native editors, provider writes, sync behavior and physical device behavior: not yet tested. These checks do not certify the hosted customer build path.
 
 [Despia V3 Extensions documentation](https://setup.despia.com/experiments/v3-extensions), [troubleshooting](https://setup.despia.com/experiments/extension-troubleshooting) and [extension skill](https://github.com/despia-legacy/extension-skill).
 

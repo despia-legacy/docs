@@ -4,9 +4,7 @@ description: "Request iOS App Tracking Transparency from your Despia V3 page and
 tag: "Experimental"
 ---
 
-Source preview: the request/status result API and separate automatic-prompt
-setting are prepared runtime and editor changes. They are not deployed yet.
-Confirm the native build and settings rollout before using this contract.
+**Source preview.** This request/status API and automatic-prompt setting are pending runtime and editor deployment.
 
 ATT controls Apple's tracking authorization. It is separate from an advertiser
 SDK's collection choice. This API does not install Meta, TikTok or AppsFlyer.
@@ -71,14 +69,9 @@ the new page loads. The same helper serves the main web view and native page
 sheets. iOS decides whether a system prompt can be shown; a repeated request
 cannot override an earlier choice or a system restriction.
 
-## Platforms and checks
+## Platforms
 
 This bridge is iOS only. Android has no Apple ATT prompt; advertiser identifier
 permissions and privacy choices follow the Android integration. Current Despia
 V3 iOS builds target iOS 16.6 and later. ATT's earlier OS introduction does not
 lower that target.
-
-Tested on: Swift wire-format checks, execution of the actual delivery JavaScript
-including navigation rejection, real iOS SDK helper typecheck and controller
-syntax parsing. A new physical-device prompt run and a complete iOS application
-archive are not yet tested for this change.

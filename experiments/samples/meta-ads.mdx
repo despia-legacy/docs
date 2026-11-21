@@ -5,7 +5,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  Source preview. This sample requires the prepared runtime changes and an approved extension build path. The hosted build path is not deployed yet. SDK compilation is not device or attribution certification.
+  Source preview. Runtime changes and hosted extension support are pending deployment. An approved extension-enabled native build is required.
 </Warning>
 
 Source repository: [Meta Ads](https://github.com/despia-legacy/meta-ads). This repository is private; access is required to read or copy its files.
@@ -13,8 +13,6 @@ Source repository: [Meta Ads](https://github.com/despia-legacy/meta-ads). This r
 A native advertiser SDK extension using Meta Facebook Core SDK 19.0.1 on iOS and Android, independently of AppsFlyer. It sends app activation, custom or standard events and purchases through the SDK. It does not display Audience Network ads.
 
 For the Despia V3 runtime. First-party V4 support comes through the new package registry.
-
-**Source preview.** Real SDK compilation has been checked. The approved hosted extension build path and related runtime changes are not deployed yet. An ordinary app generation does not install this extension. Device events and advertising attribution are not yet tested.
 
 ## Web frameworks and app builders
 
@@ -27,7 +25,6 @@ add custom JavaScript and serve the extension files at their exact HTTPS paths.
 You can edit those files with Claude Code, Codex, Cursor or your usual editor.
 The native extension must be approved and included in the installed Despia V3
 app. A browser preview alone does not provide native extension features.
-These are integration requirements, not a tested matrix of every builder.
 
 ## Install
 
@@ -71,15 +68,13 @@ This extension never presents ATT. Use the V3 trackingconsent:// call at your ch
 
 On iOS, advertiser_id=true enables collection only while ATT is authorized. The SDK reads ATT itself on iOS 17 and later. Enabling event collection is a separate decision from ATT. Turning this extension's collection off prevents its future bridge event calls and disables its automatic event and advertiser-id settings. It does not erase events already sent or guarantee cancellation of SDK work already in flight. Settings are process-local; reapply the app's stored choice after each launch.
 
-Meta's Core package includes FBAEMKit and SKAdNetwork code. Feature availability and campaign attribution depend on Meta account settings and SDK server configuration. Neither AEM eligibility nor a campaign install result has been tested here. Do not have multiple SDKs manage the same conversion values or send duplicate purchases.
+Meta's Core package includes FBAEMKit and SKAdNetwork code. Feature availability and campaign attribution depend on Meta account settings and SDK server configuration. Do not have multiple SDKs manage the same conversion values or send duplicate purchases.
 
 SKAdNetworkItems is editable in ios.app.info_plist with custom_keys=true, and starts empty. Supply only the current network identifiers your integration requires. Apple defines this key for source apps displaying ads; adding a publisher list to an advertised app is not by itself install attribution. The advertised app's SDK handles its attribution registration and conversion logic. If your setup requires postback copies, coordinate the build-owned attribution endpoint with Despia instead of replacing another integration's endpoint. No Android SKAdNetwork list exists.
 
-## Platform limits and verification
+## Platform limits
 
 Current V3 iOS builds target iOS16.6 and later. Android module minSdk24, compileSdk36. An ATT API introduced in iOS14 does not lower the app's deployment target. Android uses the advertiser SDK and may need the base app's Advertising ID permission for identifier collection. Normal internet/network permissions are in the module manifest. Review the final merged manifest and store disclosures during approval.
-
-Tested on: real iOS SDK simulator typecheck and Android SDK module assemble only. Device events, advertiser dashboards, store installs, SKAdNetwork postbacks and AEM attribution: not yet tested. Both customer app ids and credentials still need their owners' ad account setup. No AppsFlyer integration is required by this extension.
 
 [Despia V3 Extensions documentation](https://setup.despia.com/experiments/v3-extensions) and [extension skill](https://github.com/despia-legacy/extension-skill).
 

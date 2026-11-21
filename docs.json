@@ -359,6 +359,7 @@
               "experiments/samples/home-widgets",
               "experiments/samples/meta-ads",
               "experiments/samples/tiktok-ads",
+              "experiments/samples/google-ads",
               "experiments/samples/calendar"
             ]
           }

@@ -63,7 +63,7 @@ Register callbacks before calls and wait for dependent answers. Default outputs 
 | --- | --- | --- |
 | capabilities | None | Provider and supported feature booleans |
 | permissions | Optional request boolean, access full, write_only or reminders | Current permission state. A request is acknowledged promptly, then permission event reports the answer. |
-| calendars | Optional entity events or reminders, default events | Calendar rows. Reminders entity is iOS only. |
+| calendars | Optional entity events or reminders, default events | Calendar rows with common id, title and writable fields. Android also returns raw provider fields under android. Reminders entity is iOS only. |
 | calendar_save | data object with title, optional id; optional entity | Saved calendar id and native metadata where available. New iOS calendars may need source_id. New Android calendars use a local account. |
 | calendar_delete | id, optional entity | deleted: true |
 | events | start_ms and end_ms required; optional calendar_id, offset, limit 1..100 | Event occurrences, next_offset, has_more |
@@ -74,7 +74,7 @@ Register callbacks before calls and wait for dependent answers. Default outputs 
 
 Event data supports id, calendar_id, title, start_ms, end_ms, all_day, timezone, location, notes and alarms. iOS also supports url. New Android events require calendar_id. An update preserves fields not supplied. EventKit requires a writable calendar. Android providers enforce their account and calendar rules.
 
-Alarm writes use `{minutes: 15}` for a reminder 15 minutes before the event. iOS reads return offset_seconds, while Android event_get returns the native reminder rows. This difference is explicit. Android does not accept a negative before-event reminder through the shared save route.
+Alarm writes use `{minutes: 15}` for a reminder 15 minutes before the event. iOS reads return minutes for relative alarms, alongside offset_seconds. Native iOS triggers use an ios object: absolute_ms for an absolute date, structured_location with title, latitude, longitude and radius for a location, and proximity for the native EventKit proximity value. Location alarms can also include offset_seconds. These native fields are available for event and reminder alarm writes. Android event_get returns native reminder rows; the shared Android save route accepts nonnegative minutes before the event.
 
 Recurrence writes use an array of objects with frequency 0 daily, 1 weekly, 2 monthly or 3 yearly, a positive interval, optional end_count or end_ms, days_of_week objects with day 1 Sunday through 7 Saturday and optional week ordinal, and optional days_of_month, months_of_year, weeks_of_year, days_of_year and set_positions. iOS accepts EventKit recurrence rules. Android accepts one RRULE through the shared writer and returns raw RRULE/RDATE/EXRULE/EXDATE under android metadata. For a recurring Android save, include start_ms and end_ms so duration can be formed.
 

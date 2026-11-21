@@ -3322,22 +3322,29 @@ The manifest declares everything the recorder needs. The build adds them to your
 
 The upload URL receives an HTTP `PUT`, with `Content-Type: audio/mp4` and an `X-Recording-Id` header. Its host must be in the route's approved `hosts` list.
 
-Use the local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Run this function from a client event after obtaining any required microphone permission:
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the route's declared output variable. Run this function from a client event after obtaining any required microphone permission:
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function startRecording(uploadUrl) {
-  const started = await callExtension(
-    'extension://recorder/start?upload=' + encodeURIComponent(uploadUrl)
-  );
-  return started.recordingId;
+  const reply = await despia('extension://recorder/start?upload=' + encodeURIComponent(uploadUrl), ['recorderStart']);
+  const answer = reply.recorderStart;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.recordingId;
 }
 
 async function stopRecording(id) {
-  await callExtension('extension://recorder/stop?id=' + encodeURIComponent(id));
-  const status = await callExtension('extension://recorder/status?id=' + encodeURIComponent(id));
-  console.log(status.state);
+  const stoppedReply = await despia('extension://recorder/stop?id=' + encodeURIComponent(id), ['recorderStop']);
+  const stopped = stoppedReply.recorderStop;
+  if (stopped === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!stopped.ok) { console.error(stopped.code, stopped.error); return; }
+  const statusReply = await despia('extension://recorder/status?id=' + encodeURIComponent(id), ['recorderStatus']);
+  const status = statusReply.recorderStatus;
+  if (status === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!status.ok) { console.error(status.code, status.error); return; }
+  console.log(status.data.state);
 }
 ```
 
@@ -3348,13 +3355,17 @@ Register `onRecorderState` as described in [Calling a route](/experiments/v3-ext
 On iOS, `start` shows the microphone prompt itself. On Android it does not. Ask for the microphone from the page first with the standard web API. Despia's Android app turns a web microphone request into the system `RECORD_AUDIO` prompt, when the microphone permission is on for your app:
 
 ```javascript
-async function ensureMicrophone() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  stream.getTracks().forEach((track) => track.stop()); // only the permission is needed
-}
+import despia from 'despia-native';
 
-await ensureMicrophone();
-const started = await callExtension('extension://recorder/start?upload=' + encodeURIComponent(uploadUrl));
+async function startWithMicrophone(uploadUrl) {
+  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+  stream.getTracks().forEach(track => track.stop());
+  const reply = await despia('extension://recorder/start?upload=' + encodeURIComponent(uploadUrl), ['recorderStart']);
+  const answer = reply.recorderStart;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.recordingId;
+}
 ```
 
 If the user denies it, `getUserMedia` throws and `start` answers `permission_denied`.

@@ -16,11 +16,11 @@ import despia from 'despia-native';
 
 // Run from a browser click handler or client lifecycle hook.
 async function readRecorderStatus() {
-  const responses = await despia('extension://recorder/status', ['recorderStatus']);
-  const answer = responses.recorderStatus;
-  if (answer === undefined) throw new Error('No native reply within 30 seconds');
-  if (!answer.ok) throw new Error(JSON.stringify(answer.error ?? answer));
-  return answer.data;
+  const reply = await despia('extension://recorder/status', ['recorderStatus']);
+  const answer = reply.recorderStatus;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) console.error(answer.code, answer.error);
+  return answer;
 }
 ```
 
@@ -202,97 +202,71 @@ import despia from 'despia-native';
 
 // Run from a browser click handler or client lifecycle hook.
 async function readRecorderStatus() {
-  const responses = await despia('extension://recorder/status', ['recorderStatus']);
-  const answer = responses.recorderStatus;
-  if (answer === undefined) throw new Error('No native reply within 30 seconds');
-  if (!answer.ok) throw new Error(JSON.stringify(answer.error ?? answer));
-  return answer.data;
+  const reply = await despia('extension://recorder/status', ['recorderStatus']);
+  const answer = reply.recorderStatus;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) console.error(answer.code, answer.error);
+  return answer;
 }
 ```
 
 `recorderStatus` is the output variable declared by the Recorder manifest. Serialize calls that watch the same declared variable: await one before starting the next, including calls from other components. Sharing a watched variable across concurrent requests can mix responses.
 
-The SDK resolves native error answers as well as successes. Check `answer.ok`; a native failure does not reject the SDK promise. A single-variable watch resolves to `undefined` after 30 seconds if no value arrives. That timeout does not cancel native work. Inspect the returned native envelope rather than assuming every command uses the same error shape.
-
-### A helper for concurrent extension calls
-
-Copy this app-owned helper to `despia-extension.js`. It uses the published SDK, a unique native callback function and a separate unique watched variable for each request. Native extension callbacks are functions; setting `callback` in the URL does not turn that callback name into an answer variable. The helper forwards the callback into the variable the SDK watches and removes both globals when finished.
-
-```javascript
-import despia from 'despia-native';
-
-// App helper, not an export from despia-native. Call only in the browser.
-export async function callExtension(command) {
-  const suffix = crypto.randomUUID().replace(/-/g, '');
-  const callbackKey = 'nxCallback' + suffix;
-  const watchKey = 'nxReply' + suffix;
-  const url = new URL(command.replace(/\+/g, '%2B'));
-  url.searchParams.set('callback', callbackKey);
-  globalThis[callbackKey] = envelope => { globalThis[watchKey] = envelope; };
-  try {
-    const responses = await despia(url.toString().replace(/\+/g, '%20'), [watchKey]);
-    const envelope = responses[watchKey];
-    if (envelope === undefined) throw new Error('No native reply within 30 seconds');
-    if (!envelope.ok) {
-      const error = new Error('Native extension request failed');
-      error.response = envelope;
-      throw error;
-    }
-    return envelope.data;
-  } finally {
-    delete globalThis[callbackKey];
-    delete globalThis[watchKey];
-  }
-}
-```
-
-`callExtension` is a local helper, not a `despia-native` export. It returns the successful envelope's `data`. It throws when the SDK times out or native `ok` is false; native failures remain available on `error.response`. Each call watches one variable, so concurrent calls do not share reply state. The native route still has its own deadline and may continue after the SDK's 30-second wait.
-
-Variable and callback names must be valid JavaScript names of up to 64 characters, must not start with `__`, and must not be browser or runtime globals. The helper's generated names fit these rules.
+The SDK resolves native error answers as well as successes. Read the full envelope through `reply.recorderStatus`, including `ok`, `code`, `error` and `data`. Check `answer.ok`; a native failure does not reject the SDK promise. A single-variable watch resolves to `undefined` after 30 seconds if no value arrives. That timeout does not cancel native work. Inspect the returned native envelope rather than assuming every command uses the same error shape.
 
 ### React
 
-Importing the SDK is safe during server rendering. Call it from a client event or lifecycle hook. In Next.js, put the component behind a client boundary.
+Importing the SDK is safe during server rendering. Call it from a client event or lifecycle hook. In Next.js, put the component behind a client boundary. Keep calls sharing an output variable sequential, including calls from other components.
 
 ```jsx
 'use client';
 import {useState} from 'react';
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 export function RecorderStatus() {
   const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
   async function readStatus() {
+    if (busy) return;
+    setBusy(true);
     try {
-      const status = await callExtension('extension://recorder/status');
-      setMessage(status.state);
-    } catch (error) {
-      setMessage(error.message);
+      const reply = await despia('extension://recorder/status', ['recorderStatus']);
+      const answer = reply.recorderStatus;
+      setMessage(answer === undefined ? 'No native reply within 30 seconds'
+        : answer.ok ? answer.data.state : answer.code + ': ' + answer.error);
+    } finally {
+      setBusy(false);
     }
   }
-  return <button onClick={readStatus}>{message || 'Read recording status'}</button>;
+  return <button disabled={busy} onClick={readStatus}>{message || 'Read recording status'}</button>;
 }
 ```
 
 ### Vue
 
-The same helper works from a Vue click handler. For an automatic call, use `onMounted`, never server setup execution.
+Use the same SDK function from a Vue click handler. For an automatic call, use `onMounted`, never server setup execution.
 
 ```vue
 <script setup>
 import {ref} from 'vue';
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 const message = ref('');
+const busy = ref(false);
 async function readStatus() {
+  if (busy.value) return;
+  busy.value = true;
   try {
-    const status = await callExtension('extension://recorder/status');
-    message.value = status.state;
-  } catch (error) {
-    message.value = error.message;
+    const reply = await despia('extension://recorder/status', ['recorderStatus']);
+    const answer = reply.recorderStatus;
+    message.value = answer === undefined ? 'No native reply within 30 seconds'
+      : answer.ok ? answer.data.state : answer.code + ': ' + answer.error;
+  } finally {
+    busy.value = false;
   }
 }
 </script>
 <template>
-  <button @click="readStatus">{{ message || 'Read recording status' }}</button>
+  <button :disabled="busy" @click="readStatus">{{ message || 'Read recording status' }}</button>
 </template>
 ```
 

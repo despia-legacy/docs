@@ -21,10 +21,10 @@ The manifest adds the `NXLiveActivity` WidgetKit target on iOS. The Android cust
 
 ## Call it from your web app
 
-Use the local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from client events. Timer times are Unix seconds.
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the route's declared output variable. Call these functions from client events. Timer times are Unix seconds.
 
 ```javascript
-import {callExtension} from './despia-extension.js';
+import despia from 'despia-native';
 
 async function startTimer() {
   const startedAt = Date.now() / 1000;
@@ -34,13 +34,19 @@ async function startTimer() {
     attributes: JSON.stringify({title: 'Pizza oven'}),
     state: JSON.stringify({startedAt, endsAt: startedAt + 900, label: 'Baking'})
   });
-  const activity = await callExtension('extension://liveactivity/start?'
-    + params.toString().replace(/\+/g, '%20'));
-  console.log(activity.activityId, activity.state);
+  const reply = await despia('extension://liveactivity/start?' + params.toString().replace(/\+/g, '%20'), ['liveActivityStart']);
+  const answer = reply.liveActivityStart;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  console.log(answer.data.activityId, answer.data.state);
 }
 
 async function endTimer() {
-  return callExtension('extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate');
+  const reply = await despia('extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate', ['liveActivityEnd']);
+  const answer = reply.liveActivityEnd;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
 }
 ```
 

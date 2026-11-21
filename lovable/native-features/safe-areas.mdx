@@ -21,7 +21,13 @@ description: "Handle device safe areas (notches, status bars, home indicators) u
   Please follow the implementation instructions closely. The CSS variables are injected by the Despia Native runtime environment.
 </Card>
 
-**How it works:** Lovable generates web application code that uses CSS variables (`var(--safe-area-top)` and `var(--safe-area-bottom)`) for safe area handling. When you deploy and run the generated app in the Despia native runtime, these CSS variables are automatically populated with accurate safe area measurements including iPhone notches, status bars, home indicators, and other device-specific UI elements. The values are updated in real-time when the device orientation changes, ensuring your app content is never obscured by system UI elements.
+Use these CSS variables to keep controls clear of system bars and cutouts.
+
+## Foldable devices
+
+Rebuild your app with the latest Despia V3 runtime to use foldable support. For a fullscreen Lovable app, ask Lovable to add `viewport-fit=cover` to the existing viewport meta tag and add each of the four inset values to the matching edge of headers, footers, and floating controls. Keep the background full bleed. Use current window width for breakpoints so the layout also works on the outer iPhone Duo display and in narrow windows.
+
+For steps, a complete example, and the Android hinge API, see [Foldable devices](/native-features/safe-areas#foldable-devices).
 
 ## **Installation**
 
@@ -86,6 +92,6 @@ No installation required! The CSS variables are automatically provided by the De
 
 ## **Lovable Integration**
 
-Safe area insets are automatically available in all Despia-powered Lovable applications through CSS variables, enabling instant responsive layouts that adapt to any mobile device configuration.
+Despia feeds the current safe-area insets into your CSS. Apply them to the parts of the layout that contain controls or text.
 
 For additional support or questions about safe area implementation, please contact our support team at [**support@despia.com**](mailto:support@despia.com)

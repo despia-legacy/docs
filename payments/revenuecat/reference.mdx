@@ -1,0 +1,447 @@
+---
+title: "Reference"
+description: "RevenueCat commands, localized prices, customer entitlements, account identity, purchase results, offer codes, paywalls, and Customer Center events in Despia V3."
+icon: "code"
+---
+
+This reference covers the RevenueCat bridge in the Despia V3 native runtime. Enable RevenueCat and rebuild both native apps before using these commands. Follow the [setup guide](/native-features/revenuecat/introduction) first.
+
+## Call the native bridge
+
+```javascript
+import despia from 'despia-native'
+
+window.onRevenueCatProducts = (catalog) => {
+  if (!catalog.ok) {
+    console.error(catalog.code, catalog.error)
+    return
+  }
+  console.log(catalog.products)
+}
+
+despia('revenuecat://products')
+```
+
+Register callbacks before calling `despia()`. Each response also updates a global variable. The callback receives a JavaScript object, so do not call `JSON.parse()` on it.
+
+| Response | Global variable | Callback |
+| --- | --- | --- |
+| Product catalog | `window.revenueCatProducts` | `window.onRevenueCatProducts(catalog)` |
+| Customer and entitlements | `window.revenueCatCustomer` | `window.onRevenueCatCustomer(customer)` |
+| Account identity | `window.revenueCatUser` | `window.onRevenueCatUser(account)` |
+| Purchase, paywall, or redemption result | `window.revenueCatResult` | `window.onRevenueCatResult(outcome)` |
+| Customer Center activity | No retained variable | `window.onRevenueCatCenter(event)` |
+| Single-offering package list | `window.offeringsData`, `window.offeringsError` | `window.onRevenueCatOfferings()` |
+
+Use the command spellings below and encode each query value with `encodeURIComponent()`. These URLs must go through `despia()` or a real link/navigation. `fetch('revenuecat://...')` is not a bridge call. Send one command at a time and wait for its response before sending the next; consecutive navigations can replace each other.
+
+## Commands
+
+| Command | Parameters | Response |
+| --- | --- | --- |
+| `revenuecat://products` | Optional `offering`, `external_id` | Catalog with offerings, packages, products, and prices |
+| `revenuecat://offerings` | Optional `offering` | Package array for one offering, including display prices and intro offers |
+| `revenuecat://customer` | Optional `external_id` | Entitlements, subscription IDs, management URL, and lifecycle details |
+| `revenuecat://whoami` | None | Current RevenueCat identity without changing it |
+| `revenuecat://login` | Required `external_id` | Identity and entitlements after sign-in |
+| `revenuecat://logout` | None | Identity and entitlements after returning to an anonymous user |
+| `revenuecat://purchase` | Required `product`; optional `external_id` | Native store purchase result |
+| `revenuecat://launchPaywall` | Optional `offering`, `external_id` | Native RevenueCat paywall result |
+| `revenuecat://center` | Optional `external_id` | Native Customer Center and its events |
+| `revenuecat://redeem` | None | iOS offer-code redemption sheet acknowledgement |
+| `getpurchasehistory://` | None | Legacy purchase rows in `window.restoredData` |
+
+Purchase, paywall, Customer Center, and redemption commands require purchasing to be available in the native build. Catalog and identity reads do not make a purchase. The older Android `offerings` command also checks the purchasing license; use `products` for the catalog envelope.
+
+## Response envelope
+
+Catalog, customer, and identity responses share these fields:
+
+```json
+{
+  "ok": true,
+  "provider": "revenuecat",
+  "platform": "ios",
+  "runtime": 3,
+  "bridge": 2,
+  "project": "your_revenuecat_project_id",
+  "user": "$RCAnonymousID:example",
+  "anonymous": true,
+  "registered": false,
+  "error": null,
+  "code": null
+}
+```
+
+`platform` is `ios` or `android`. `user` is the current RevenueCat App User ID. `registered` means the RevenueCat identity is not anonymous; it does not authenticate the user with your own backend. `project` can be `null` when it is not configured. On failure, check `ok: false`, `code`, and `error` before reading command-specific fields.
+
+### Detect capabilities on older builds
+
+`bridge: 2` identifies support for `whoami` and for purchases/paywalls using the current user when `external_id` is omitted. Read it from a catalog or customer response before using those features. An absent value means the app may be on an older runtime.
+
+```javascript
+window.onRevenueCatProducts = (catalog) => {
+  if (!catalog.ok) return
+  if ((catalog.bridge ?? 0) >= 2) {
+    despia('revenuecat://whoami')
+  }
+}
+despia('revenuecat://products')
+```
+
+Do not probe an unknown command on an old build: old runtimes may route it through the purchase path. Keep an older integration's required `external_id` until the new native build is installed.
+
+## Load products and purchase prices
+
+```javascript
+window.onRevenueCatProducts = (catalog) => {
+  if (!catalog.ok) {
+    showCatalogError(catalog.error)
+    return
+  }
+  renderPlans(catalog.products)
+}
+
+despia('revenuecat://products')
+```
+
+The catalog adds `current` (the current offering ID or `null`), `offerings` (offering objects), and `products` (a flat product list, deduplicated across offerings). This excerpt shows one offering:
+
+```json
+{
+  "current": "default",
+  "offerings": [
+    {
+      "id": "default",
+      "current": true,
+      "packages": [
+        {
+          "id": "$rc_monthly",
+          "type": "monthly",
+          "product": {
+            "id": "premium_monthly",
+            "sku": "premium_monthly",
+            "plan": null,
+            "type": "subscription",
+            "title": "Premium Monthly",
+            "desc": "Premium access",
+            "price": 9.99,
+            "priceString": "$9.99",
+            "currency": "USD",
+            "period": "P1M",
+            "periodUnit": "month",
+            "periodCount": 1,
+            "intro": null,
+            "offering": "default",
+            "package": "$rc_monthly",
+            "packageType": "monthly"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+The example shows a package's product; the actual flat `products` array contains the same product objects.
+
+| Product field | Meaning |
+| --- | --- |
+| `id` | Purchase identifier. Pass it unchanged to `purchase?product=...`. |
+| `sku`, `plan` | Store product ID and Android base plan ID. `plan` is `null` on iOS and for products without a base plan. |
+| `type` | `subscription` or `product`. |
+| `title`, `desc` | Store-provided product title and description. |
+| `price`, `priceString`, `currency` | Decimal price, localized display string, and currency code. |
+| `period`, `periodUnit`, `periodCount` | ISO 8601 billing period, unit, and count. `null` for a product without a subscription period. |
+| `intro` | Introductory pricing/trial metadata or `null`. |
+| `offering`, `package`, `packageType` | Offering and package membership. |
+
+Display `priceString`, not a hardcoded price or a currency symbol combined with `price`. Subscription periods such as `P1M` and `P1Y` mean one month and one year. Use the store's full billed amount as the main price on a custom paywall.
+
+To load one named offering:
+
+```javascript
+despia(`revenuecat://products?offering=${encodeURIComponent(offeringId)}`)
+```
+
+For `products`, `offering` is a literal offering ID. An unknown ID returns `offeringNotFoundError` with empty `offerings` and `products` arrays. Without a filter, the catalog includes all offerings.
+
+### Trials and introductory pricing
+
+When present, `intro` contains:
+
+```json
+{
+  "price": 0,
+  "priceString": "$0.00",
+  "period": "P1W",
+  "periodUnit": "week",
+  "periodCount": 1,
+  "cycles": 1,
+  "type": "trial"
+}
+```
+
+`type` is `trial` or `intro`. This describes the offer's price and duration. On iOS, the `products` catalog reports configured introductory pricing; its presence alone does not prove this user is eligible. The native store decides what applies at checkout. The single-offering command below performs an additional iOS eligibility check and suppresses an intro offer when the user is known to be ineligible.
+
+### Load one offering with display-ready package details
+
+```javascript
+window.onRevenueCatOfferings = () => {
+  if (window.offeringsError) {
+    showCatalogError(window.offeringsError.message)
+    return
+  }
+  renderPackages(window.offeringsData)
+}
+
+despia('revenuecat://offerings?offering=default')
+```
+
+Here `default`, an empty value, or an omitted `offering` means the current RevenueCat offering. A named offering selects that offering. The array follows RevenueCat's package order:
+
+```json
+[
+  {
+    "packageId": "$rc_annual",
+    "packageType": "ANNUAL",
+    "productId": "premium_annual",
+    "title": "Premium Annual",
+    "priceString": "$59.99",
+    "price": 59.99,
+    "currency": "USD",
+    "period": { "unit": "year", "value": 1, "iso8601": "P1Y" },
+    "pricePerUnitString": "$5.00",
+    "introOffer": {
+      "priceString": "$0.00",
+      "period": { "unit": "week", "value": 1, "iso8601": "P1W" },
+      "type": "free_trial"
+    }
+  }
+]
+```
+
+`pricePerUnitString` is a monthly equivalent for periods longer than one month, otherwise `null`. It is supporting information: the annual amount is still billed annually. `introOffer` is `null` when no offer is returned, and its type is `free_trial`, `pay_as_you_go`, or `pay_up_front`. On iOS, an unknown eligibility answer can still include the configured offer, so do not promise a trial before store confirmation.
+
+Errors set `offeringsData` to `[]` and `offeringsError` to `{ code, message }`. Codes include `not_configured`, `fetch_failed`, `offering_not_found`, and serialization errors; Android uses uppercase forms. A successful read sets `offeringsError` to `null`.
+
+## Identify the customer
+
+Use the same stable, case-sensitive account ID on your backend, in RevenueCat, and across iOS and Android. Encode it when sending a URL. A RevenueCat App User ID is an identifier, not a credential.
+
+```javascript
+window.onRevenueCatUser = (account) => {
+  if (!account.ok) {
+    showAccountError(account.error)
+    return
+  }
+  console.log(account.user, account.registered, account.entitlements.active)
+}
+
+// Call after your own authentication succeeds.
+despia(`revenuecat://login?external_id=${encodeURIComponent(userId)}`)
+```
+
+`login`, `logout`, and `whoami` answer on the same identity channel. They add `new` (RevenueCat's created flag for login) and `entitlements: { active, all }` to the base envelope.
+
+- `whoami` reads the current identity without signing in or changing users.
+- `login` binds your account ID. RevenueCat applies its own anonymous-user merge and transfer rules; do not assume every existing account is automatically merged.
+- `logout` returns RevenueCat to an anonymous identity. An already-anonymous user is treated as success. Run it when your own user signs out on a shared device.
+- Switching accounts can use `login` with the next ID directly.
+
+Purchases and paywalls can run without `external_id` on bridge 2, using the current RevenueCat user, including an anonymous user. Signing in later associates the purchase according to [RevenueCat's identity rules](https://www.revenuecat.com/docs/customers/identifying-customers). For an account-bound checkout, wait for a successful explicit `login` response before opening the purchase flow.
+
+## Read entitlements and subscription lifecycle
+
+```javascript
+window.onRevenueCatCustomer = (customer) => {
+  if (!customer.ok) {
+    showAccountError(customer.error)
+    return
+  }
+  setPremiumAccess(customer.entitlements.active.includes('premium'))
+  const premium = customer.details?.premium
+  if (premium?.active && !premium.renews) {
+    showAccessEndDate(premium.expires)
+  }
+}
+
+despia('revenuecat://customer')
+```
+
+Replace `premium` with an entitlement ID from your own RevenueCat project. No entitlement name is reserved by Despia.
+
+| Customer field | Meaning |
+| --- | --- |
+| `entitlements.active` | IDs currently granting access. |
+| `entitlements.all` | All entitlement IDs returned by RevenueCat, including inactive ones. |
+| `subscriptions` | Active subscription product IDs. |
+| `management` | Store subscription-management URL or `null`. |
+| `details` | Lifecycle state keyed by entitlement ID. |
+
+Each `details[entitlementId]` contains:
+
+| Field | Meaning |
+| --- | --- |
+| `active` | Whether the entitlement currently grants access. |
+| `product` | Product associated with the entitlement. |
+| `period` | `normal`, `trial`, `intro`, or `prepaid` subscription phase. |
+| `renews` | Whether the subscription is expected to renew. |
+| `store`, `sandbox` | Purchase store and sandbox flag. |
+| `bought`, `first` | Latest and original purchase timestamps. |
+| `expires` | Expiration timestamp or `null`. |
+| `unsubscribed` | When cancellation of auto-renewal was detected, or `null`. |
+| `billingIssue` | When a billing problem was detected, or `null`. |
+| `ownership` | `purchased` or `family_shared`. |
+
+Dates are ISO 8601 strings. A user can stop auto-renewal and still have `active: true` until `expires`. A billing issue is not itself a reason to revoke access while the entitlement is active. Consumables can complete successfully without granting an entitlement.
+
+Refresh customer state when the app opens and after purchases, restores, and account changes. RevenueCat may serve cached customer information; this is not a guarantee of a fresh network round trip or an exhaustive transaction ledger. See [RevenueCat's customer-info behavior](https://www.revenuecat.com/docs/customers/customer-info). Verify server-controlled access on your backend using the same authenticated account ID.
+
+## Purchase a product
+
+```javascript
+function buy(product) {
+  despia(`revenuecat://purchase?product=${encodeURIComponent(product.id)}`)
+}
+```
+
+Use an `id` returned by `products` (or `productId` from `offerings`). On iOS it is the App Store product ID. Android subscriptions use `subscriptionId:basePlanId`; the value before the colon is the subscription ID, and the value after it is the base plan ID. One-time Android products use their plain ID. Do not invent or manually translate identifiers between stores.
+
+The runtime presents the native store purchase sheet. It can purchase subscriptions and one-time products, including products whose successful transaction grants no entitlement. Fulfill consumables on your backend after verification and deduplicate by transaction ID.
+
+### Purchase and paywall results
+
+```javascript
+window.onRevenueCatResult = (outcome) => {
+  if (outcome.source === 'redeem') return
+  if (outcome.cancelled) return
+  if (!outcome.ok) {
+    if (!outcome.restored) showPurchaseError(outcome.error)
+    return
+  }
+  despia('revenuecat://customer')
+}
+```
+
+```json
+{
+  "ok": true,
+  "cancelled": false,
+  "restored": false,
+  "source": "purchase",
+  "product": "premium_monthly",
+  "transaction": "2000000012345",
+  "entitlements": ["premium"],
+  "user": "user_42",
+  "platform": "ios",
+  "runtime": 3,
+  "error": null,
+  "code": null
+}
+```
+
+`source` identifies the flow: `purchase`, `paywall`, or `redeem`. Results use their own shape; they do not include every query-envelope field. `entitlements` is an array of active IDs, not the customer envelope's `{ active, all }` object.
+
+A normal dismissal has `ok: false` and `cancelled: true`. A successful transaction can have an empty `entitlements` array. For Android paywall purchases, `product` and `transaction` are `null`; use the returned entitlements and your backend's RevenueCat events. Direct Android purchases can return the product and order ID.
+
+An iOS paywall can report `restored: true, ok: false` when a restore ran but granted no active entitlement. That does not mean a purchase succeeded. If the user then closes the paywall, a later dismissal result may arrive. Treat restored/cancelled states separately and make fulfillment idempotent.
+
+## Present a RevenueCat paywall
+
+```javascript
+despia('revenuecat://launchPaywall')
+
+// Or choose a named offering.
+despia(`revenuecat://launchPaywall?offering=${encodeURIComponent(offeringId)}`)
+```
+
+Design and publish the native paywall in RevenueCat, then present it from your web app. Omitting `offering` uses the current offering when default-paywall behavior is enabled. An unknown named offering can fall back to the current offering when that fallback is enabled in the native app; otherwise the flow reports an offering error. Use a known offering ID when selecting a specific paywall.
+
+The result arrives through `onRevenueCatResult` with `source: 'paywall'`. On iOS, a transient purchase failure can leave the paywall open for retry; closing it after that failure reports the failure rather than an ordinary cancellation. iOS paywalls and Customer Center require iOS 15 or later.
+
+## Redeem an Apple offer code
+
+```javascript
+window.onRevenueCatResult = (outcome) => {
+  if (outcome.source !== 'redeem') return
+  if (!outcome.ok) console.error(outcome.code, outcome.error)
+}
+
+despia('revenuecat://redeem')
+```
+
+On iPhone and iPad, this opens Apple's offer-code redemption sheet. The immediate result has `source: 'redeem'`, `ok: true`, and `code: 'presented'`. It acknowledges presentation only: it does not prove that a code was accepted or that the user gained an entitlement. Refresh `customer` after redemption and use RevenueCat webhooks for backend access changes.
+
+The command does not take a code parameter; the user enters the code in Apple's sheet. Configure offer codes in App Store Connect and RevenueCat first. See [RevenueCat's Apple offer-code guide](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers/ios-subscription-offers).
+
+Android does not present this sheet. Google Play codes are redeemed through Google Play; do not send the iOS redemption command as an Android checkout flow.
+
+## Customer Center and restoring purchases
+
+```javascript
+window.onRevenueCatCenter = (activity) => {
+  if (activity.event === 'restoreCompleted' || activity.event === 'dismissed') {
+    despia('revenuecat://customer')
+  }
+  if (activity.event === 'restoreFailed') {
+    console.error(activity.errorCode, activity.errorMessage)
+  }
+}
+
+despia('revenuecat://center')
+```
+
+Customer Center lets users restore purchases and reach their store subscription-management options from native UI. Configure its management options in RevenueCat. Use a visible Restore Purchases or Manage Subscription button to open it.
+
+| Event | Additional fields | Meaning |
+| --- | --- | --- |
+| `restoreStarted` | None | Restore began. |
+| `restoreCompleted` | `activeEntitlements`, `activeSubscriptions`, `originalAppUserId` | Restore completed; inspect the active IDs to determine access. |
+| `restoreFailed` | `errorMessage`, `errorCode`, `errorDomain` | Restore failed. |
+| `manageSubscriptionsOpened` | None | Store management UI opened; this does not prove cancellation. |
+| `refundRequested` | `productId` | iOS refund-request flow started. |
+| `refundCompleted` | `productId`, `status` | iOS request completed. `success` means submitted, not approved. Other statuses include `userCancelled` and `error`. |
+| `feedbackSurveyCompleted` | `optionId` | A configured feedback option was selected. |
+| `managementOptionSelected` | `option`; `uri` for a custom URL | User selected a management action. |
+| `dismissed` | None | Customer Center closed. Refresh customer state. |
+
+Refund events are iOS only. On Android, configure a custom support or subscription-management URL in Customer Center instead of waiting for an iOS refund event. Refund approval, renewals, billing failures, and expirations while the app is closed belong in your [RevenueCat webhook handler](/best-practices/backend/revenuecat/webhooks).
+
+### Legacy purchase history and callbacks
+
+Existing calls remain available:
+
+```javascript
+const history = await despia('getpurchasehistory://', ['restoredData'])
+const purchases = history.restoredData ?? []
+```
+
+`restoredData` contains store purchase rows. Depending on platform and available store data, rows include `transactionId`, `originalTransactionId`, `productId`, `type`, `entitlementId`, `isActive`, `willRenew`, `purchaseDate`, `originalPurchaseDate`, `expirationDate`, `store`, `country`, `environment`, `receipt`, `externalUserId`, `isAnonymous`, and `provider`.
+
+This query reads purchase state; it is not a substitute for an explicit store restore action. It is not guaranteed to include every expired purchase or consumed product. For new entitlement checks, prefer `revenuecat://customer` and `entitlements.active`. Use Customer Center for user-initiated restore.
+
+`window.onRevenueCatPurchase(rawCustomerInfo)` remains a compatibility hook for purchase/customer-info updates. iOS also supports `window.iapSuccess(rawCustomerInfo)`. Do not treat either callback's arrival as independent backend verification, or assume their raw payload matches the unified customer envelope. New purchase UI should handle `onRevenueCatResult` and refresh `customer`.
+
+## Errors and recovery
+
+Handle `ok: false` before reading the successful response fields. Error codes differ in casing between platforms; compare case-insensitively when matching common conditions and retain the original code for diagnostics.
+
+| Code or condition | Action |
+| --- | --- |
+| `notEnabled` / not configured | Enable RevenueCat, verify keys, and rebuild the native app. |
+| `missingParamError` | Supply `external_id` for login or `product` for purchase. |
+| `productNotFoundError` | Check the store's product and base plan setup; use a catalog ID. |
+| `offeringNotFoundError` | Check the offering ID and available packages. |
+| `loginFailedError` | Retry account binding and wait for success before account-bound checkout. |
+| `purchaseCancelledError` with `cancelled: true` | Leave the user on the current screen; cancellation is a normal outcome. |
+| Unsupported command/platform | Show an action supported on the current platform. |
+| Store/network error | Display a useful retry message and retain `code` for support. |
+
+RevenueCat can also return its own SDK error codes. Do not reduce every error to cancellation. Do not unlock access from `ok` alone: check the relevant entitlement or verify the transaction on your backend.
+
+## Web checkout and backend verification
+
+Native schemes run inside Despia's iOS and Android apps. In a normal browser, use your configured RevenueCat Web Purchase Link or web checkout instead. Associate it with the same account ID and verify access through your backend.
+
+Use [RevenueCat webhooks](/best-practices/backend/revenuecat/webhooks) for server-side purchases, renewals, cancellations, billing issues, and refunds. Authenticate incoming webhooks, process events idempotently, and keep RevenueCat secret API keys on the server. A client-supplied App User ID must never authorize access to another user's protected data.

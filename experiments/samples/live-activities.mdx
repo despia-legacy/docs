@@ -9,8 +9,6 @@ This sample starts, updates, ends and lists native activities from your web app.
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
 
-**Tested on:** iOS simulator, 7/7 scenarios; Android emulator, 44/44 steps; TestingBot Galaxy A12, 5/5 scenarios. Server-driven OneSignal delivery is not yet tested by these runs.
-
 ## Install
 
 1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths. The [sample repository](https://github.com/despia-legacy/despia-extension-live-activities) carries the same template.
@@ -93,10 +91,9 @@ Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), th
 ## Platform limits
 
 - iOS local starts require the app to be in the foreground. The sample widget target declares iOS 16.6. Push-to-start requires iOS 17.2 or later. ActivityKit and the user's settings control visibility, lifetime and push delivery.
-- Android 16 and later can promote an eligible ongoing notification to a Live Update. Earlier versions use an ordinary ongoing notification. The Galaxy A12 run exercised this ordinary-notification path. Promotion is not guaranteed.
+- Android 16 and later can promote an eligible ongoing notification to a Live Update. Earlier versions use an ordinary ongoing notification. Promotion is not guaranteed.
 - Android has no ActivityKit relevance score. When you pass `relevance`, Android reports this in `platformDifferences.relevance` instead of applying it.
 - On Android 7, ended notifications are removed immediately because notification timeouts are unavailable. On later Android versions the sample uses a timeout for `default` and `after` dismissal.
-- Server-driven OneSignal start, update and end behavior is implemented in the sample but is not yet tested by the runs listed above.
 
 The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this sample.
 

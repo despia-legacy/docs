@@ -6,7 +6,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  **Requires an extension-enabled build.** Publishing files under `/despia/` does not enable extensions. A regular Despia app build, including a normal staging build, does not automatically fetch or compile them. Despia must confirm availability for your app and approve the files before starting the extension build path. A successful ordinary build is not proof that extensions were included.
+  **Requires an extension-enabled build.** Despia must enable extension builds for your app and approve the source before rebuilding the native app. A standard app build does not install extensions.
 </Warning>
 
 V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code then calls them with one scheme:
@@ -19,15 +19,15 @@ Use V3 Extensions when you need a native capability that Despia does not offer a
 
 ## Samples
 
-Each sample is a native source template. Copying it to your website is preparation for an approved extension build. Read the tested results and platform limits before using it.
+Each sample is a native source template. Copying it to your website is preparation for an approved extension build. Read the installation steps and platform limits before adapting a sample.
 
 Despia's extension sample repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying a sample requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the sample repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
 
-| Sample | What it adds | Tested on |
-| ------ | ------------ | --------- |
-| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Samsung Galaxy S21 |
-| [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities | iOS simulator 7/7; Android emulator 44/44 steps; TestingBot Galaxy A12 5/5 |
-| [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps | iOS simulator 8/8; TestingBot Pixel 5/5; Android emulator 7 of 8 |
+| Sample | What it adds |
+| ------ | ------------ |
+| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it |
+| [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities |
+| [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps |
 
 <Warning>
   **Experimental. V3 only.**
@@ -55,7 +55,7 @@ For compiler settings, Android Activity access, runtime permissions, timeouts an
 
 The JavaScript bridge is independent of your web UI framework. React, Vue, Svelte, Next.js, TanStack and HTML5 apps use the same `window.despia = "extension://..."` calls inside the installed Despia V3 app.
 
-For Lovable, Base44, Replit or another app builder, use a project that supports custom JavaScript and serves the extension files at their exact HTTPS paths. A route that returns your web app's HTML instead of the requested JSON or Swift file needs a hosting fix before approval. These are integration requirements, not a tested matrix of every builder.
+For Lovable, Base44, Replit or another app builder, use a project that supports custom JavaScript and serves the extension files at their exact HTTPS paths. A route that returns your web app's HTML instead of the requested JSON or Swift file needs a hosting fix before approval.
 
 Edit the native files in your repository with Claude Code, Codex, Cursor or your usual editor. Connect the builder's GitHub repository when you need direct access to its static files. The native code still needs approval and a native rebuild. A browser preview alone does not provide native extension features.
 
@@ -259,7 +259,7 @@ An error carries a code and a message, and nothing else. If the page must tell f
 | `handler_error`    | Your handler failed                                                        |
 | Your own codes     | Any code your handler returns, for example `busy` or `permission_denied`   |
 
-In an extension-enabled build, a call to an extension or route that is not registered answers your explicit `callback` if you gave one; otherwise it fires `despia-feature-not-included`. A build without the extension runtime cannot answer these calls. Silence alone does not identify the cause: also check the installed build, calling frame and origin, the JavaScript setter, and the exact callback name. A `despia-iphone` user agent is not proof of extension inclusion. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
+In an extension-enabled build, a call to an extension or route that is not registered answers your explicit `callback` if you gave one; otherwise it fires `despia-feature-not-included`. A build without the extension runtime cannot answer these calls. For missing responses, see [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
 ---
 
@@ -431,7 +431,7 @@ Swift packages come from `github.com` over https. `ios.package_resolved` is requ
 }
 ```
 
-This is an illustrative manifest excerpt, not a tested app. Replace `<installed-tree-sha256>` with the measured 64-character lowercase hexadecimal digest. The lockfile must contain the declared version, a spec checksum for every resolved root pod, and the complete dependency closure. Add a tree digest for every root pod in that closure, not just the direct dependency. The build checks the installed trees and preserves the base app's existing pods. This CocoaPods example is not yet tested on a device.
+This is an illustrative manifest excerpt. Replace `<installed-tree-sha256>` with the measured 64-character lowercase hexadecimal digest for each root pod in the complete lockfile closure. Include the declared versions and spec checksums. The build checks the installed trees and preserves the base app's existing pods.
 
 **Android: a Maven library.** Add a `custom` module in `manifest.json` that points at your own module folder, and list the libraries in that module's `build.gradle` with `implementation`, the same way as in Android Studio:
 

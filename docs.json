@@ -352,7 +352,9 @@
             "group": "Samples",
             "icon": "vial",
             "pages": [
-              "experiments/samples/recorder"
+              "experiments/samples/recorder",
+              "experiments/samples/live-activities",
+              "experiments/samples/home-widgets"
             ]
           }
         ]

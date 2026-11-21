@@ -1,0 +1,3075 @@
+---
+title: "Live Activities"
+description: "Start, update and end native activities with delivery, score and timer templates for Despia V3."
+icon: "stopwatch"
+tag: "Experimental"
+---
+
+This sample starts, updates, ends and lists native activities from your web app. It includes delivery, score and timer templates. On iOS it uses ActivityKit for the Lock Screen and Dynamic Island. On Android it uses ongoing notifications, with Live Updates on Android 16 and later when the system allows promotion.
+
+It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
+
+**Tested on:** iOS simulator, 7/7 scenarios; Android emulator, 44/44 steps; TestingBot Galaxy A12, 5/5 scenarios. Server-driven OneSignal delivery is not yet tested by these runs.
+
+## Install
+
+1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths. The [sample repository](https://github.com/despia-legacy/despia-extension-live-activities) carries the same template.
+2. Add `"liveactivity"` to the `extensions` array in `public/despia/extensions.json`, keeping your app identity and any other extension names.
+3. Send the extension for approval and rebuild your native app. Changing the native files needs a new approval and build.
+
+The manifest adds the `NXLiveActivity` WidgetKit target on iOS. The Android custom module adds its notification permissions, notification service extension and dismiss receiver. Local calls work without OneSignal; server updates require the base app's push integration and your server configuration. Do not put server credentials in your web app.
+
+## Call it from your web app
+
+Install the callback before making the call. Times in the timer state are Unix seconds.
+
+```javascript
+window.onLiveActivityStart = (answer) => {
+  if (answer.ok) {
+    console.log(answer.data.activityId, answer.data.state);
+  } else {
+    console.error(answer.code, answer.error);
+  }
+};
+
+const startedAt = Date.now() / 1000;
+const params = new URLSearchParams({
+  template: "timer",
+  activity_id: "oven-timer",
+  attributes: JSON.stringify({ title: "Pizza oven" }),
+  state: JSON.stringify({ startedAt, endsAt: startedAt + 900, label: "Baking" })
+});
+window.despia = "extension://liveactivity/start?" + params.toString();
+```
+
+```javascript
+window.onLiveActivityEnd = (answer) => console.log(answer);
+window.despia = "extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate";
+```
+
+## Routes and answers
+
+Each success answer uses `{ok: true, data: ...}`. Failures use `{ok: false, code, error}`. The table lists the fields inside `data`.
+
+| Route | Parameters | Answer variable and callback | Answer |
+| --- | --- | --- | --- |
+| `start` | Required: `template` (string), `attributes` and `state` (JSON text). Optional: `activity_id`, `stale_minutes`, `relevance` | `liveActivityStart`, `onLiveActivityStart` | `activityId`, `template`, `state` |
+| `update` | Required: `activity_id`, `state`. Optional: `stale_minutes`, `relevance`, `alert_title`, `alert_body` | `liveActivityUpdate`, `onLiveActivityUpdate` | `activityId`, `template`, `state` |
+| `end` | Required: `activity_id`. Optional: `state`, `dismiss` (`default`, `immediate`, `after`), `dismiss_minutes` | `liveActivityEnd`, `onLiveActivityEnd` | `activityId`, `template`, `state: "ended"` |
+| `list` | None | `liveActivityList`, `onLiveActivityList` | Authorization fields, `templates`, `activities`, `pushToStart` |
+| `permission` | None | `liveActivityPermission`, `onLiveActivityPermission` | Authorization fields. Android can ask for notification permission; iOS reads the current setting |
+| `settings` | None | `liveActivitySettings`, `onLiveActivitySettings` | `opened` |
+
+`stale_minutes` is 0 to 720. `relevance` is 0 to 100. `dismiss=after` requires `dismiss_minutes`, from 0 to 240. IDs contain 1 to 64 letters, digits, dots, underscores or hyphens. The combined attributes and state, including the injected `activityId`, must fit in 4096 UTF-8 bytes.
+
+Each row in `activities` has `activityId`, `template`, `state`, `origin`, `pushToken`, `attributes` and `content`. On Android `pushToken` is `null` and `pushToStart` is empty. iOS authorization fields are `enabled`, `frequentPushes`, `onesignal` and `platform`. Android fields are `enabled`, `permission`, `promoted`, `liveUpdates`, `onesignal` and `platform`. `onesignal` is `linked` or `not_linked`.
+
+### Templates
+
+| Template | Attributes | State |
+| --- | --- | --- |
+| `delivery` | `orderNumber`, `merchant` | `status`, `step`, `stepCount`; optional `etaEpoch` (Unix seconds), `courier` |
+| `score` | `league`, `homeTeam`, `awayTeam`; optional `homeShort`, `awayShort` | `homeScore`, `awayScore`, `period`; optional `clock`, `final` |
+| `timer` | `title` | `startedAt`, `endsAt` (Unix seconds), `label`; optional `pausedRemaining` (seconds) |
+
+The template source files define these fields. Edit the Swift template, Android template and registries together when adding your own template.
+
+### Events
+
+Events have app scope and reach the trusted top-level page.
+
+| Event callback | Fields |
+| --- | --- |
+| `onLiveActivityState` | `activityId`, `template`, `state`, `origin` |
+| `onLiveActivityDismissed` | `activityId`, `template`, `by` (`user` or `end`) |
+| `onLiveActivityToken` | `kind` (`update` or `push_to_start`), `template`, `token`; `activityId` for update tokens |
+
+Read `list` to recover the current state after a page loads. Do not rely only on events.
+
+### Errors
+
+Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), the sample can return `unknown_template`, `activities_disabled`, `exists`, `bad_value`, `too_large` and `unknown_activity`. iOS can also return `activity_failed`, `not_foreground`, `too_many` or `unsupported`. Android can return `storage_failed` or `busy` while a notification permission prompt is open. `settings` can return `unavailable`.
+
+## Platform limits
+
+- iOS local starts require the app to be in the foreground. The sample widget target declares iOS 16.6. Push-to-start requires iOS 17.2 or later. ActivityKit and the user's settings control visibility, lifetime and push delivery.
+- Android 16 and later can promote an eligible ongoing notification to a Live Update. Earlier versions use an ordinary ongoing notification. The Galaxy A12 run exercised this ordinary-notification path. Promotion is not guaranteed.
+- Android has no ActivityKit relevance score. When you pass `relevance`, Android reports this in `platformDifferences.relevance` instead of applying it.
+- On Android 7, ended notifications are removed immediately because notification timeouts are unavailable. On later Android versions the sample uses a timeout for `default` and `after` dismissal.
+- Server-driven OneSignal start, update and end behavior is implemented in the sample but is not yet tested by the runs listed above.
+
+The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this sample.
+
+## Files
+
+Copy each file to its title's path. The `extensions.json` block is an example for a new app; merge the extension name into your existing file rather than replacing its app identity.
+
+<Tabs>
+<Tab title="Manifest">
+
+```json public/despia/extensions.json
+{
+  "app": {
+    "client_id": "com.example.app",
+    "ios_bundle_id": "com.example.app",
+    "android_package": "com.example.app"
+  },
+  "extensions": [
+    "liveactivity"
+  ]
+}
+```
+
+```json public/despia/liveactivity/manifest.json
+{
+  "version": "1.0.0",
+  "bridge": {
+    "routes": [
+      {
+        "name": "start",
+        "params": {
+          "template": {
+            "type": "string",
+            "max": 32,
+            "required": true
+          },
+          "activity_id": {
+            "type": "string",
+            "max": 64
+          },
+          "attributes": {
+            "type": "string",
+            "max": 4096,
+            "required": true
+          },
+          "state": {
+            "type": "string",
+            "max": 4096,
+            "required": true
+          },
+          "stale_minutes": {
+            "type": "int",
+            "min": 0,
+            "max": 720
+          },
+          "relevance": {
+            "type": "int",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "output": {
+          "variable": "liveActivityStart",
+          "callback": "onLiveActivityStart"
+        }
+      },
+      {
+        "name": "update",
+        "params": {
+          "activity_id": {
+            "type": "string",
+            "max": 64,
+            "required": true
+          },
+          "state": {
+            "type": "string",
+            "max": 4096,
+            "required": true
+          },
+          "stale_minutes": {
+            "type": "int",
+            "min": 0,
+            "max": 720
+          },
+          "relevance": {
+            "type": "int",
+            "min": 0,
+            "max": 100
+          },
+          "alert_title": {
+            "type": "string",
+            "max": 120
+          },
+          "alert_body": {
+            "type": "string",
+            "max": 240
+          }
+        },
+        "output": {
+          "variable": "liveActivityUpdate",
+          "callback": "onLiveActivityUpdate"
+        }
+      },
+      {
+        "name": "end",
+        "params": {
+          "activity_id": {
+            "type": "string",
+            "max": 64,
+            "required": true
+          },
+          "state": {
+            "type": "string",
+            "max": 4096
+          },
+          "dismiss": {
+            "type": "enum",
+            "values": [
+              "default",
+              "immediate",
+              "after"
+            ]
+          },
+          "dismiss_minutes": {
+            "type": "int",
+            "min": 0,
+            "max": 240
+          }
+        },
+        "output": {
+          "variable": "liveActivityEnd",
+          "callback": "onLiveActivityEnd"
+        }
+      },
+      {
+        "name": "list",
+        "params": {},
+        "output": {
+          "variable": "liveActivityList",
+          "callback": "onLiveActivityList"
+        }
+      },
+      {
+        "name": "permission",
+        "params": {},
+        "output": {
+          "variable": "liveActivityPermission",
+          "callback": "onLiveActivityPermission"
+        }
+      },
+      {
+        "name": "settings",
+        "params": {},
+        "output": {
+          "variable": "liveActivitySettings",
+          "callback": "onLiveActivitySettings"
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "token",
+        "callback": "onLiveActivityToken",
+        "scope": "app"
+      },
+      {
+        "name": "state",
+        "callback": "onLiveActivityState",
+        "scope": "app"
+      },
+      {
+        "name": "dismissed",
+        "callback": "onLiveActivityDismissed",
+        "scope": "app"
+      }
+    ]
+  },
+  "ios": {
+    "app": {
+      "entry_type": "LiveActivityExtension",
+      "sources": [
+        "ios/app/LiveActivityExtension.swift",
+        "ios/app/LiveActivityCore.swift",
+        "ios/app/LiveTemplateRegistry.swift",
+        "ios/app/OneSignalLiveLink.swift",
+        "ios/shared/LiveTemplate.swift",
+        "ios/shared/templates/DeliveryActivity.swift",
+        "ios/shared/templates/ScoreActivity.swift",
+        "ios/shared/templates/TimerActivity.swift"
+      ],
+      "frameworks": [
+        "ActivityKit",
+        "SwiftUI",
+        "WidgetKit"
+      ],
+      "info_plist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true
+      },
+      "custom_keys": true,
+      "lifecycle": [
+        "launch"
+      ]
+    },
+    "targets": [
+      {
+        "kind": "widgetkit",
+        "name": "NXLiveActivity",
+        "sources": [
+          "ios/targets/NXLiveActivity/NXLiveActivityBundle.swift"
+        ],
+        "shared_sources": [
+          "ios/shared/LiveTemplate.swift",
+          "ios/shared/templates/DeliveryActivity.swift",
+          "ios/shared/templates/ScoreActivity.swift",
+          "ios/shared/templates/TimerActivity.swift"
+        ],
+        "info_plist": {
+          "NSWidgetDescription": "Live Activities",
+          "NSSupportsLiveActivities": true
+        },
+        "deployment_target": "16.6"
+      }
+    ]
+  },
+  "android": {
+    "entry_class": "despia.ext.liveactivity.LiveActivityExtension",
+    "lifecycle": [
+      "application_create",
+      "activity_lifecycle"
+    ],
+    "modules": [
+      {
+        "kind": "custom",
+        "name": "liveactivity",
+        "dir": "android/liveactivity",
+        "link": "implementation"
+      }
+    ]
+  }
+}
+```
+
+</Tab>
+
+<Tab title="ios">
+
+<Accordion title="ios/app/LiveActivityCore.swift">
+
+```swift public/despia/liveactivity/ios/app/LiveActivityCore.swift
+import Foundation
+
+/// Every decision of the Live Activities extension that does not need ActivityKit, OneSignal or
+/// UIKit. Foundation only, so the shared rules run it on a plain host. Android's LiveCore.java makes the same decisions from the same vectors.
+
+enum LiveCoreError: Error, Equatable {
+    /// The page or server sent something malformed. The message says what.
+    case badValue(String)
+    /// Static plus dynamic data would pass ActivityKit's 4 KB limit (Apple, "Displaying live data
+    /// with Live Activities": "can't exceed a combined size of 4 KB").
+    case tooLarge(Int)
+
+    var code: String {
+        switch self {
+        case .badValue: return "bad_value"
+        case .tooLarge: return "too_large"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .badValue(let m): return m
+        case .tooLarge(let n): return "attributes and state are \(n) bytes; the limit is \(LiveCore.maxPayloadBytes)"
+        }
+    }
+}
+
+enum LiveCore {
+    static let maxPayloadBytes = 4096
+    /// The bytes `"activityId":"",` adds when the id is injected into the attributes.
+    static let injectedKeyBytes = 16
+
+    /// Ids the page, the server and OneSignal share: 1 to 64 of A-Z a-z 0-9 . _ -
+    static func validId(_ id: String) -> Bool {
+        guard (1...64).contains(id.utf8.count) else { return false }
+        return id.utf8.allSatisfy { c in
+            (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A)
+                || c == 0x2E || c == 0x5F || c == 0x2D
+        }
+    }
+
+    /// Template names: 1 to 32 of a-z 0-9 _
+    static func validTemplate(_ name: String) -> Bool {
+        guard (1...32).contains(name.utf8.count) else { return false }
+        return name.utf8.allSatisfy { c in (c >= 0x30 && c <= 0x39) || (c >= 0x61 && c <= 0x7A) || c == 0x5F }
+    }
+
+    static func object(_ json: String, _ field: String) throws -> [String: Any] {
+        guard let data = json.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw LiveCoreError.badValue("\(field) is not a JSON object")
+        }
+        return obj
+    }
+
+    /// The size rule, measured on what the page or server sent (UTF-8 bytes), plus the injected id.
+    static func size(attributes: String, state: String, injectedId: String?) -> Int {
+        attributes.utf8.count + state.utf8.count + (injectedId.map { injectedKeyBytes + $0.utf8.count } ?? 0)
+    }
+
+    /// Start: the attributes with `activityId` set to `id`, and the state, both checked. An
+    /// attributes object that names another activityId is refused, never overwritten.
+    static func prepareStart(attributes: String, state: String, id: String) throws -> (attributes: Data, state: Data) {
+        guard validId(id) else { throw LiveCoreError.badValue("activity_id must be 1 to 64 of A-Z a-z 0-9 . _ -") }
+        var attrs = try object(attributes, "attributes")
+        _ = try object(state, "state")
+        var injected: String? = id
+        if let given = attrs["activityId"] {
+            guard let s = given as? String, s == id else {
+                throw LiveCoreError.badValue("attributes.activityId differs from activity_id")
+            }
+            injected = nil
+        }
+        let n = size(attributes: attributes, state: state, injectedId: injected)
+        guard n <= maxPayloadBytes else { throw LiveCoreError.tooLarge(n) }
+        attrs["activityId"] = id
+        let a = try JSONSerialization.data(withJSONObject: attrs, options: [.sortedKeys])
+        return (a, Data(state.utf8))
+    }
+
+    /// Update and end: the new state, checked against the stored attributes' size.
+    static func prepareState(_ state: String, attributesBytes: Int) throws -> Data {
+        _ = try object(state, "state")
+        let n = attributesBytes + state.utf8.count
+        guard n <= maxPayloadBytes else { throw LiveCoreError.tooLarge(n) }
+        return Data(state.utf8)
+    }
+
+    /// An update token is handed on only while the activity runs (active or stale). A token
+    /// that arrives after the end is never entered, so OneSignal never targets a finished activity.
+    static func acceptsUpdateToken(_ phase: LiveLedger.Phase?) -> Bool {
+        phase?.rank == 1
+    }
+
+    static func hex(_ data: Data) -> String {
+        data.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// The page-visible life of each activity id, shared by both platforms' vectors.
+///
+/// L1 Phases only move forward: active and stale may alternate; ended and dismissed are final
+///    (dismissed after ended is the one move between them). Anything else is ignored.
+/// L2 Each change is reported once (`state`); a repeat of the current phase reports nothing.
+/// L3 The push registration is released exactly once, on the first of ended or dismissed
+///    (iOS: OneSignal exit; Android: the stored record).
+/// L4 `dismissed` says who removed it: "user" when it was still running, "end" after an end.
+///    An end the app asked for (`ending`) that removes it at once (iOS dismissal policy immediate:
+///    the system reports dismissed with no ended phase) is reported as ended, then dismissed by "end".
+/// L5 A new start (by the page or a push) of an id that ended or was dismissed resets it.
+/// L6 Each start is a life of its id (iOS: the system activity's id; Android: its notification id).
+///    Only the current life reports: a late end or dismissal of an earlier life of the same id is
+///    ignored, so it never ends, releases or dismisses the activity running now.
+final class LiveLedger {
+    enum Phase: String {
+        case active, stale, ended, dismissed
+
+        var rank: Int {
+            switch self {
+            case .active, .stale: return 1
+            case .ended: return 2
+            case .dismissed: return 3
+            }
+        }
+    }
+
+    enum Effect: Equatable, CustomStringConvertible {
+        case state(String, Phase)
+        case dismissed(String, by: String)
+        case release(String)
+
+        var description: String {
+            switch self {
+            case .state(let id, let p): return "state:\(id):\(p.rawValue)"
+            case .dismissed(let id, let by): return "dismissed:\(id):\(by)"
+            case .release(let id): return "release:\(id)"
+            }
+        }
+    }
+
+    private(set) var phases: [String: Phase] = [:]
+    private(set) var lives: [String: String] = [:]
+    /// The life whose end the app asked for, per id (who dismissed it).
+    private var endings: [String: String] = [:]
+
+    func phase(_ id: String) -> Phase? { phases[id] }
+
+    /// The id's current life, nil before its first one.
+    func life(_ id: String) -> String? { lives[id] }
+
+    /// Whether `life` is the id's current life. An id with no life yet takes the first it sees.
+    func isCurrent(_ id: String, _ life: String) -> Bool {
+        (lives[id] ?? life) == life
+    }
+
+    /// A new start begins a new life of its id; a phase that ended or was dismissed is forgotten.
+    func begin(_ id: String, life: String) {
+        lives[id] = life
+        endings[id] = nil
+        if let p = phases[id], p.rank > 1 {
+            phases.removeValue(forKey: id)
+        }
+    }
+
+    /// Who dismissed it: the app asked to end the current life of `id`; nil `life` withdraws it (the end failed).
+    func ending(_ id: String, life: String?) {
+        guard let life else { endings[id] = nil; return }
+        if isCurrent(id, life) { endings[id] = life }
+    }
+
+    func observe(_ id: String, _ next: Phase, life: String) -> [Effect] {
+        guard isCurrent(id, life) else { return [] }
+        lives[id] = life
+        let current = phases[id]
+        if next == .dismissed, endings[id] == life, current == nil || current!.rank == 1 {
+            return observe(id, .ended, life: life) + observe(id, .dismissed, life: life)
+        }
+        if let c = current {
+            if c == next { return [] }
+            if next.rank < c.rank { return [] }
+            if c.rank == next.rank && c.rank > 1 { return [] }
+        }
+        phases[id] = next
+        var out: [Effect] = [.state(id, next)]
+        let wasRunning = current == nil || current!.rank == 1
+        if next == .dismissed {
+            out.append(.dismissed(id, by: current == .ended ? "end" : "user"))
+        }
+        if next.rank >= 2 && wasRunning {
+            out.append(.release(id))
+        }
+        return out
+    }
+}
+
+/// Push tokens are handed on (OneSignal, the page) only when they change. Keys are
+/// "update:<activityId>" and "start:<template>".
+final class LiveTokenBook {
+    private(set) var tokens: [String: String] = [:]
+
+    func record(_ key: String, _ token: String) -> Bool {
+        if tokens[key] == token { return false }
+        tokens[key] = token
+        return true
+    }
+
+    func remove(_ key: String) {
+        tokens.removeValue(forKey: key)
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/app/LiveActivityExtension.swift">
+
+```swift public/despia/liveactivity/ios/app/LiveActivityExtension.swift
+import ActivityKit
+import Foundation
+import UIKit
+
+/// Live Activities (ActivityKit) driven by the page and by OneSignal pushes.
+///
+/// - The page starts, updates, ends and lists activities of any registered template
+///   (LiveTemplateRegistry.swift). Attributes and state are the template's own JSON.
+/// - Every activity is requested with `pushType: .token` (nil in a build without push, PUSH_DISABLED,
+///   whose app has no aps-environment; local start, update and end still work). Its update token, and each template's
+///   push-to-start token (iOS 17.2+), go to OneSignal (OneSignalLiveLink.swift) and to the page
+///   (`token` event, `list`), so a server can update, end or start activities while the app is
+///   closed.
+/// - Activities started by a push are adopted like the app's own: tracked, tokens handed on,
+///   state reported.
+/// - The page gets the activity id it, the server and OneSignal share, never the system's id.
+///
+/// - Each system activity is one life of its activity id. Only the current life reports, so a
+///   late end or dismissal of an earlier activity with the same id never touches the one running now.
+///
+/// Main actor, as the Despia app's NativeExtension protocol requires. After every await the route
+/// checks `call.isActive` before it starts anything new.
+#if PUSH_DISABLED
+private let livePushType: PushType? = nil
+#else
+private let livePushType: PushType? = .token
+#endif
+
+@MainActor
+final class LiveActivityExtension: NativeExtension {
+    private var ctx: NativeExtContext!
+    private var drivers: [LiveTemplateDriver] = []
+    let ledger = LiveLedger()
+    let tokens = LiveTokenBook()
+    /// "app", "push" or "restored", per activity id.
+    var origins: [String: String] = [:]
+
+    required init() {}
+
+    func didLaunch(_ context: NativeExtContext) {
+        ctx = context
+        var seen = Set<String>()
+        for kind in LiveTemplateRegistry.all where seen.insert(kind.name).inserted {
+            drivers.append(kind.make(self))
+        }
+        for d in drivers { d.observe() }
+    }
+
+    func handle(_ call: NativeExtCall) async -> NativeExtResult {
+        switch call.route {
+        case "start": return start(call)
+        case "update": return await update(call)
+        case "end": return await end(call)
+        case "list": return list()
+        case "permission": return .ok(authorization())
+        case "settings": return await settings(call)
+        default: return .error(code: "not_registered", message: call.route)
+        }
+    }
+
+    // MARK: routes
+
+    private func start(_ call: NativeExtCall) -> NativeExtResult {
+        let name = call.params["template"] as? String ?? ""
+        guard LiveCore.validTemplate(name), let driver = drivers.first(where: { $0.name == name }) else {
+            return .error(code: "unknown_template", message: "no template \(name.isEmpty ? "given" : name); see LiveTemplateRegistry.swift")
+        }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            return .error(code: "activities_disabled", message: "Live Activities are turned off for this app in Settings")
+        }
+        let id = (call.params["activity_id"] as? String) ?? "la-" + UUID().uuidString.lowercased()
+        if drivers.contains(where: { $0.knows(id) }) {
+            return .error(code: "exists", message: "an activity with this id is running")
+        }
+        let prepared: (attributes: Data, state: Data)
+        do {
+            prepared = try LiveCore.prepareStart(attributes: call.params["attributes"] as? String ?? "",
+                                                 state: call.params["state"] as? String ?? "", id: id)
+        } catch let e as LiveCoreError {
+            return .error(code: e.code, message: e.message)
+        } catch {
+            return .error(code: "bad_value", message: "attributes or state could not be read")
+        }
+        let stale = (call.params["stale_minutes"] as? Int).map { Date().addingTimeInterval(TimeInterval($0 * 60)) }
+        let relevance = Double(call.params["relevance"] as? Int ?? 0)
+        do {
+            try driver.start(id: id, attributes: prepared.attributes, state: prepared.state, staleDate: stale, relevance: relevance)
+        } catch let e as DecodingError {
+            return .error(code: "bad_value", message: Self.describe(e, template: name))
+        } catch let e as ActivityAuthorizationError {
+            let (code, message) = Self.describe(e)
+            return .error(code: code, message: message)
+        } catch {
+            return .error(code: "activity_failed", message: "the Live Activity could not start")
+        }
+        return .ok(["activityId": id, "template": name, "state": "active"])
+    }
+
+    private func update(_ call: NativeExtCall) async -> NativeExtResult {
+        let id = call.params["activity_id"] as? String ?? ""
+        guard let driver = drivers.first(where: { $0.knows(id) }), let attrBytes = driver.attributesBytes(id) else {
+            return .error(code: "unknown_activity", message: "no running activity with this id")
+        }
+        let state: Data
+        do {
+            state = try LiveCore.prepareState(call.params["state"] as? String ?? "", attributesBytes: attrBytes)
+        } catch let e as LiveCoreError {
+            return .error(code: e.code, message: e.message)
+        } catch {
+            return .error(code: "bad_value", message: "state could not be read")
+        }
+        let stale = (call.params["stale_minutes"] as? Int).map { Date().addingTimeInterval(TimeInterval($0 * 60)) }
+        let relevance = (call.params["relevance"] as? Int).map(Double.init)
+        let title = call.params["alert_title"] as? String
+        let body = call.params["alert_body"] as? String
+        let alert = (title != nil || body != nil) ? (title ?? "", body ?? "") : nil
+        do {
+            guard try await driver.update(id: id, state: state, staleDate: stale, relevance: relevance, alert: alert) else {
+                return .error(code: "unknown_activity", message: "the activity ended")
+            }
+        } catch let e as DecodingError {
+            return .error(code: "bad_value", message: Self.describe(e, template: driver.name))
+        } catch {
+            return .error(code: "activity_failed", message: "the update was not applied")
+        }
+        guard call.isActive else { return .error(code: "timeout", message: "update timed out") }
+        return .ok(["activityId": id, "template": driver.name, "state": ledger.phase(id)?.rawValue ?? "active"])
+    }
+
+    private func end(_ call: NativeExtCall) async -> NativeExtResult {
+        let id = call.params["activity_id"] as? String ?? ""
+        guard let driver = drivers.first(where: { $0.knows(id) }), let attrBytes = driver.attributesBytes(id) else {
+            return .error(code: "unknown_activity", message: "no running activity with this id")
+        }
+        let policy: ActivityUIDismissalPolicy
+        switch call.params["dismiss"] as? String ?? "default" {
+        case "immediate": policy = .immediate
+        case "after":
+            guard let s = call.params["dismiss_minutes"] as? Int else {
+                return .error(code: "bad_value", message: "dismiss=after needs dismiss_minutes")
+            }
+            policy = .after(Date().addingTimeInterval(TimeInterval(s * 60)))
+        default: policy = .default
+        }
+        var state: Data?
+        if let s = call.params["state"] as? String {
+            do {
+                state = try LiveCore.prepareState(s, attributesBytes: attrBytes)
+            } catch let e as LiveCoreError {
+                return .error(code: e.code, message: e.message)
+            } catch {
+                return .error(code: "bad_value", message: "state could not be read")
+            }
+        }
+        // Who dismissed it: an immediate dismissal reaches the ledger as dismissed with no ended phase; the mark
+        // reports it as this end, not as the person's swipe.
+        ledger.ending(id, life: ledger.life(id))
+        do {
+            guard try await driver.end(id: id, state: state, policy: policy) else {
+                ledger.ending(id, life: nil)
+                return .error(code: "unknown_activity", message: "the activity already ended")
+            }
+        } catch let e as DecodingError {
+            ledger.ending(id, life: nil)
+            return .error(code: "bad_value", message: Self.describe(e, template: driver.name))
+        } catch {
+            ledger.ending(id, life: nil)
+            return .error(code: "activity_failed", message: "the activity could not end")
+        }
+        guard call.isActive else { return .error(code: "timeout", message: "end timed out") }
+        return .ok(["activityId": id, "template": driver.name, "state": "ended"])
+    }
+
+    private func list() -> NativeExtResult {
+        var data = authorization()
+        data["templates"] = drivers.map { $0.name }
+        data["activities"] = drivers.flatMap { $0.rows() }
+        var starts: [String: Any] = [:]
+        for d in drivers { starts[d.name] = tokens.tokens["start:\(d.name)"] ?? NSNull() }
+        data["pushToStart"] = starts
+        return .ok(data)
+    }
+
+    private func authorization() -> [String: Any] {
+        let info = ActivityAuthorizationInfo()
+        return ["enabled": info.areActivitiesEnabled, "frequentPushes": info.frequentPushesEnabled,
+                "onesignal": OneSignalLiveLink.linked ? "linked" : "not_linked", "platform": "ios"]
+    }
+
+    /// Live Activities have no permission prompt on iOS: a person turns them off and on in the app's
+    /// page of the Settings app, which this opens.
+    private func settings(_ call: NativeExtCall) async -> NativeExtResult {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+            return .error(code: "unavailable", message: "no settings page")
+        }
+        let opened = await UIApplication.shared.open(url)
+        guard call.isActive else { return .error(code: "timeout", message: "settings timed out") }
+        return .ok(["opened": opened])
+    }
+
+    // MARK: what the drivers report
+
+    func phase(_ id: String, life: String, template: String, _ phase: LiveLedger.Phase?) {
+        guard let phase else { return }
+        for effect in ledger.observe(id, phase, life: life) {
+            switch effect {
+            case .state(let id, let p):
+                ctx.emit("state", ["activityId": id, "template": template, "state": p.rawValue, "origin": origins[id] ?? "app"])
+            case .dismissed(let id, let by):
+                ctx.emit("dismissed", ["activityId": id, "template": template, "by": by])
+            case .release(let id):
+                OneSignalLiveLink.exit(id)
+                tokens.remove("update:\(id)")
+            }
+        }
+    }
+
+    func updateToken(_ id: String, life: String, template: String, token: String) {
+        guard ledger.isCurrent(id, life), LiveCore.acceptsUpdateToken(ledger.phase(id)),
+              tokens.record("update:\(id)", token) else { return }
+        OneSignalLiveLink.enter(id, token: token)
+        ctx.emit("token", ["kind": "update", "activityId": id, "template": template, "token": token])
+    }
+
+    func startToken(template: String, token: String, register: (String) -> Void) {
+        guard tokens.record("start:\(template)", token) else { return }
+        register(token)
+        ctx.emit("token", ["kind": "push_to_start", "template": template, "token": token])
+    }
+
+    // MARK: messages
+
+    static func describe(_ e: DecodingError, template: String) -> String {
+        func path(_ c: DecodingError.Context) -> String {
+            c.codingPath.map { $0.stringValue }.joined(separator: ".")
+        }
+        switch e {
+        case .keyNotFound(let key, _): return "\(template): missing field \(key.stringValue)"
+        case .typeMismatch(_, let c), .valueNotFound(_, let c): return "\(template): wrong type at \(path(c))"
+        case .dataCorrupted(let c): return "\(template): unreadable value at \(path(c))"
+        @unknown default: return "\(template): fields do not match the template"
+        }
+    }
+
+    static func describe(_ e: ActivityAuthorizationError) -> (String, String) {
+        switch e {
+        case .denied: return ("activities_disabled", "Live Activities are turned off for this app in Settings")
+        case .attributesTooLarge: return ("too_large", "attributes and state pass the 4 KB limit")
+        case .globalMaximumExceeded, .targetMaximumExceeded: return ("too_many", "the device runs as many Live Activities as it allows")
+        case .visibility: return ("not_foreground", "a Live Activity starts only while the app is in the foreground")
+        case .unsupported, .unsupportedTarget: return ("unsupported", "this device does not support Live Activities")
+        default: return ("activity_failed", "the Live Activity could not start")
+        }
+    }
+}
+
+// MARK: - templates, type-erased
+
+/// One registered template. `make` builds its driver once, at launch.
+struct LiveTemplateKind {
+    let name: String
+    let make: @MainActor (LiveActivityExtension) -> LiveTemplateDriver
+
+    static func of<T: NXLiveTemplate>(_ type: T.Type) -> LiveTemplateKind {
+        LiveTemplateKind(name: T.templateName, make: { owner in TemplateDriver<T>(owner: owner) })
+    }
+}
+
+@MainActor
+protocol LiveTemplateDriver: AnyObject {
+    var name: String { get }
+    func observe()
+    func knows(_ activityId: String) -> Bool
+    func attributesBytes(_ activityId: String) -> Int?
+    func start(id: String, attributes: Data, state: Data, staleDate: Date?, relevance: Double) throws
+    func update(id: String, state: Data, staleDate: Date?, relevance: Double?, alert: (String, String)?) async throws -> Bool
+    func end(id: String, state: Data?, policy: ActivityUIDismissalPolicy) async throws -> Bool
+    func rows() -> [[String: Any]]
+}
+
+/// Everything that needs the template's concrete type: ActivityKit requests, the system's
+/// activity, token and state sequences, and JSON in the system's default coding (the same coding
+/// ActivityKit applies to pushed payloads).
+@MainActor
+final class TemplateDriver<T: NXLiveTemplate>: LiveTemplateDriver {
+    private unowned let owner: LiveActivityExtension
+    /// System activity id -> activity, for every activity this process has seen.
+    private var tracked: [String: Activity<T>] = [:]
+
+    init(owner: LiveActivityExtension) {
+        self.owner = owner
+    }
+
+    var name: String { T.templateName }
+
+    func observe() {
+        for a in Activity<T>.activities { track(a, origin: "restored") }
+        Task { [weak self] in
+            for await a in Activity<T>.activityUpdates { self?.track(a, origin: "push") }
+        }
+        if #available(iOS 17.2, *) {
+            Task { [weak self] in
+                for await data in Activity<T>.pushToStartTokenUpdates {
+                    self?.owner.startToken(template: T.templateName, token: LiveCore.hex(data)) { token in
+                        OneSignalLiveLink.setPushToStart(T.self, token: token)
+                    }
+                }
+            }
+        }
+    }
+
+    /// The current life of the id, while it runs.
+    private func running(_ id: String) -> Activity<T>? {
+        guard let life = owner.ledger.life(id), let a = tracked[life] else { return nil }
+        return a.activityState == .active || a.activityState == .stale ? a : nil
+    }
+
+    func knows(_ activityId: String) -> Bool { running(activityId) != nil }
+
+    func attributesBytes(_ activityId: String) -> Int? {
+        guard let a = running(activityId) else { return nil }
+        return (try? JSONEncoder().encode(a.attributes))?.count ?? 0
+    }
+
+    func start(id: String, attributes: Data, state: Data, staleDate: Date?, relevance: Double) throws {
+        let attrs = try JSONDecoder().decode(T.self, from: attributes)
+        let content = try JSONDecoder().decode(T.ContentState.self, from: state)
+        let a = try Activity<T>.request(attributes: attrs,
+                                        content: ActivityContent(state: content, staleDate: staleDate, relevanceScore: relevance),
+                                        pushType: livePushType)
+        track(a, origin: "app")
+    }
+
+    func update(id: String, state: Data, staleDate: Date?, relevance: Double?, alert: (String, String)?) async throws -> Bool {
+        guard let a = running(id) else { return false }
+        let content = ActivityContent(state: try JSONDecoder().decode(T.ContentState.self, from: state),
+                                      staleDate: staleDate ?? a.content.staleDate,
+                                      relevanceScore: relevance ?? a.content.relevanceScore)
+        if let (title, body) = alert {
+            await a.update(content, alertConfiguration: AlertConfiguration(title: LocalizedStringResource(stringLiteral: title),
+                                                                           body: LocalizedStringResource(stringLiteral: body),
+                                                                           sound: .default))
+        } else {
+            await a.update(content)
+        }
+        return true
+    }
+
+    func end(id: String, state: Data?, policy: ActivityUIDismissalPolicy) async throws -> Bool {
+        guard let a = running(id) else { return false }
+        let content = try state.map { ActivityContent(state: try JSONDecoder().decode(T.ContentState.self, from: $0), staleDate: nil) }
+        await a.end(content, dismissalPolicy: policy)
+        return true
+    }
+
+    func rows() -> [[String: Any]] {
+        tracked.values.compactMap { a in
+            let id = a.attributes.activityId
+            guard owner.ledger.life(id) == a.id, let phase = owner.ledger.phase(id), phase.rank == 1 else { return nil }
+            return ["activityId": id, "template": name, "state": phase.rawValue, "origin": owner.origins[id] ?? "app",
+                    "pushToken": owner.tokens.tokens["update:\(id)"] ?? NSNull(),
+                    "attributes": Self.json(a.attributes), "content": Self.json(a.content.state)]
+        }
+    }
+
+    /// Tracks a system activity once: its state and update-token sequences report to the owner,
+    /// tagged with its life (the system id), so only the current life of its activity id counts.
+    private func track(_ a: Activity<T>, origin: String) {
+        guard tracked[a.id] == nil else { return }
+        tracked[a.id] = a
+        let id = a.attributes.activityId
+        let life = a.id
+        // A running system activity is a new life of its id, also for an id that ended
+        // before. One that already ended (restored at launch) takes the id only if nothing else has.
+        if Self.phase(a.activityState)?.rank == 1 || owner.ledger.life(id) == nil {
+            if let p = owner.ledger.phase(id), p.rank > 1 { owner.origins[id] = nil }
+            owner.ledger.begin(id, life: life)
+        }
+        if owner.ledger.isCurrent(id, life), owner.origins[id] == nil { owner.origins[id] = origin }
+        owner.phase(id, life: life, template: name, Self.phase(a.activityState))
+        Task { [weak self] in
+            for await data in a.pushTokenUpdates {
+                self?.owner.updateToken(id, life: life, template: T.templateName, token: LiveCore.hex(data))
+            }
+        }
+        Task { [weak self] in
+            for await s in a.activityStateUpdates {
+                self?.owner.phase(id, life: life, template: T.templateName, Self.phase(s))
+            }
+        }
+    }
+
+    /// Nil for a state this code does not know (a newer iOS): it is not reported.
+    static func phase(_ s: ActivityState) -> LiveLedger.Phase? {
+        switch s {
+        case .active: return .active
+        case .stale: return .stale
+        case .ended: return .ended
+        case .dismissed: return .dismissed
+        @unknown default: return nil
+        }
+    }
+
+    static func json<V: Encodable>(_ value: V) -> Any {
+        guard let d = try? JSONEncoder().encode(value), let o = try? JSONSerialization.jsonObject(with: d) else { return NSNull() }
+        return o
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/app/LiveTemplateRegistry.swift">
+
+```swift public/despia/liveactivity/ios/app/LiveTemplateRegistry.swift
+/// The templates the app can start, track and hand to OneSignal. One line per template
+/// (ios/shared/templates/). A template missing here still draws if the widget lists it, but the app
+/// never sees its activities, tokens or push-to-start.
+enum LiveTemplateRegistry {
+    static let all: [LiveTemplateKind] = [
+        .of(DeliveryAttributes.self),
+        .of(ScoreAttributes.self),
+        .of(TimerAttributes.self),
+    ]
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/app/OneSignalLiveLink.swift">
+
+```swift public/despia/liveactivity/ios/app/OneSignalLiveLink.swift
+import ActivityKit
+import Foundation
+#if !ONESIGNAL_EXCLUDED
+import OneSignalFramework
+import OneSignalLiveActivities
+#endif
+
+/// The only file of this extension that calls OneSignal.
+///
+/// One owner: the app's built-in OneSignal integration initializes the SDK (AppDelegate,
+/// `OneSignal.initialize`) and owns push. This file never initializes it, never asks for push
+/// permission and never touches the APNs device token. It uses OneSignal's token API for Live
+/// Activities, the "enter/exit with manual token observation" form of OneSignal's iOS SDK
+/// (OneSignalLiveActivitiesManagerImpl: enter(_:withToken:), exit(_:),
+/// setPushToStartToken(_:withToken:)): the app observes ActivityKit's tokens itself and gives them
+/// to OneSignal. That form needs no OneSignal code in the widget extension, so the widget links no
+/// SDK and the app links only the OneSignalFramework product the base app already has.
+///
+/// Built without OneSignal (the dashboard turned it off: ONESIGNAL_EXCLUDED), every call here is a
+/// no-op, `linked` is false and the page still receives every token through the `token` event and
+/// `list`, for a server that talks to APNs itself.
+enum OneSignalLiveLink {
+    static var linked: Bool {
+        #if ONESIGNAL_EXCLUDED || PUSH_DISABLED
+        return false
+        #else
+        return true
+        #endif
+    }
+
+    /// An update token for a running activity: OneSignal's
+    /// POST /apps/{app_id}/live_activities/{activity_id}/notifications reaches it.
+    static func enter(_ activityId: String, token: String) {
+        #if !ONESIGNAL_EXCLUDED && !PUSH_DISABLED
+        OneSignal.LiveActivities.enter(activityId, withToken: token)
+        #endif
+    }
+
+    /// The activity ended or was dismissed: OneSignal stops sending to it.
+    static func exit(_ activityId: String) {
+        #if !ONESIGNAL_EXCLUDED && !PUSH_DISABLED
+        OneSignal.LiveActivities.exit(activityId)
+        #endif
+    }
+
+    /// A push-to-start token for one template (iOS 17.2+): OneSignal's
+    /// POST /apps/{app_id}/activities/activity/{Attributes type name} starts one.
+    @available(iOS 17.2, *)
+    static func setPushToStart<T: ActivityAttributes>(_ type: T.Type, token: String) {
+        #if !ONESIGNAL_EXCLUDED && !PUSH_DISABLED
+        OneSignal.LiveActivities.setPushToStartToken(type, withToken: token)
+        #endif
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/shared/LiveTemplate.swift">
+
+```swift public/despia/liveactivity/ios/shared/LiveTemplate.swift
+import ActivityKit
+import Foundation
+
+/// What every Live Activity template's attributes conform to. Compiled into the app (which starts
+/// and tracks activities) and into the NXLiveActivity widget extension (which draws them).
+///
+/// A template is one file under ios/shared/templates/: its `ActivityAttributes` struct and its
+/// `Widget`. To add one, copy a template file, rename the types and `templateName`, then add one
+/// line to ios/app/LiveTemplateRegistry.swift, one line to
+/// ios/targets/NXLiveActivity/NXLiveActivityBundle.swift and the file to both source lists of
+/// liveactivity/manifest.json.
+///
+/// Rules every template keeps (the tests check them):
+/// - `activityId` is a stored attribute. It is the id the page, your server and OneSignal use for
+///   this activity (the `activity_id` of OneSignal's REST API). For a push-to-start your server
+///   sends the same value in `event_attributes.activityId`.
+/// - No `Date` property. ActivityKit decodes pushed JSON with its default strategy (a `Date` is
+///   seconds since 2001), so times travel as `Double` Unix seconds and the view converts them.
+/// - Field names are the JSON keys your server sends. Android's template of the same name reads
+///   the same keys, so one payload drives both platforms.
+protocol NXLiveTemplate: ActivityAttributes {
+    /// The `template` value the page and the server use. Lower case, at most 32 characters.
+    static var templateName: String { get }
+    var activityId: String { get }
+}
+
+/// Unix seconds to a date, for template views. Nil and 0 mean "not set".
+func nxLiveDate(_ seconds: Double?) -> Date? {
+    guard let s = seconds, s > 0 else { return nil }
+    return Date(timeIntervalSince1970: s)
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/shared/templates/DeliveryActivity.swift">
+
+```swift public/despia/liveactivity/ios/shared/templates/DeliveryActivity.swift
+import ActivityKit
+import SwiftUI
+import WidgetKit
+
+// Template "delivery": order or delivery tracking with step progress and an arrival time.
+// Edit freely: the fields are the JSON keys your page and your server send (Android's
+// DeliveryTemplate.java reads the same keys).
+//
+// attributes: {"orderNumber": "A-1042", "merchant": "Corner Bakery"}
+// state:      {"status": "On the way", "step": 2, "stepCount": 4, "etaEpoch": 1763650800, "courier": "Sam"}
+
+struct DeliveryAttributes: NXLiveTemplate {
+    static let templateName = "delivery"
+
+    struct ContentState: Codable, Hashable {
+        var status: String
+        /// Completed steps, 0...stepCount.
+        var step: Int
+        var stepCount: Int
+        /// Expected arrival, Unix seconds. Omit or 0 when unknown.
+        var etaEpoch: Double?
+        var courier: String?
+    }
+
+    var activityId: String
+    var orderNumber: String
+    var merchant: String
+}
+
+private extension DeliveryAttributes.ContentState {
+    var fraction: Double { stepCount > 0 ? min(1, max(0, Double(step) / Double(stepCount))) : 0 }
+    var done: Bool { stepCount > 0 && step >= stepCount }
+    var symbol: String { done ? "checkmark.circle.fill" : "shippingbox.fill" }
+}
+
+private struct DeliveryETA: View {
+    let state: DeliveryAttributes.ContentState
+    var body: some View {
+        if state.done {
+            Text("Delivered")
+        } else if let eta = nxLiveDate(state.etaEpoch) {
+            Text(eta, style: .time)
+        } else {
+            Text("\(state.step)/\(state.stepCount)")
+        }
+    }
+}
+
+private struct DeliverySteps: View {
+    let state: DeliveryAttributes.ContentState
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<max(1, min(state.stepCount, 8)), id: \.self) { i in
+                Capsule()
+                    .fill(i < state.step ? Color.accentColor : Color.secondary.opacity(0.3))
+                    .frame(height: 6)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(Text("Step \(state.step) of \(state.stepCount)"))
+    }
+}
+
+private struct DeliveryLockScreen: View {
+    let context: ActivityViewContext<DeliveryAttributes>
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(context.attributes.merchant, systemImage: context.state.symbol)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer()
+                DeliveryETA(state: context.state)
+                    .font(.headline.monospacedDigit())
+            }
+            DeliverySteps(state: context.state)
+            HStack {
+                Text(context.state.status).font(.subheadline).lineLimit(1)
+                Spacer()
+                if let courier = context.state.courier, !courier.isEmpty {
+                    Text(courier).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                } else {
+                    Text("#\(context.attributes.orderNumber)").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(16)
+    }
+}
+
+struct DeliveryLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: DeliveryAttributes.self) { context in
+            DeliveryLockScreen(context: context)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Label(context.attributes.merchant, systemImage: context.state.symbol)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    DeliveryETA(state: context.state)
+                        .font(.headline.monospacedDigit())
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        DeliverySteps(state: context.state)
+                        Text(context.state.status).font(.subheadline).lineLimit(1)
+                    }
+                }
+            } compactLeading: {
+                Image(systemName: context.state.symbol).foregroundStyle(Color.accentColor)
+            } compactTrailing: {
+                DeliveryETA(state: context.state)
+                    .font(.caption.monospacedDigit())
+                    .frame(maxWidth: 56)
+            } minimal: {
+                ProgressView(value: context.state.fraction) {
+                    Image(systemName: context.state.symbol)
+                }
+                .progressViewStyle(.circular)
+                .tint(Color.accentColor)
+            }
+            .keylineTint(Color.accentColor)
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/shared/templates/ScoreActivity.swift">
+
+```swift public/despia/liveactivity/ios/shared/templates/ScoreActivity.swift
+import ActivityKit
+import SwiftUI
+import WidgetKit
+
+// Template "score": a live sports score card. Edit freely: the fields are the JSON keys your page
+// and your server send (Android's ScoreTemplate.java reads the same keys).
+//
+// attributes: {"league": "Premier League", "homeTeam": "Arsenal", "awayTeam": "Chelsea",
+//              "homeShort": "ARS", "awayShort": "CHE"}
+// state:      {"homeScore": 2, "awayScore": 1, "period": "2nd half", "clock": "67'", "final": false}
+
+struct ScoreAttributes: NXLiveTemplate {
+    static let templateName = "score"
+
+    struct ContentState: Codable, Hashable {
+        var homeScore: Int
+        var awayScore: Int
+        /// "1st half", "Q3", "Top 7th".
+        var period: String
+        /// Game clock as text ("67'", "04:12"). Omit when the sport has none.
+        var clock: String?
+        /// True once the game is over.
+        var final: Bool?
+    }
+
+    var activityId: String
+    var league: String
+    var homeTeam: String
+    var awayTeam: String
+    /// Three-letter codes for the compact Dynamic Island. Omit to use the first three letters.
+    var homeShort: String?
+    var awayShort: String?
+}
+
+private extension ScoreAttributes {
+    var home3: String { homeShort ?? String(homeTeam.prefix(3)).uppercased() }
+    var away3: String { awayShort ?? String(awayTeam.prefix(3)).uppercased() }
+}
+
+private extension ScoreAttributes.ContentState {
+    var isFinal: Bool { final ?? false }
+    var status: String { isFinal ? "Final" : [period, clock ?? ""].filter { !$0.isEmpty }.joined(separator: " · ") }
+}
+
+private struct ScoreTeam: View {
+    let name: String
+    let score: Int
+    let leading: Bool
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(score)")
+                .font(.system(.largeTitle, design: .rounded).weight(.semibold).monospacedDigit())
+                .contentTransition(.numericText())
+            Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: leading ? .leading : .trailing)
+    }
+}
+
+private struct ScoreLockScreen: View {
+    let context: ActivityViewContext<ScoreAttributes>
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text(context.attributes.league).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Spacer()
+                Text(context.state.status)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(context.state.isFinal ? Color.secondary : Color.red)
+            }
+            HStack {
+                ScoreTeam(name: context.attributes.homeTeam, score: context.state.homeScore, leading: true)
+                Text(":").font(.title2).foregroundStyle(.secondary)
+                ScoreTeam(name: context.attributes.awayTeam, score: context.state.awayScore, leading: false)
+            }
+        }
+        .padding(16)
+    }
+}
+
+struct ScoreLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: ScoreAttributes.self) { context in
+            ScoreLockScreen(context: context)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    ScoreTeam(name: context.attributes.home3, score: context.state.homeScore, leading: true)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    ScoreTeam(name: context.attributes.away3, score: context.state.awayScore, leading: false)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    Text(context.attributes.league).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Text(context.state.status).font(.subheadline.weight(.semibold))
+                }
+            } compactLeading: {
+                Text("\(context.attributes.home3) \(context.state.homeScore)").font(.caption.monospacedDigit())
+            } compactTrailing: {
+                Text("\(context.state.awayScore) \(context.attributes.away3)").font(.caption.monospacedDigit())
+            } minimal: {
+                Text("\(context.state.homeScore)-\(context.state.awayScore)").font(.caption2.monospacedDigit())
+            }
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/shared/templates/TimerActivity.swift">
+
+```swift public/despia/liveactivity/ios/shared/templates/TimerActivity.swift
+import ActivityKit
+import SwiftUI
+import WidgetKit
+
+// Template "timer": a countdown the system animates by itself, with no update per second. Edit
+// freely: the fields are the JSON keys your page and your server send (Android's
+// TimerTemplate.java reads the same keys).
+//
+// attributes: {"title": "Pizza oven"}
+// state:      {"startedAt": 1763650000, "endsAt": 1763650900, "label": "Baking"}
+// paused:     {"startedAt": 1763650000, "endsAt": 1763650900, "label": "Paused", "pausedRemaining": 312}
+
+struct TimerAttributes: NXLiveTemplate {
+    static let templateName = "timer"
+
+    struct ContentState: Codable, Hashable {
+        /// Unix seconds.
+        var startedAt: Double
+        /// Unix seconds. The countdown reaches zero here.
+        var endsAt: Double
+        var label: String
+        /// Seconds left while paused. Omit while running.
+        var pausedRemaining: Double?
+    }
+
+    var activityId: String
+    var title: String
+}
+
+private extension TimerAttributes.ContentState {
+    var range: ClosedRange<Date> {
+        let start = Date(timeIntervalSince1970: startedAt)
+        let end = Date(timeIntervalSince1970: max(endsAt, startedAt))
+        return start...end
+    }
+    var paused: Bool { pausedRemaining != nil }
+    var pausedText: String {
+        let s = Int(max(0, pausedRemaining ?? 0))
+        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+private struct TimerClock: View {
+    let state: TimerAttributes.ContentState
+    var body: some View {
+        if state.paused {
+            Text(state.pausedText)
+        } else {
+            Text(timerInterval: state.range, countsDown: true)
+        }
+    }
+}
+
+private struct TimerLockScreen: View {
+    let context: ActivityViewContext<TimerAttributes>
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(context.attributes.title).font(.headline).lineLimit(1)
+                Label(context.state.label, systemImage: context.state.paused ? "pause.fill" : "timer")
+                    .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            TimerClock(state: context.state)
+                .font(.system(.title, design: .rounded).weight(.semibold).monospacedDigit())
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 140, alignment: .trailing)
+        }
+        .padding(16)
+    }
+}
+
+struct TimerLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: TimerAttributes.self) { context in
+            TimerLockScreen(context: context)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Label(context.attributes.title, systemImage: "timer").font(.headline).lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    TimerClock(state: context.state)
+                        .font(.title2.monospacedDigit())
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 110, alignment: .trailing)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    if context.state.paused {
+                        Text(context.state.label).font(.subheadline).foregroundStyle(.secondary)
+                    } else {
+                        ProgressView(timerInterval: context.state.range, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
+                            .tint(Color.accentColor)
+                    }
+                }
+            } compactLeading: {
+                Image(systemName: context.state.paused ? "pause.fill" : "timer").foregroundStyle(Color.accentColor)
+            } compactTrailing: {
+                TimerClock(state: context.state)
+                    .font(.caption.monospacedDigit())
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 52)
+            } minimal: {
+                Image(systemName: "timer").foregroundStyle(Color.accentColor)
+            }
+            .keylineTint(Color.accentColor)
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="ios/targets/NXLiveActivity/NXLiveActivityBundle.swift">
+
+```swift public/despia/liveactivity/ios/targets/NXLiveActivity/NXLiveActivityBundle.swift
+import SwiftUI
+import WidgetKit
+
+/// The NXLiveActivity widget extension: it draws the Live Activities on the Lock Screen and in the
+/// Dynamic Island. One line per template (ios/shared/templates/). The app's built-in
+/// ActivityKitExtension draws only its own download activity, a different attributes type, so the
+/// two extensions never draw each other's activities.
+@main
+struct NXLiveActivityBundle: WidgetBundle {
+    var body: some Widget {
+        DeliveryLiveActivity()
+        ScoreLiveActivity()
+        TimerLiveActivity()
+    }
+}
+```
+
+</Accordion>
+
+</Tab>
+
+<Tab title="android">
+
+<Accordion title="android/liveactivity/build.gradle">
+
+```groovy public/despia/liveactivity/android/liveactivity/build.gradle
+// The extension module's build. Despia compiles it with the app; it downloads nothing at run time.
+//
+// OneSignal is compileOnly, with the Despia app's own coordinate, range and excludes
+// (the app's build.gradle, "withPushImplementation('com.onesignal:OneSignal:[5.0.0, 5.1.99]')"):
+// the Despia app owns and ships the SDK, so this module never adds a second copy or another version.
+// Only OneSignalLiveUpdates.java names a OneSignal type, and OneSignal alone loads that class (from
+// the manifest meta-data), so a build without OneSignal never touches it.
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'despia.ext.liveactivity'
+    // Notification.ProgressStyle and setShortCriticalText are API 36.
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation project(':nativeext-api')
+    // The Despia app's own versions (the app's build.gradle): the notification permission request
+    // (ActivityResultRegistry) and @Keep on the class OneSignal loads by name.
+    implementation 'androidx.activity:activity:1.13.0'
+    implementation 'androidx.annotation:annotation:1.9.1'
+    compileOnly('com.onesignal:OneSignal:[5.0.0, 5.1.99]') {
+        exclude group: 'com.onesignal', module: 'location'
+        exclude group: 'com.google.android.gms', module: 'play-services-ads-identifier'
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/AndroidManifest.xml">
+
+```xml public/despia/liveactivity/android/liveactivity/src/main/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Live Updates: a normal (install-time) permission, no prompt. Android 16 promotes an ongoing
+         notification to a Live Update only when the app declares it. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Already in the base app; declared here so the module states what it needs. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!-- OneSignal calls this class for every push it receives, also while the app is closed
+             (OneSignal, "Android Live Updates"). The name is fixed by OneSignal; one app has one. -->
+        <meta-data
+            android:name="com.onesignal.NotificationServiceExtension"
+            android:value="despia.ext.liveactivity.OneSignalLiveUpdates" />
+
+        <!-- Swipe-away and the "Remove" action of a Live Update. Not exported: only this app's own
+             PendingIntents reach it. -->
+        <receiver
+            android:name="despia.ext.liveactivity.DismissReceiver"
+            android:exported="false" />
+    </application>
+</manifest>
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/DismissReceiver.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/DismissReceiver.java
+package despia.ext.liveactivity;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+
+/**
+ * The person swiped a Live Update away or tapped Remove. Recorded, so the next update push does not
+ * bring it back (only a new start does). Not exported: only this app's PendingIntents reach it.
+ */
+public final class DismissReceiver extends BroadcastReceiver {
+    static final String EXTRA_ID = "despia.ext.liveactivity.id";
+    /** The notification id: which life of the activity id was removed. */
+    static final String EXTRA_NID = "despia.ext.liveactivity.nid";
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String id = intent.getStringExtra(EXTRA_ID);
+        int nid = intent.getIntExtra(EXTRA_NID, 0);
+        if (LiveCore.validId(id) && nid != 0) LiveUpdates.dismissed(context, id, nid);
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveActivityExtension.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveActivityExtension.java
+package despia.ext.liveactivity;
+
+import android.Manifest;
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.despia.nativeext.ExtCall;
+import com.despia.nativeext.ExtContext;
+import com.despia.nativeext.ExtResult;
+import com.despia.nativeext.NativeExtension;
+
+import java.util.UUID;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * Android's counterpart of iOS Live Activities: Live Updates (Android 16, promoted ongoing
+ * notifications with Notification.ProgressStyle), and the same ongoing notification, updated in
+ * place, on Android 7 to 15. Android has no Live Activities, no Dynamic Island and no push-to-start
+ * token: a server starts, updates and ends one with an ordinary OneSignal data push
+ * (OneSignalLiveUpdates), delivered also while the app is closed.
+ *
+ * <p>Routes and events have the iOS names and data. Replies are made once, on the main thread.
+ * The notification permission (API 33+) is asked only by the {@code permission} route, through the
+ * activity's ActivityResultRegistry under {@link ExtContext#resultKey}; a late answer after the
+ * call timed out starts nothing.
+ */
+public final class LiveActivityExtension implements NativeExtension {
+    private ExtContext ctx;
+    private ActivityResultLauncher<String> permission;
+    private ComponentActivity registeredOn;
+    private ExtCall pendingCall;
+    private ExtResult.Callback pendingReply;
+
+    @Override
+    public void onCreate(ExtContext context) {
+        ctx = context;
+        LiveUpdates.ext = context;
+        LiveNotifier.ensureChannels(context.app());
+    }
+
+    @Override
+    public void onActivityEvent(Activity activity, ActivityEvent event) {
+        if (!(activity instanceof ComponentActivity)) return;
+        ComponentActivity a = (ComponentActivity) activity;
+        if (event == ActivityEvent.CREATED) {
+            if (permission != null) permission.unregister();
+            registeredOn = a;
+            permission = a.getActivityResultRegistry().register(ctx.resultKey("notifications"),
+                    new ActivityResultContracts.RequestPermission(), (Boolean granted) -> {
+                        ExtResult.Callback reply = pendingReply;
+                        ExtCall call = pendingCall;
+                        pendingReply = null;
+                        pendingCall = null;
+                        if (reply == null) return;
+                        if (!call.isActive()) {
+                            reply.reply(ExtResult.error("timeout", "the answer came after the call timed out"));
+                            return;
+                        }
+                        try {
+                            reply.reply(ok(authorization()));
+                        } catch (JSONException e) {
+                            reply.reply(ExtResult.error("handler_error", "reply could not be built"));
+                        }
+                    });
+        } else if (event == ActivityEvent.DESTROYED && registeredOn == a && permission != null) {
+            permission.unregister();
+            permission = null;
+            registeredOn = null;
+            if (pendingReply != null) {
+                ExtResult.Callback reply = pendingReply;
+                pendingReply = null;
+                pendingCall = null;
+                reply.reply(ExtResult.error("unavailable", "the activity was destroyed"));
+            }
+        }
+    }
+
+    @Override
+    public void handle(ExtCall call, ExtResult.Callback reply) {
+        try {
+            switch (call.route) {
+                case "start":
+                    reply.reply(start(call));
+                    return;
+                case "update":
+                    reply.reply(update(call));
+                    return;
+                case "end":
+                    reply.reply(end(call));
+                    return;
+                case "list":
+                    reply.reply(list());
+                    return;
+                case "permission":
+                    permission(call, reply);
+                    return;
+                case "settings":
+                    reply.reply(settings());
+                    return;
+                default:
+                    reply.reply(ExtResult.error("not_registered", call.route));
+            }
+        } catch (JSONException e) {
+            reply.reply(ExtResult.error("handler_error", "reply could not be built"));
+        }
+    }
+
+    private static String str(ExtCall call, String key) {
+        Object v = call.params.get(key);
+        return v instanceof String ? (String) v : null;
+    }
+
+    private static ExtResult ok(JSONObject data) {
+        return ExtResult.ok(data);
+    }
+
+    /** stale_minutes as a stale date (epoch ms), 0 for none, or LiveUpdates.KEEP_STALE when not given. */
+    private static long staleAt(ExtCall call, long absent) {
+        Object v = call.params.get("stale_minutes");
+        return v instanceof Number ? System.currentTimeMillis() + ((Number) v).longValue() * 60_000L : absent;
+    }
+
+    /**
+     * A named platform difference in the result, never a silent drop: iOS ranks a person's Live
+     * Activities by ActivityContent.relevanceScore; an Android notification has no relevance score
+     * (Notification.Builder offers none; the system orders notifications by channel importance and
+     * time), so the value is not applied there.
+     */
+    private static JSONObject differences(ExtCall call, JSONObject out) throws JSONException {
+        if (call.params.get("relevance") instanceof Number) {
+            out.put("platformDifferences", new JSONObject().put("relevance",
+                    "Android notifications have no relevance score; the system orders them"));
+        }
+        return out;
+    }
+
+    private ExtResult start(ExtCall call) throws JSONException {
+        String name = str(call, "template");
+        LiveTemplate t = LiveCore.validTemplate(name) ? LiveTemplates.find(name) : null;
+        if (t == null) return ExtResult.error("unknown_template", "no template " + name + "; see LiveTemplates.java");
+        String id = str(call, "activity_id");
+        if (id == null) id = "la-" + UUID.randomUUID().toString();
+        String phase = LiveUpdates.phase(id);
+        JSONObject stored = new LiveStore(ctx.app()).get(id);
+        if (stored != null && !stored.optBoolean("dismissed", false) && !"ended".equals(stored.optString("phase"))
+                || "active".equals(phase) || "stale".equals(phase)) {
+            return ExtResult.error("exists", "an activity with this id is running");
+        }
+        JSONObject[] p;
+        try {
+            p = LiveCore.prepareStart(str(call, "attributes"), str(call, "state"), id);
+        } catch (LiveCore.Refusal r) {
+            return ExtResult.error(r.code, r.getMessage());
+        }
+        LiveUpdates.Outcome o = LiveUpdates.apply(ctx.app(), "start", id, name, p[0], p[1], "app", null, null,
+                staleAt(call, 0));
+        if (!o.action.equals("post")) return refusal(o);
+        return ok(differences(call, new JSONObject().put("activityId", id).put("template", name)
+                .put("state", phaseOf(id))));
+    }
+
+    private ExtResult update(ExtCall call) throws JSONException {
+        String id = str(call, "activity_id");
+        JSONObject rec = LiveCore.validId(id) ? new LiveStore(ctx.app()).get(id) : null;
+        if (rec == null || rec.optBoolean("dismissed", false)) {
+            return ExtResult.error("unknown_activity", "no running activity with this id");
+        }
+        JSONObject attrs = rec.optJSONObject("attributes");
+        JSONObject st;
+        try {
+            st = LiveCore.prepareState(str(call, "state"), LiveCore.utf8(attrs == null ? "" : attrs.toString()));
+        } catch (LiveCore.Refusal r) {
+            return ExtResult.error(r.code, r.getMessage());
+        }
+        LiveUpdates.Outcome o = LiveUpdates.apply(ctx.app(), "update", id, null, null, st, "app",
+                str(call, "alert_title"), str(call, "alert_body"), staleAt(call, LiveUpdates.KEEP_STALE));
+        if (!o.action.equals("post")) return refusal(o);
+        return ok(differences(call, new JSONObject().put("activityId", id).put("template", o.template)
+                .put("state", phaseOf(id))));
+    }
+
+    /**
+     * As iOS: "default" keeps the final state on screen (no longer ongoing, so it can be swiped
+     * away) for up to 4 hours, "after" for dismiss_minutes, "immediate" removes it now. The
+     * system removes it on time (Notification.Builder.setTimeoutAfter), also if the process dies.
+     * Android 7.x has no timeout: there the notification is removed at once.
+     */
+    private ExtResult end(ExtCall call) throws JSONException {
+        String id = str(call, "activity_id");
+        JSONObject rec = LiveCore.validId(id) ? new LiveStore(ctx.app()).get(id) : null;
+        if (rec == null || rec.optBoolean("dismissed", false)) {
+            return ExtResult.error("unknown_activity", "no running activity with this id");
+        }
+        String dismiss = str(call, "dismiss");
+        Object minutes = call.params.get("dismiss_minutes");
+        long keepMs;
+        if ("immediate".equals(dismiss)) {
+            keepMs = 0;
+        } else if ("after".equals(dismiss)) {
+            if (!(minutes instanceof Number)) return ExtResult.error("bad_value", "dismiss=after needs dismiss_minutes");
+            keepMs = ((Number) minutes).longValue() * 60_000L;
+        } else {
+            keepMs = LiveNotifier.ENDED_KEEP_MS;
+        }
+        JSONObject st = null;
+        String state = str(call, "state");
+        if (state != null) {
+            JSONObject attrs = rec.optJSONObject("attributes");
+            try {
+                st = LiveCore.prepareState(state, LiveCore.utf8(attrs == null ? "" : attrs.toString()));
+            } catch (LiveCore.Refusal r) {
+                return ExtResult.error(r.code, r.getMessage());
+            }
+        }
+        LiveUpdates.finish(ctx.app(), id, st, keepMs);
+        return ok(new JSONObject().put("activityId", id).put("template", rec.optString("template")).put("state", "ended"));
+    }
+
+    private ExtResult list() throws JSONException {
+        LiveStore store = new LiveStore(ctx.app());
+        JSONArray rows = new JSONArray();
+        for (String id : store.ids()) {
+            LiveUpdates.refresh(ctx.app(), id, 0);
+            JSONObject r = store.get(id);
+            if (r == null || r.optBoolean("dismissed", false) || "ended".equals(r.optString("phase"))) continue;
+            rows.put(new JSONObject().put("activityId", id).put("template", r.optString("template"))
+                    .put("state", r.optString("phase", "active")).put("origin", r.optString("origin", "app"))
+                    .put("pushToken", JSONObject.NULL)
+                    .put("attributes", r.optJSONObject("attributes")).put("content", r.optJSONObject("state")));
+        }
+        JSONArray names = new JSONArray();
+        for (String n : LiveTemplates.names()) names.put(n);
+        return ok(authorization().put("templates", names).put("activities", rows).put("pushToStart", new JSONObject()));
+    }
+
+    private JSONObject authorization() throws JSONException {
+        Context app = ctx.app();
+        return new JSONObject()
+                .put("enabled", LiveNotifier.enabled(app))
+                .put("permission", Build.VERSION.SDK_INT < 33
+                        || app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+                .put("promoted", LiveNotifier.promotable(app))
+                .put("liveUpdates", Build.VERSION.SDK_INT >= 36)
+                .put("onesignal", oneSignalLinked() ? "linked" : "not_linked")
+                .put("platform", "android");
+    }
+
+    /** Whether the base app ships OneSignal (the class is present), without loading or starting it. */
+    private boolean oneSignalLinked() {
+        try {
+            Class.forName("com.onesignal.OneSignal", false, ctx.app().getClassLoader());
+            return true;
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
+        }
+    }
+
+    private void permission(ExtCall call, ExtResult.Callback reply) throws JSONException {
+        Context app = ctx.app();
+        if (Build.VERSION.SDK_INT < 33
+                || app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            reply.reply(ok(authorization()));
+            return;
+        }
+        if (permission == null) {
+            reply.reply(ExtResult.error("unavailable", "no activity is showing"));
+            return;
+        }
+        if (pendingReply != null) {
+            if (pendingCall.isActive()) {
+                reply.reply(ExtResult.error("busy", "the notification prompt is already showing"));
+                return;
+            }
+            pendingReply.reply(ExtResult.error("timeout", "the prompt timed out"));
+        }
+        pendingCall = call;
+        pendingReply = reply;
+        permission.launch(Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    /**
+     * Android 16: the page where a person allows Live Updates for this app
+     * (Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS). Below that, the app's notification settings.
+     */
+    private ExtResult settings() throws JSONException {
+        Context app = ctx.app();
+        Intent i = Build.VERSION.SDK_INT >= 36
+                ? new Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
+                : Build.VERSION.SDK_INT >= 26 ? new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                : new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + app.getPackageName()));
+        i.putExtra(Settings.EXTRA_APP_PACKAGE, app.getPackageName());
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (i.resolveActivity(app.getPackageManager()) == null) {
+            return ExtResult.error("unavailable", "no settings page on this device");
+        }
+        app.startActivity(i);
+        return ok(new JSONObject().put("opened", true));
+    }
+
+    private static String phaseOf(String id) {
+        String p = LiveUpdates.phase(id);
+        return "stale".equals(p) ? "stale" : "active";
+    }
+
+    private static ExtResult refusal(LiveUpdates.Outcome o) {
+        switch (o.action) {
+            case "notifications_off":
+                return ExtResult.error("activities_disabled", "notifications are off for this app");
+            case "ignore_unknown_template":
+                return ExtResult.error("unknown_template", "no template " + o.template);
+            case "skip_dismissed":
+            case "ignore_unknown_activity":
+                return ExtResult.error("unknown_activity", "no running activity with this id");
+            case "store_failed":
+                return ExtResult.error("storage_failed", "the activity could not be saved");
+            default:
+                return ExtResult.error("bad_value", "the event was not applied");
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveCore.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveCore.java
+package despia.ext.liveactivity;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * Every decision of the Live Updates extension that needs no Android API: ids, payload checks, the
+ * page-visible life of an activity and what a pushed event does. No android.* import, so the shared
+ * rules run it on a plain JVM. iOS's LiveActivityCore.swift
+ * makes the same decisions from the same vectors.
+ */
+public final class LiveCore {
+    /** The same limit as iOS (ActivityKit: 4 KB of static and dynamic data). FCM also caps a push at 4 KB. */
+    public static final int MAX_PAYLOAD_BYTES = 4096;
+    /** The bytes {@code "activityId":"",} adds when the id is injected into the attributes. */
+    public static final int INJECTED_KEY_BYTES = 16;
+
+    private LiveCore() {
+    }
+
+    /** A malformed or oversized value: code bad_value or too_large. */
+    public static final class Refusal extends Exception {
+        public final String code;
+
+        Refusal(String code, String message) {
+            super(message);
+            this.code = code;
+        }
+    }
+
+    /** Ids the page, the server and OneSignal share: 1 to 64 of A-Z a-z 0-9 . _ - */
+    public static boolean validId(String id) {
+        if (id == null) return false;
+        byte[] b = id.getBytes(StandardCharsets.UTF_8);
+        if (b.length < 1 || b.length > 64) return false;
+        for (byte c : b) {
+            boolean ok = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                    || c == '.' || c == '_' || c == '-';
+            if (!ok) return false;
+        }
+        return true;
+    }
+
+    /** Template names: 1 to 32 of a-z 0-9 _ */
+    public static boolean validTemplate(String name) {
+        if (name == null) return false;
+        byte[] b = name.getBytes(StandardCharsets.UTF_8);
+        if (b.length < 1 || b.length > 32) return false;
+        for (byte c : b) {
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || c == '_')) return false;
+        }
+        return true;
+    }
+
+    static int utf8(String s) {
+        return s == null ? 0 : s.getBytes(StandardCharsets.UTF_8).length;
+    }
+
+    /** The size rule, measured on what the page or server sent, plus the injected id. */
+    public static int size(String attributes, String state, String injectedId) {
+        return utf8(attributes) + utf8(state) + (injectedId == null ? 0 : INJECTED_KEY_BYTES + utf8(injectedId));
+    }
+
+    static JSONObject object(String json, String field) throws Refusal {
+        if (json == null) throw new Refusal("bad_value", field + " is not a JSON object");
+        String t = json.trim();
+        if (!t.startsWith("{")) throw new Refusal("bad_value", field + " is not a JSON object");
+        try {
+            return new JSONObject(t);
+        } catch (JSONException e) {
+            throw new Refusal("bad_value", field + " is not a JSON object");
+        }
+    }
+
+    /**
+     * Start: {attributes with activityId set to id, state}, both checked. An attributes object that
+     * names another activityId is refused, never overwritten.
+     */
+    public static JSONObject[] prepareStart(String attributes, String state, String id) throws Refusal {
+        if (!validId(id)) throw new Refusal("bad_value", "activity_id must be 1 to 64 of A-Z a-z 0-9 . _ -");
+        JSONObject attrs = object(attributes, "attributes");
+        JSONObject st = object(state, "state");
+        String injected = id;
+        if (attrs.has("activityId")) {
+            Object given = attrs.opt("activityId");
+            if (!(given instanceof String) || !given.equals(id)) {
+                throw new Refusal("bad_value", "attributes.activityId differs from activity_id");
+            }
+            injected = null;
+        }
+        int n = size(attributes, state, injected);
+        if (n > MAX_PAYLOAD_BYTES) {
+            throw new Refusal("too_large", "attributes and state are " + n + " bytes; the limit is " + MAX_PAYLOAD_BYTES);
+        }
+        try {
+            attrs.put("activityId", id);
+        } catch (JSONException e) {
+            throw new Refusal("bad_value", "attributes could not take activityId");
+        }
+        return new JSONObject[] {attrs, st};
+    }
+
+    /** Update and end: the new state, checked against the stored attributes' size. */
+    public static JSONObject prepareState(String state, int attributesBytes) throws Refusal {
+        JSONObject st = object(state, "state");
+        int n = attributesBytes + utf8(state);
+        if (n > MAX_PAYLOAD_BYTES) {
+            throw new Refusal("too_large", "attributes and state are " + n + " bytes; the limit is " + MAX_PAYLOAD_BYTES);
+        }
+        return st;
+    }
+
+    // ------------------------------------------------------------------------------------ ledger
+
+    /**
+     * The page-visible life of each activity id, the same rules as iOS's LiveLedger:
+     * L1 phases only move forward (active and stale may alternate; dismissed after ended is the one
+     * move between the final phases); L2 each change is reported once; L3 the registration is
+     * released once, on the first of ended or dismissed; L4 dismissed says "user" while running,
+     * "end" after an end (an end the app asked for that removes it at once is reported ended first); L5 a new start of an ended or dismissed id begins a new life; L6 only the
+     * current life (its notification id) reports, so the late dismissal of an earlier life's
+     * notification never touches the activity running now. Effects are "state:id:phase",
+     * "dismissed:id:by", "release:id".
+     */
+    public static final class Ledger {
+        private final Map<String, String> phases = new HashMap<>();
+        private final Map<String, String> lives = new HashMap<>();
+        private final Map<String, String> endings = new HashMap<>();
+
+        static int rank(String phase) {
+            switch (phase) {
+                case "active":
+                case "stale":
+                    return 1;
+                case "ended":
+                    return 2;
+                case "dismissed":
+                    return 3;
+                default:
+                    return 0;
+            }
+        }
+
+        public synchronized String phase(String id) {
+            return phases.get(id);
+        }
+
+        /** Seeds a phase and life read back from storage, reporting nothing (a new process). */
+        public synchronized void restore(String id, String phase, String life) {
+            if (rank(phase) == 0) return;
+            phases.put(id, phase);
+            lives.put(id, life);
+        }
+
+        /** Whether life is the id's current life. An id with no life yet takes the first it sees. */
+        public synchronized boolean isCurrent(String id, String life) {
+            String cur = lives.get(id);
+            return cur == null || cur.equals(life);
+        }
+
+        /** Who dismissed it: the app asked to end the current life of id; a null life withdraws it (the end failed). */
+        public synchronized void ending(String id, String life) {
+            if (life == null) endings.remove(id);
+            else if (isCurrent(id, life)) endings.put(id, life);
+        }
+
+        /** L5, L6: a new start begins a new life of its id; a phase that ended or was dismissed is forgotten. */
+        public synchronized void begin(String id, String life) {
+            lives.put(id, life);
+            endings.remove(id);
+            String p = phases.get(id);
+            if (p != null && rank(p) > 1) {
+                phases.remove(id);
+            }
+        }
+
+        public synchronized List<String> observe(String id, String next, String life) {
+            List<String> out = new ArrayList<>();
+            int nr = rank(next);
+            if (nr == 0) return out;
+            if (!isCurrent(id, life)) return out;
+            lives.put(id, life);
+            String current = phases.get(id);
+            if (next.equals("dismissed") && life.equals(endings.get(id)) && (current == null || rank(current) == 1)) {
+                out.addAll(observe(id, "ended", life));
+                out.addAll(observe(id, "dismissed", life));
+                return out;
+            }
+            if (current != null) {
+                int cr = rank(current);
+                if (current.equals(next)) return out;
+                if (nr < cr) return out;
+                if (cr == nr && cr > 1) return out;
+            }
+            phases.put(id, next);
+            out.add("state:" + id + ":" + next);
+            boolean wasRunning = current == null || rank(current) == 1;
+            if (next.equals("dismissed")) out.add("dismissed:" + id + ":" + ("ended".equals(current) ? "end" : "user"));
+            if (nr >= 2 && wasRunning) out.add("release:" + id);
+            return out;
+        }
+    }
+
+    /**
+     * S1, the stale polyfill: iOS marks an activity stale at its stale date (ActivityContent.staleDate)
+     * and reports it; Android has no such notification state, so the stored deadline decides. A running
+     * activity is "stale" from staleAt (epoch ms, 0 for none) on and "active" before it; ended and
+     * dismissed stay as they are.
+     */
+    public static String timedPhase(String phase, long staleAt, long now) {
+        if (!"active".equals(phase) && !"stale".equals(phase)) return phase;
+        return staleAt > 0 && now >= staleAt ? "stale" : "active";
+    }
+
+    // ------------------------------------------------------------------------------- push events
+
+    /**
+     * What one start, update or end does, whether the page or a OneSignal push sent it (OneSignal,
+     * "Android Live Updates": start clears a dismissal and posts; update is skipped after the person
+     * dismissed it, so a later push never brings back what they swiped away; end cancels and clears).
+     *
+     * @param known      a stored record exists for the id
+     * @param dismissed  the stored record was dismissed by the person
+     * @param renderable a known template and attributes are available (sent now or stored)
+     * @return "post", "cancel", "skip_dismissed", "ignore_unknown_activity",
+     *         "ignore_unknown_template" or "ignore_bad_event"
+     */
+    public static String decide(String event, boolean known, boolean dismissed, boolean templateKnown, boolean renderable) {
+        if (event == null) return "ignore_bad_event";
+        switch (event) {
+            case "start":
+                if (!templateKnown) return "ignore_unknown_template";
+                return renderable ? "post" : "ignore_unknown_activity";
+            case "update":
+                if (!known && !renderable) return "ignore_unknown_activity";
+                if (known && dismissed) return "skip_dismissed";
+                if (!templateKnown) return "ignore_unknown_template";
+                return renderable ? "post" : "ignore_unknown_activity";
+            case "end":
+                return "cancel";
+            default:
+                return "ignore_bad_event";
+        }
+    }
+
+    /**
+     * The Android notification id of an activity: stable for its key while it is stored, and never
+     * the id of another stored activity. Ids start at BASE_ID and step by one.
+     */
+    public static final int BASE_ID = 0x4E580001;
+
+    public static int allocate(Map<String, Integer> taken, String key) {
+        Integer have = taken.get(key);
+        if (have != null) return have;
+        int next = BASE_ID;
+        for (Integer v : taken.values()) {
+            if (v != null && v >= next) next = v + 1;
+        }
+        taken.put(key, next);
+        return next;
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveNotifier.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveNotifier.java
+package despia.ext.liveactivity;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+
+import org.json.JSONObject;
+
+/**
+ * Posts and cancels the ongoing notification of one activity. On Android 16 (API 36) it asks for
+ * promotion to a Live Update (Notification.ProgressStyle, the status-bar chip, the
+ * "android.requestPromotedOngoing" extra); below API 36 the same notification updates in place
+ * without promotion. Framework Notification.Builder only, as OneSignal's Android Live Updates guide
+ * advises, so no androidx.core upgrade is forced on the app.
+ */
+final class LiveNotifier {
+    /** Low importance: frequent updates never sound, vibrate or badge. */
+    static final String CHANNEL = "nx_live_updates";
+    /** An update that carries an alert (alert_title or alert_body) is posted once here. */
+    static final String ALERT_CHANNEL = "nx_live_alerts";
+    /** The request extra Android 16 reads (Notification.EXTRA_REQUEST_PROMOTED_ONGOING, API 36.1). */
+    static final String EXTRA_PROMOTED = "android.requestPromotedOngoing";
+    /** A Live Activity lasts at most 8 hours on iOS; the Android backstop if no end arrives. */
+    static final long TIMEOUT_MS = 8L * 60 * 60 * 1000;
+    /** iOS keeps an ended Live Activity on the Lock Screen for up to 4 hours (dismissal "default"). */
+    static final long ENDED_KEEP_MS = 4L * 60 * 60 * 1000;
+
+    private LiveNotifier() {
+    }
+
+    static NotificationManager manager(Context ctx) {
+        return (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+    }
+
+    static void ensureChannels(Context ctx) {
+        if (Build.VERSION.SDK_INT < 26) return;
+        NotificationManager nm = manager(ctx);
+        NotificationChannel quiet = new NotificationChannel(CHANNEL, ctx.getString(R.string.nx_live_channel_name),
+                NotificationManager.IMPORTANCE_LOW);
+        quiet.setDescription(ctx.getString(R.string.nx_live_channel_description));
+        quiet.setShowBadge(false);
+        quiet.enableVibration(false);
+        quiet.setSound(null, null);
+        nm.createNotificationChannel(quiet);
+        NotificationChannel alerts = new NotificationChannel(ALERT_CHANNEL, ctx.getString(R.string.nx_live_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT);
+        alerts.setDescription(ctx.getString(R.string.nx_live_channel_description));
+        alerts.setShowBadge(false);
+        nm.createNotificationChannel(alerts);
+    }
+
+    static boolean enabled(Context ctx) {
+        return manager(ctx).areNotificationsEnabled();
+    }
+
+    /** Whether Android 16 may show this app's ongoing notifications as Live Updates. */
+    static boolean promotable(Context ctx) {
+        return Build.VERSION.SDK_INT >= 36 && manager(ctx).canPostPromotedNotifications();
+    }
+
+    static void post(Context ctx, String id, int nid, LiveTemplate t, JSONObject attributes, JSONObject state,
+                     String alertTitle, String alertBody) {
+        post(ctx, id, nid, t, attributes, state, alertTitle, alertBody, true, TIMEOUT_MS);
+    }
+
+    /**
+     * @param ongoing   false for the final state of an ended activity: it can be swiped away
+     * @param timeoutMs when the system removes it (API 26+)
+     */
+    static void post(Context ctx, String id, int nid, LiveTemplate t, JSONObject attributes, JSONObject state,
+                     String alertTitle, String alertBody, boolean ongoing, long timeoutMs) {
+        ensureChannels(ctx);
+        boolean alert = alertTitle != null || alertBody != null;
+        boolean live = Build.VERSION.SDK_INT >= 36;
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(ctx, alert ? ALERT_CHANNEL : CHANNEL)
+                : new Notification.Builder(ctx);
+        b.setSmallIcon(t.smallIcon())
+                .setOngoing(ongoing)
+                .setAutoCancel(false)
+                .setOnlyAlertOnce(!alert)
+                .setShowWhen(false)
+                .setCategory(Notification.CATEGORY_PROGRESS)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setDeleteIntent(dismissIntent(ctx, id, nid));
+        if (ongoing) {
+            b.addAction(new Notification.Action.Builder(null, ctx.getString(R.string.nx_live_remove),
+                    dismissIntent(ctx, id, nid)).build());
+        }
+        PendingIntent open = openIntent(ctx, nid);
+        if (open != null) b.setContentIntent(open);
+        if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(timeoutMs);
+        t.render(ctx, b, attributes, state, live);
+        if (alert) {
+            // Posted once on the alert channel: it sounds and peeks like an iOS alert update, and the
+            // template's own content and style stay as they are.
+            b.setTicker(alertTitle != null && alertBody != null ? alertTitle + ": " + alertBody
+                    : alertTitle != null ? alertTitle : alertBody);
+        }
+        if (live && ongoing) {
+            Bundle extras = new Bundle();
+            extras.putBoolean(EXTRA_PROMOTED, true);
+            b.addExtras(extras);
+        }
+        manager(ctx).notify(nid, b.build());
+    }
+
+    static void cancel(Context ctx, int nid) {
+        manager(ctx).cancel(nid);
+    }
+
+    private static PendingIntent dismissIntent(Context ctx, String id, int nid) {
+        Intent i = new Intent(ctx, DismissReceiver.class).putExtra(DismissReceiver.EXTRA_ID, id)
+                .putExtra(DismissReceiver.EXTRA_NID, nid);
+        return PendingIntent.getBroadcast(ctx, nid, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    /** Opens the app, as a tap on a Live Activity does on iOS. */
+    private static PendingIntent openIntent(Context ctx, int nid) {
+        Intent launch = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+        if (launch == null) return null;
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(ctx, nid, launch, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveStore.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveStore.java
+package despia.ext.liveactivity;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * The activities this app shows, kept across process deaths: a OneSignal push can arrive in a fresh
+ * process, an update may omit the attributes (they are read back from here), and a dismissal must
+ * be remembered so the next update push does not bring the notification back.
+ *
+ * <p>One SharedPreferences file, one JSON record per activity id:
+ * {template, attributes, state, phase, dismissed, nid, origin}. Every method holds the class lock,
+ * because the bridge (main thread), OneSignal's worker and the dismiss receiver all use it.
+ */
+final class LiveStore {
+    private static final String FILE = "nx_liveactivity";
+    private static final String PREFIX = "a.";
+    private static final Object LOCK = new Object();
+    /** Not an activity id (ids never start with '#'). */
+    private static final String LAST = "#last_nid";
+
+    private final SharedPreferences prefs;
+
+    LiveStore(Context ctx) {
+        prefs = ctx.getApplicationContext().getSharedPreferences(FILE, Context.MODE_PRIVATE);
+    }
+
+    JSONObject get(String id) {
+        synchronized (LOCK) {
+            String raw = prefs.getString(PREFIX + id, null);
+            if (raw == null) return null;
+            try {
+                return new JSONObject(raw);
+            } catch (JSONException e) {
+                // An unreadable record is dropped: the next start writes a fresh one.
+                prefs.edit().remove(PREFIX + id).commit();
+                return null;
+            }
+        }
+    }
+
+    /** Writes synchronously (commit), so a process killed right after a push keeps the record. */
+    boolean put(String id, JSONObject record) {
+        synchronized (LOCK) {
+            return prefs.edit().putString(PREFIX + id, record.toString()).commit();
+        }
+    }
+
+    void remove(String id) {
+        synchronized (LOCK) {
+            prefs.edit().remove(PREFIX + id).commit();
+        }
+    }
+
+    /**
+     * The notification id for an activity: kept while it is stored, never another record's, and
+     * never one issued before (the last issued id is kept), so a new activity cannot replace the
+     * final state an ended one still shows.
+     */
+    int notificationId(String id) {
+        synchronized (LOCK) {
+            Map<String, Integer> taken = new HashMap<>();
+            for (String key : ids()) {
+                JSONObject r = get(key);
+                if (r != null && r.has("nid")) taken.put(key, r.optInt("nid"));
+            }
+            if (taken.containsKey(id)) return taken.get(id);
+            taken.put(LAST, prefs.getInt(LAST, LiveCore.BASE_ID - 1));
+            int nid = LiveCore.allocate(taken, id);
+            prefs.edit().putInt(LAST, nid).commit();
+            return nid;
+        }
+    }
+
+    List<String> ids() {
+        synchronized (LOCK) {
+            List<String> out = new ArrayList<>();
+            Iterator<String> it = prefs.getAll().keySet().iterator();
+            while (it.hasNext()) {
+                String k = it.next();
+                if (k.startsWith(PREFIX)) out.add(k.substring(PREFIX.length()));
+            }
+            return out;
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveTemplate.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveTemplate.java
+package despia.ext.liveactivity;
+
+import android.app.Notification;
+import android.content.Context;
+
+import org.json.JSONObject;
+
+/**
+ * One Live Update template: it fills an ongoing notification from the same JSON the iOS template of
+ * the same name decodes (ios/shared/templates/), so one server payload drives both platforms.
+ *
+ * <p>To add a template, copy one under templates/, rename it and its {@link #name()}, and add it to
+ * {@link LiveTemplates}.
+ *
+ * <p>Keep the notification promotable to a Live Update (Android 16): no custom RemoteViews, no
+ * {@code setColorized(true)}, a content title, and the standard, BigText or Progress style.
+ */
+public interface LiveTemplate {
+    /** The {@code template} value the page and the server use, lower case. */
+    String name();
+
+    /** A monochrome status-bar icon of this module. */
+    int smallIcon();
+
+    /**
+     * Sets title, text, progress, chronometer and the status-bar chip on {@code b}.
+     *
+     * @param live true on API 36 and later: {@code Notification.ProgressStyle} and
+     *             {@code setShortCriticalText} exist. Below that, use {@code setProgress} and
+     *             the plain fields; the notification still updates in place, without promotion.
+     */
+    void render(Context ctx, Notification.Builder b, JSONObject attributes, JSONObject state, boolean live);
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveTemplates.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveTemplates.java
+package despia.ext.liveactivity;
+
+import despia.ext.liveactivity.templates.DeliveryTemplate;
+import despia.ext.liveactivity.templates.ScoreTemplate;
+import despia.ext.liveactivity.templates.TimerTemplate;
+
+/** The templates the page and OneSignal pushes can use. One line per template. */
+public final class LiveTemplates {
+    private static final LiveTemplate[] ALL = {
+        new DeliveryTemplate(),
+        new ScoreTemplate(),
+        new TimerTemplate(),
+    };
+
+    private LiveTemplates() {
+    }
+
+    public static LiveTemplate find(String name) {
+        if (name == null) return null;
+        for (LiveTemplate t : ALL) {
+            if (t.name().equals(name)) return t;
+        }
+        return null;
+    }
+
+    public static String[] names() {
+        String[] out = new String[ALL.length];
+        for (int i = 0; i < ALL.length; i++) out[i] = ALL[i].name();
+        return out;
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/LiveUpdates.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/LiveUpdates.java
+package despia.ext.liveactivity;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.despia.nativeext.ExtContext;
+
+import java.util.List;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * One pipeline for every start, update and end, whether the page called a route or a OneSignal push
+ * arrived (possibly in a process with no page). Decisions are LiveCore's; this class only stores,
+ * posts and reports. Thread-safe: the bridge calls it on the main thread, OneSignal on its worker,
+ * the dismiss receiver on the main thread of a possibly fresh process.
+ */
+final class LiveUpdates {
+    private static final Object LOCK = new Object();
+    private static final LiveCore.Ledger LEDGER = new LiveCore.Ledger();
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /** Set in onCreate, which runs in Application.onCreate before OneSignal or a receiver gets here. */
+    static volatile ExtContext ext;
+
+    private LiveUpdates() {
+    }
+
+    /** The outcome of one event: LiveCore.decide's action, or "notifications_off" / "store_failed". */
+    static final class Outcome {
+        final String action;
+        final String template;
+
+        Outcome(String action, String template) {
+            this.action = action;
+            this.template = template;
+        }
+    }
+
+    /** Keep the stored stale date (an update or push that names none, as iOS keeps its staleDate). */
+    static final long KEEP_STALE = -1;
+
+    /**
+     * @param staleAt when the activity turns stale (epoch ms), 0 for never, or KEEP_STALE
+     */
+    static Outcome apply(Context ctx, String event, String id, String templateName, JSONObject attributes,
+                         JSONObject state, String origin, String alertTitle, String alertBody, long staleAt) {
+        if (!LiveCore.validId(id)) return new Outcome("ignore_bad_event", templateName);
+        Context app = ctx.getApplicationContext();
+        LiveStore store = new LiveStore(app);
+        synchronized (LOCK) {
+            JSONObject rec = store.get(id);
+            restore(rec, id);
+            boolean known = rec != null && !"ended".equals(rec.optString("phase"));
+            boolean dismissed = rec != null && rec.optBoolean("dismissed", false);
+            // An update or end keeps the template the activity started with; a start names its own.
+            String name = rec != null && !"start".equals(event) ? rec.optString("template", templateName)
+                    : templateName != null && !templateName.isEmpty() ? templateName
+                    : rec == null ? null : rec.optString("template", null);
+            LiveTemplate t = LiveTemplates.find(name);
+            JSONObject attrs = attributes != null ? withId(attributes, id) : rec == null ? null : rec.optJSONObject("attributes");
+            JSONObject st = state != null ? state : rec == null ? null : rec.optJSONObject("state");
+            String action = LiveCore.decide(event, known, dismissed, t != null, t != null && attrs != null && st != null);
+            switch (action) {
+                case "post": {
+                    if (!LiveNotifier.enabled(app)) return new Outcome("notifications_off", name);
+                    int nid = rec != null && rec.has("nid") ? rec.optInt("nid") : store.notificationId(id);
+                    // L5, L6: a start is a new life, named by its notification id.
+                    if ("start".equals(event)) LEDGER.begin(id, life(nid));
+                    long stale = staleAt != KEEP_STALE ? staleAt
+                            : rec != null && !"start".equals(event) ? rec.optLong("staleAt", 0) : 0;
+                    String phase = LiveCore.timedPhase("active", stale, System.currentTimeMillis());
+                    JSONObject next = new JSONObject();
+                    try {
+                        next.put("template", name).put("attributes", attrs).put("state", st).put("phase", phase)
+                                .put("dismissed", false).put("nid", nid).put("staleAt", stale)
+                                .put("origin", rec != null ? rec.optString("origin", origin) : origin);
+                    } catch (JSONException e) {
+                        return new Outcome("store_failed", name);
+                    }
+                    if (!store.put(id, next)) return new Outcome("store_failed", name);
+                    LiveNotifier.post(app, id, nid, t, attrs, st, alertTitle, alertBody);
+                    report(LEDGER.observe(id, phase, life(nid)), name, next.optString("origin", origin));
+                    scheduleStale(app, id, nid, stale);
+                    return new Outcome(action, name);
+                }
+                case "cancel": {
+                    if (rec != null) {
+                        if (rec.has("nid")) LiveNotifier.cancel(app, rec.optInt("nid"));
+                        store.remove(id);
+                        report(LEDGER.observe(id, "ended", life(rec)), name, rec.optString("origin", origin));
+                    }
+                    return new Outcome(action, name);
+                }
+                default:
+                    return new Outcome(action, name);
+            }
+        }
+    }
+
+    /**
+     * Ends an activity from the page: with keepMs > 0 (API 26+) its final state stays, no longer
+     * ongoing, until the system removes it after keepMs; otherwise it is removed now. Either way the
+     * record goes, so later update pushes are ignored, and the page is told "ended".
+     */
+    static void finish(Context ctx, String id, JSONObject finalState, long keepMs) {
+        Context app = ctx.getApplicationContext();
+        LiveStore store = new LiveStore(app);
+        synchronized (LOCK) {
+            JSONObject rec = store.get(id);
+            if (rec == null) return;
+            restore(rec, id);
+            LiveTemplate t = LiveTemplates.find(rec.optString("template", null));
+            JSONObject attrs = rec.optJSONObject("attributes");
+            JSONObject st = finalState != null ? finalState : rec.optJSONObject("state");
+            if (rec.has("nid")) {
+                int nid = rec.optInt("nid");
+                if (keepMs > 0 && android.os.Build.VERSION.SDK_INT >= 26 && t != null && attrs != null && st != null) {
+                    LiveNotifier.post(app, id, nid, t, attrs, st, null, null, false, keepMs);
+                } else {
+                    LiveNotifier.cancel(app, nid);
+                }
+            }
+            store.remove(id);
+            report(LEDGER.observe(id, "ended", life(rec)), rec.optString("template", ""), rec.optString("origin", "app"));
+        }
+    }
+
+    /**
+     * The person removed the notification nid: remembered (dismissed), the notification goes, the page
+     * is told. Only for the id's current life: the swipe of an ended activity's final state, kept
+     * on screen under its own nid after a new start of the same id, changes nothing.
+     */
+    static void dismissed(Context ctx, String id, int nid) {
+        Context app = ctx.getApplicationContext();
+        LiveStore store = new LiveStore(app);
+        synchronized (LOCK) {
+            JSONObject rec = store.get(id);
+            if (rec == null) return;
+            restore(rec, id);
+            List<String> effects = LEDGER.observe(id, "dismissed", life(nid));
+            if (effects.isEmpty()) return;
+            try {
+                rec.put("dismissed", true).put("phase", "dismissed");
+            } catch (JSONException e) {
+                return;
+            }
+            store.put(id, rec);
+            if (rec.has("nid")) LiveNotifier.cancel(app, rec.optInt("nid"));
+            report(effects, rec.optString("template", ""), rec.optString("origin", "app"));
+        }
+    }
+
+    /**
+     * Moves a running activity to stale (or back) by its stored stale date, and tells the page.
+     * Called when the stale date passes in this process, and by list, so a fresh process reads it too.
+     *
+     * @param nid the life the check was scheduled for, or 0 for the current one
+     */
+    static void refresh(Context ctx, String id, int nid) {
+        Context app = ctx.getApplicationContext();
+        LiveStore store = new LiveStore(app);
+        synchronized (LOCK) {
+            JSONObject rec = store.get(id);
+            if (rec == null || rec.optBoolean("dismissed", false) || !rec.has("nid")) return;
+            if (nid != 0 && rec.optInt("nid") != nid) return;
+            restore(rec, id);
+            String was = rec.optString("phase", "active");
+            String now = LiveCore.timedPhase(was, rec.optLong("staleAt", 0), System.currentTimeMillis());
+            if (now.equals(was)) return;
+            try {
+                rec.put("phase", now);
+            } catch (JSONException e) {
+                return;
+            }
+            store.put(id, rec);
+            report(LEDGER.observe(id, now, life(rec)), rec.optString("template", ""), rec.optString("origin", "app"));
+        }
+    }
+
+    private static void scheduleStale(Context app, String id, int nid, long staleAt) {
+        long wait = staleAt - System.currentTimeMillis();
+        if (staleAt > 0 && wait > 0) MAIN.postDelayed(() -> refresh(app, id, nid), wait);
+    }
+
+    static String phase(String id) {
+        return LEDGER.phase(id);
+    }
+
+    private static String life(int nid) {
+        return String.valueOf(nid);
+    }
+
+    private static String life(JSONObject rec) {
+        return rec.has("nid") ? life(rec.optInt("nid")) : "";
+    }
+
+    /** A new process: the ledger learns the stored phase and life before the first event. */
+    private static void restore(JSONObject rec, String id) {
+        if (rec != null && LEDGER.phase(id) == null) LEDGER.restore(id, rec.optString("phase", "active"), life(rec));
+    }
+
+    private static JSONObject withId(JSONObject attributes, String id) {
+        try {
+            return new JSONObject(attributes.toString()).put("activityId", id);
+        } catch (JSONException e) {
+            return attributes;
+        }
+    }
+
+    /** Events reach a loaded page only (ExtContext.emit); list() is the readable state. */
+    private static void report(List<String> effects, String template, String origin) {
+        ExtContext c = ext;
+        if (c == null) return;
+        for (String e : effects) {
+            String[] p = e.split(":", 3);
+            JSONObject data = new JSONObject();
+            try {
+                if (p[0].equals("state")) {
+                    data.put("activityId", p[1]).put("template", template).put("state", p[2]).put("origin", origin);
+                    MAIN.post(() -> c.emit("state", data));
+                } else if (p[0].equals("dismissed")) {
+                    data.put("activityId", p[1]).put("template", template).put("by", p[2]);
+                    MAIN.post(() -> c.emit("dismissed", data));
+                }
+                // "release": the stored record already went (end) or stays as the dismissal record.
+            } catch (JSONException ignored) {
+                // Building a JSON object from strings does not fail.
+            }
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/OneSignalLiveUpdates.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/OneSignalLiveUpdates.java
+package despia.ext.liveactivity;
+
+import androidx.annotation.Keep;
+
+import com.onesignal.notifications.INotificationReceivedEvent;
+import com.onesignal.notifications.INotificationServiceExtension;
+
+import org.json.JSONObject;
+
+/**
+ * The only class of this extension that names a OneSignal type. OneSignal calls it for every push it
+ * receives, also while the app is closed (manifest meta-data com.onesignal.NotificationServiceExtension).
+ * A push whose data carries {@code live_notification} is a Live Update event and is never shown as an
+ * ordinary notification; every other push is left to OneSignal untouched.
+ *
+ * <p>Payload ({@code data} of OneSignal's POST /notifications, the convention of OneSignal's
+ * "Android Live Updates" guide, plus {@code template}):
+ * <pre>
+ * {"live_notification": {"key": "order-42", "event": "start|update|end", "template": "delivery",
+ *   "event_attributes": {...}, "event_updates": {...}, "stale_date": 1763650000}}
+ * </pre>
+ * {@code stale_date} (optional, epoch seconds, the APNs Live Activity field of the same name) turns the
+ * activity stale at that time; an update without it keeps the stored one. APNs' {@code relevance_score}
+ * has no Android counterpart (a notification has no relevance score) and is not read.
+ * {@code key} is the activity id (the iOS {@code activity_id}); {@code template} defaults to
+ * {@code key}, as in OneSignal's guide where the key picks the layout. Attributes may be omitted on
+ * update and end: the stored ones are used.
+ *
+ * <p>One owner: this never initializes OneSignal; the app's own OneSignal setup does.
+ */
+@Keep
+public final class OneSignalLiveUpdates implements INotificationServiceExtension {
+    @Override
+    public void onNotificationReceived(INotificationReceivedEvent event) {
+        JSONObject data = event.getNotification().getAdditionalData();
+        JSONObject live = data == null ? null : data.optJSONObject("live_notification");
+        if (live == null) return;
+        // Discard now (OneSignal SDK 5.1.14+): the no-argument form would hold the worker up to 30 s.
+        event.preventDefault(true);
+        String key = live.optString("key", "");
+        String template = live.optString("template", key);
+        long stale = live.optLong("stale_date", 0) > 0 ? live.optLong("stale_date") * 1000L
+                : "start".equals(live.optString("event")) ? 0 : LiveUpdates.KEEP_STALE;
+        LiveUpdates.apply(event.getContext(), live.optString("event", ""), key, template,
+                live.optJSONObject("event_attributes"), live.optJSONObject("event_updates"), "push", null, null, stale);
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/templates/DeliveryTemplate.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/templates/DeliveryTemplate.java
+package despia.ext.liveactivity.templates;
+
+import android.app.Notification;
+import android.content.Context;
+import android.text.format.DateFormat;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.json.JSONObject;
+
+import despia.ext.liveactivity.LiveTemplate;
+import despia.ext.liveactivity.R;
+
+/**
+ * Template "delivery": order or delivery tracking with step progress and an arrival time. The keys
+ * are the iOS template's (DeliveryActivity.swift):
+ * attributes {orderNumber, merchant}; state {status, step, stepCount, etaEpoch?, courier?}.
+ */
+public final class DeliveryTemplate implements LiveTemplate {
+    @Override
+    public String name() {
+        return "delivery";
+    }
+
+    @Override
+    public int smallIcon() {
+        return R.drawable.nx_live_delivery;
+    }
+
+    @Override
+    public void render(Context ctx, Notification.Builder b, JSONObject attributes, JSONObject state, boolean live) {
+        int stepCount = Math.max(0, state.optInt("stepCount", 0));
+        int step = Math.max(0, Math.min(state.optInt("step", 0), Math.max(stepCount, 0)));
+        boolean done = stepCount > 0 && step >= stepCount;
+        double eta = state.optDouble("etaEpoch", 0);
+        String etaText = done ? "Delivered"
+                : eta > 0 ? DateFormat.getTimeFormat(ctx).format(new Date((long) (eta * 1000)))
+                : stepCount > 0 ? step + "/" + stepCount : "";
+
+        b.setContentTitle(attributes.optString("merchant", ""));
+        String courier = state.optString("courier", "");
+        String status = state.optString("status", "");
+        b.setContentText(courier.isEmpty() ? status : status + " · " + courier);
+        b.setSubText("#" + attributes.optString("orderNumber", ""));
+        if (eta > 0 && !done) {
+            b.setWhen((long) (eta * 1000)).setShowWhen(true);
+        }
+
+        if (live) {
+            Notification.ProgressStyle style = new Notification.ProgressStyle().setStyledByProgress(true);
+            if (stepCount > 0) {
+                List<Notification.ProgressStyle.Segment> segments = new ArrayList<>();
+                for (int i = 0; i < stepCount; i++) segments.add(new Notification.ProgressStyle.Segment(100));
+                style.setProgressSegments(segments).setProgress(step * 100);
+            } else {
+                style.setProgressIndeterminate(true);
+            }
+            b.setStyle(style);
+            if (!etaText.isEmpty()) b.setShortCriticalText(etaText);
+        } else {
+            if (stepCount > 0) b.setProgress(stepCount, step, false);
+            else b.setProgress(0, 0, true);
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/templates/ScoreTemplate.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/templates/ScoreTemplate.java
+package despia.ext.liveactivity.templates;
+
+import android.app.Notification;
+import android.content.Context;
+
+import org.json.JSONObject;
+
+import despia.ext.liveactivity.LiveTemplate;
+import despia.ext.liveactivity.R;
+
+/**
+ * Template "score": a live sports score card. The keys are the iOS template's (ScoreActivity.swift):
+ * attributes {league, homeTeam, awayTeam, homeShort?, awayShort?};
+ * state {homeScore, awayScore, period, clock?, final?}.
+ */
+public final class ScoreTemplate implements LiveTemplate {
+    @Override
+    public String name() {
+        return "score";
+    }
+
+    @Override
+    public int smallIcon() {
+        return R.drawable.nx_live_score;
+    }
+
+    private static String three(JSONObject a, String shortKey, String nameKey) {
+        String s = a.optString(shortKey, "");
+        if (!s.isEmpty()) return s;
+        String n = a.optString(nameKey, "");
+        return (n.length() > 3 ? n.substring(0, 3) : n).toUpperCase(java.util.Locale.ROOT);
+    }
+
+    @Override
+    public void render(Context ctx, Notification.Builder b, JSONObject attributes, JSONObject state, boolean live) {
+        int home = state.optInt("homeScore", 0);
+        int away = state.optInt("awayScore", 0);
+        boolean isFinal = state.optBoolean("final", false);
+        String clock = state.optString("clock", "");
+        String period = state.optString("period", "");
+        String status = isFinal ? "Final" : (clock.isEmpty() ? period : period + " · " + clock);
+
+        b.setContentTitle(attributes.optString("homeTeam", "") + "  " + home + " : " + away + "  "
+                + attributes.optString("awayTeam", ""));
+        b.setContentText(status);
+        b.setSubText(attributes.optString("league", ""));
+        b.setCategory(Notification.CATEGORY_STATUS);
+        if (live) {
+            // Status-bar chip, as iOS's compact leading and trailing: "ARS 2-1 CHE". The system may
+            // shorten a chip, so a long one falls back to the score alone, which always fits.
+            String chip = three(attributes, "homeShort", "homeTeam") + " " + home + "-" + away + " "
+                    + three(attributes, "awayShort", "awayTeam");
+            b.setShortCriticalText(chip.length() <= 11 ? chip : home + "-" + away);
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/java/despia/ext/liveactivity/templates/TimerTemplate.java">
+
+```java public/despia/liveactivity/android/liveactivity/src/main/java/despia/ext/liveactivity/templates/TimerTemplate.java
+package despia.ext.liveactivity.templates;
+
+import android.app.Notification;
+import android.content.Context;
+
+import java.util.Locale;
+
+import org.json.JSONObject;
+
+import despia.ext.liveactivity.LiveTemplate;
+import despia.ext.liveactivity.R;
+
+/**
+ * Template "timer": a countdown the system animates itself (a chronometer counting down to
+ * {@code endsAt}), with no update per second. The keys are the iOS template's (TimerActivity.swift):
+ * attributes {title}; state {startedAt, endsAt, label, pausedRemaining?}. Times are Unix seconds.
+ */
+public final class TimerTemplate implements LiveTemplate {
+    @Override
+    public String name() {
+        return "timer";
+    }
+
+    @Override
+    public int smallIcon() {
+        return R.drawable.nx_live_timer;
+    }
+
+    static String clock(long seconds) {
+        long s = Math.max(0, seconds);
+        return s >= 3600 ? String.format(Locale.ROOT, "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+                : String.format(Locale.ROOT, "%d:%02d", s / 60, s % 60);
+    }
+
+    @Override
+    public void render(Context ctx, Notification.Builder b, JSONObject attributes, JSONObject state, boolean live) {
+        double started = state.optDouble("startedAt", 0);
+        double ends = Math.max(state.optDouble("endsAt", 0), started);
+        boolean paused = state.has("pausedRemaining") && !state.isNull("pausedRemaining");
+        long now = System.currentTimeMillis();
+
+        b.setContentTitle(attributes.optString("title", ""));
+        b.setCategory(Notification.CATEGORY_STOPWATCH);
+        String label = state.optString("label", "");
+        if (paused) {
+            String left = clock((long) state.optDouble("pausedRemaining", 0));
+            b.setContentText(label.isEmpty() ? left : label + " · " + left);
+            b.setShowWhen(false).setUsesChronometer(false);
+            if (live) b.setShortCriticalText(left);
+        } else {
+            b.setContentText(label);
+            b.setWhen((long) (ends * 1000)).setShowWhen(true).setUsesChronometer(true);
+            if (android.os.Build.VERSION.SDK_INT >= 24) b.setChronometerCountDown(true);
+        }
+
+        long total = (long) ((ends - started) * 1000);
+        int permille = total <= 0 ? 1000 : (int) Math.max(0, Math.min(1000, (now - (long) (started * 1000)) * 1000 / total));
+        if (paused && total > 0) {
+            permille = (int) Math.max(0, Math.min(1000, 1000 - (long) (state.optDouble("pausedRemaining", 0) * 1000) * 1000 / total));
+        }
+        if (live) {
+            b.setStyle(new Notification.ProgressStyle()
+                    .setProgressSegments(java.util.Collections.singletonList(new Notification.ProgressStyle.Segment(1000)))
+                    .setProgress(permille));
+        } else {
+            b.setProgress(1000, permille, false);
+        }
+    }
+}
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/res/drawable/nx_live_delivery.xml">
+
+```xml public/despia/liveactivity/android/liveactivity/src/main/res/drawable/nx_live_delivery.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M20,8h-3V4H3C1.9,4 1,4.9 1,6v11h2c0,1.66 1.34,3 3,3s3,-1.34 3,-3h6c0,1.66 1.34,3 3,3s3,-1.34 3,-3h2v-5l-3,-4zM6,18.5c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM19.5,9.5l1.96,2.5H17V9.5h2.5zM18,18.5c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z" />
+</vector>
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/res/drawable/nx_live_score.xml">
+
+```xml public/despia/liveactivity/android/liveactivity/src/main/res/drawable/nx_live_score.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M4,4h16c1.1,0 2,0.9 2,2v12c0,1.1 -0.9,2 -2,2H4c-1.1,0 -2,-0.9 -2,-2V6c0,-1.1 0.9,-2 2,-2zM4,6v12h7V6H4zM13,6v12h7V6h-7z" />
+</vector>
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/res/drawable/nx_live_timer.xml">
+
+```xml public/despia/liveactivity/android/liveactivity/src/main/res/drawable/nx_live_timer.xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M15,1H9v2h6V1zM11,14h2V8h-2v6zM19.03,7.39l1.42,-1.42c-0.43,-0.51 -0.9,-0.99 -1.41,-1.41l-1.42,1.42C16.07,4.74 14.12,4 12,4c-4.97,0 -9,4.03 -9,9s4.02,9 9,9 9,-4.03 9,-9c0,-2.12 -0.74,-4.07 -1.97,-5.61zM12,20c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z" />
+</vector>
+```
+
+</Accordion>
+
+<Accordion title="android/liveactivity/src/main/res/values/nx_live_strings.xml">
+
+```xml public/despia/liveactivity/android/liveactivity/src/main/res/values/nx_live_strings.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nx_live_channel_name">Live updates</string>
+    <string name="nx_live_channel_description">Ongoing deliveries, scores and timers</string>
+    <string name="nx_live_remove">Remove</string>
+</resources>
+```
+
+</Accordion>
+
+</Tab>
+
+</Tabs>

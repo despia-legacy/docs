@@ -20,6 +20,8 @@ Each sample is a complete template: copy its files, change the values the page n
 | Sample | What it adds | Tested on |
 | ------ | ------------ | --------- |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Android emulator, Samsung Galaxy S21 |
+| [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities | iOS simulator 7/7; Android emulator 44/44 steps; TestingBot Galaxy A12 5/5 |
+| [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps | iOS simulator 8/8; TestingBot Pixel 5/5; Android emulator 7 of 8 |
 
 <Warning>
   **Experimental. V3 only.**
@@ -33,7 +35,7 @@ Each sample is a complete template: copy its files, change the values the page n
 
 ## AI skill
 
-An Agent Skill teaches your coding agent this whole page and the recorder sample, so it can write an extension without web access. It is for the Despia V3 runtime only. Install it from the [extension-skill repository](https://github.com/despia-legacy/extension-skill):
+An Agent Skill teaches your coding agent this page and references for Background Recorder, Live Activities and Home Widgets, so it can write an extension without web access. It is for the Despia V3 runtime only. Install it from the [extension-skill repository](https://github.com/despia-legacy/extension-skill):
 
 ```bash
 npx skills add despia-legacy/extension-skill
@@ -403,6 +405,22 @@ You never download a library yourself. Name it in your files, and when Despia ap
 ```
 
 Swift packages come from `github.com` over https.
+
+**iOS: a CocoaPod.** The manifest also accepts CocoaPods. Declare exact pod names and versions in `ios.pods`, point `ios.podfile_lock` at the lockfile under your extension's `ios/` folder, and put the installed-tree SHA-256 for every root pod in that lockfile in `ios.pod_trees`:
+
+```json
+{
+  "ios": {
+    "pods": [{ "name": "Lottie", "version": "4.5.0" }],
+    "podfile_lock": "ios/Podfile.lock",
+    "pod_trees": {
+      "Lottie": "<installed-tree-sha256>"
+    }
+  }
+}
+```
+
+This is an illustrative manifest excerpt, not a tested app. Replace `<installed-tree-sha256>` with the measured 64-character lowercase hexadecimal digest. The lockfile must contain the declared version, a spec checksum for every resolved root pod, and the complete dependency closure. Add a tree digest for every root pod in that closure, not just the direct dependency. The build checks the installed trees and preserves the base app's existing pods. This CocoaPods example is not yet tested on a device.
 
 **Android: a Maven library.** Add a `custom` module in `manifest.json` that points at your own module folder, and list the libraries in that module's `build.gradle` with `implementation`, the same way as in Android Studio:
 

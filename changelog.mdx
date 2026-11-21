@@ -9,7 +9,7 @@ icon: "clock-rotate-left"
 
   V3 staging builds use RevenueCat 5.103.2 on iOS and RevenueCat 11.4.3 on Android with Google Play Billing 9.1.0. This maintenance update also refreshes compatible OneSignal, AppsFlyer, advertising, analytics, payment, media, camera, and platform libraries.
 
-  Your Despia bridge commands, callbacks, app settings, and minimum supported operating systems stay the same. iOS advertising and consent now use a single SDK source, removing duplicate framework copies. New automatic PostHog push tracking stays disabled to preserve the existing analytics configuration.
+  Your Despia bridge commands, callbacks, app settings, and minimum supported operating systems stay the same. iOS advertising and consent now use a single SDK source, removing duplicate framework copies. New automatic PostHog push tracking stays disabled to preserve the existing analytics configuration. V3 extension templates follow the refreshed base app’s shared dependency versions.
 
   RevenueCat Android now reports a Play Store blocked by device policies as `PurchaseNotAllowedError` instead of `StoreProblemError`. If your code branches on raw RevenueCat SDK error names or numbers, account for this restricted-device case. See RevenueCat's [Android 11 migration guide](https://www-docs.revenuecat.com/docs/sdk-guides/android-native-10x-to-11x-migration).
 

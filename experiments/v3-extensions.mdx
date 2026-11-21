@@ -99,7 +99,15 @@ public/despia/
 }
 ```
 
-`extensions.json` holds the app identity (`client_id`, `ios_bundle_id` and `android_package`) and lists the extension folders. It lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, and so is a folder listed twice.
+`extensions.json` holds the app identity and lists the extension folders. The three identity values:
+
+- **`client_id`**: your app's id in Despia. Open your app in the Despia editor and copy the id from the address bar: in a URL ending `/builder/<id>`, the part after `/builder/` is your client id.
+- **`ios_bundle_id`**: your app's iOS bundle id, the one Despia builds your iOS app with.
+- **`android_package`**: your app's Android package name, the one Despia builds your Android app with.
+
+Despia approves the extensions for exactly this app. If a value does not match the app being built, the build stops with an error that names the value (`NX-L013` for `client_id`).
+
+`extensions.json` lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, and so is a folder listed twice.
 
 The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
 

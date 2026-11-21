@@ -1,0 +1,110 @@
+---
+title: "TikTok Ads"
+description: "TikTok App Events and purchase measurement for Despia V3 on iOS and Android."
+tag: "Experimental"
+---
+
+<Warning>
+  Source preview. Runtime changes and hosted extension support are pending deployment. The extension must be compiled into a rebuilt native app.
+</Warning>
+
+Source repository: [TikTok Ads](https://github.com/despia-legacy/tiktok-ads).
+
+A native advertiser SDK extension using TikTok App Events SDK 1.7.2 on iOS and 1.7.1 on Android, independently of AppsFlyer. It sends custom and standard events and purchases through the SDK. It does not display Pangle ads.
+
+For the Despia V3 runtime. First-party V4 support comes through the new package registry.
+
+## Web frameworks and app builders
+
+Call the Despia V3 extension bridge from your app's JavaScript. It is independent
+of the web UI framework: React, Vue, Svelte, Next.js, TanStack and HTML5 apps use
+the same Despia JS SDK commands from client lifecycle hooks or click handlers.
+
+For Lovable, Base44, Replit or another app builder, use a project that lets you
+add custom JavaScript and serve the extension files at their exact HTTPS paths.
+You can edit those files with Claude Code, Codex, Cursor or your usual editor.
+The native extension must be compiled into the installed Despia V3
+app. A browser preview alone does not provide native extension features.
+
+## Install
+
+1. Copy manifest.json, ios/ and android/ into public/despia/tiktokads/ in your web app.
+2. Add "tiktokads" to public/despia/extensions.json: `{ "extensions": ["tiktokads"] }`. This minimal index requires the no-app-identity runtime change in the build; legacy indexes remain compatible.
+3. Replace the native configuration placeholders in TikTokAdsExtension.swift and TikTokAdsExtension.java with the app SDK configuration provided by TikTok. Never embed a server-side Marketing API credential. Do not log this configuration or put it in a page URL.
+4. Verify the source and complete pinned dependency graph, then rebuild and install the native app.
+
+The Swift package is pinned to commit 2a3a35560c2c0547f74869c58160946e29c0932c. Android uses com.github.tiktok:tiktok-business-android-sdk:1.7.1 from JitPack, plus the vendor's Android lifecycle, Billing and Install Referrer dependencies. Build dependency resolution fetches and pins them. Automatic event logging, payment tracking and enhanced data postback are requested off in native configuration. No SDK is initialized on app launch by this extension.
+
+## Call from the page
+
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the exact declared output variable. Run the function from a client event after obtaining the person's collection choice:
+
+```javascript
+import despia from 'despia-native';
+
+async function reportPurchase(hasAnalyticsConsent) {
+  const configuredReply = await despia('extension://tiktokads/configure', ['tiktokadsConfigureResult']);
+  const configured = configuredReply.tiktokadsConfigureResult;
+  if (configured === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!configured.ok) { console.error(configured.code, configured.error); return; }
+  const consentReply = await despia('extension://tiktokads/consent?enabled=' + String(hasAnalyticsConsent), ['tiktokadsConsentResult']);
+  const consent = consentReply.tiktokadsConsentResult;
+  if (consent === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!consent.ok) { console.error(consent.code, consent.error); return; }
+  if (!hasAnalyticsConsent) return;
+  const eventReply = await despia('extension://tiktokads/event?name=LaunchAPP', ['tiktokadsEventResult']);
+  const event = eventReply.tiktokadsEventResult;
+  if (event === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!event.ok) { console.error(event.code, event.error); return; }
+  const reply = await despia('extension://tiktokads/purchase?amount=12.50&currency=USD'
+    + '&properties=' + encodeURIComponent(JSON.stringify({content_id: 'example-product'})), ['tiktokadsPurchaseResult']);
+  const answer = reply.tiktokadsPurchaseResult;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+```
+
+| Route | Parameters | Answer variable | Successful data |
+| --- | --- | --- | --- |
+| configure | None | `tiktokadsConfigureResult` | configured, enabled. iOS validates native values; Android initializes with auto-start disabled. |
+| status | None | `tiktokadsStatusResult` | configured, enabled, sdk |
+| consent | enabled boolean required | `tiktokadsConsentResult` | iOS: enabled. Android: configured, enabled. |
+| event | name required, optional properties JSON object string, value numeric string, event_id string | `tiktokadsEventResult` | accepted: true |
+| purchase | amount numeric string and currency uppercase three-letter code required, optional properties, event_id | `tiktokadsPurchaseResult` | accepted: true. Uses TikTok Purchase event. |
+| user | Optional id, omit to log out | `tiktokadsUserResult` | accepted: true |
+| flush | None | `tiktokadsFlushResult` | accepted: true. Requests SDK transmission, not a server receipt. |
+
+Properties are a JSON object and preserve nested ecommerce objects, arrays and null values for the SDK. The route limits the encoded properties string to 4096 characters. Explicit value and amount parameters must be finite numbers. Read manifest.json for each string length limit. Errors include not_configured, already_configured, consent_required, bad_request and sdk_error. Android can also return busy while initialization is in progress. On iOS, the first opt-in checks the call lifetime before and after local SDK initialization. An expired request cannot enable bridge event submission.
+
+## Privacy and platform behavior
+
+This extension never requests ATT. TikTok's current iOS SDK does not automatically show that dialog. Use Despia's existing trackingconsent:// call separately, after tracking support and its purpose description are included in the native build. Collection consent is separate from ATT. Reapply the app's saved choice after every process launch.
+
+On iOS, configured means the native values are present, not that the SDK has started or the vendor account has accepted them. The first consent call with enabled=true initializes the SDK with automatic event, payment and enhanced postback logging disabled. The pinned SDK completes its local initialization synchronously; its later remote configuration is separate. Local initialization can fail, and it is not a vendor account validation. An SDK already initialized by another integration is left unchanged and returns already_configured at this first opt-in. A false choice before initialization makes no SDK call. Initialization and the consent update run together on the main actor without an asynchronous gap. A later false request disables tracking on its next main-actor turn. Read enabled before sending events. Android checks existing SDK ownership during configure.
+
+The adapter refuses bridge event calls while disabled. iOS uses TikTok setTrackingEnabled(false), which can cache SDK events for later according to the vendor API. Android has startTrack but no matching stopTrack API in 1.7.1. On a false consent call this adapter destroys its SDK instance and requires configure again before collection resumes. Neither path erases events already transmitted or guarantees cancellation of an in-flight request. Review the vendor's collection and retention behavior for your app.
+
+Android Advertising ID collection is disabled in this starter. Native configuration can be adapted to the app's permitted collection model and base app Advertising ID permission. The SDK includes Android install referrer support. iOS SKAdNetwork support uses the SDK's defaults; configure campaign conversion settings in TikTok. Avoid competing conversion-value owners or duplicated purchase events.
+
+SKAdNetworkItems under ios.app.info_plist is customer-editable and starts empty. This Apple key describes the ad networks used by a source app displaying ads. It is not an Android setting or a substitute for the advertised app's SDK and campaign configuration. Add only current identifiers your own integration requires, then verify the build inputs and rebuild. Purpose text uses app configuration or the prepared approved fallback described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text).
+
+Adapt the native code if the app deliberately shares TikTok SDK with another integration. The SDK can use app-wide lifecycle and exception handling, so test it with the app's other native integrations.
+
+Current V3 iOS target is 16.6 and later. Android module minSdk24 and compileSdk36. Billing is a vendor dependency, not a purchase UI supplied by this extension; review its merged permission and the base billing configuration during build verification.
+
+[Despia V3 Extensions documentation](https://setup.despia.com/experiments/v3-extensions) and [extension skill](https://github.com/despia-legacy/extension-skill).
+
+Vendor sources: [TikTok iOS1.7.2](https://github.com/tiktok/tiktok-business-ios-sdk/releases/tag/1.7.2), [TikTok Android1.7.1](https://github.com/tiktok/tiktok-business-android-sdk/releases/tag/1.7.1), [official Android dependency integration](https://github.com/tiktok/tiktok-business-react-native-sdk/blob/main/android/build.gradle).
+
+## License
+
+[Despia V3 Extension Source-Available Commercial License](https://github.com/despia-legacy/tiktok-ads/blob/main/LICENSE).
+You may inspect the source. Using or modifying this extension requires a valid
+Despia commercial license and a valid Despia project for the particular app.
+The standard price is **USD 249 per application per operating system**.
+iOS and Android require separate licenses. See [Despia](https://despia.com).
+Third-party SDKs keep their own licenses. Experimental V3 extensions do not
+include a commitment to maintenance or a V4 port.
+
+See [Tracking consent timing](/experiments/tracking-consent) for the prepared request/status callback and separate launch setting.

@@ -348,14 +348,22 @@
         "icon": "flask",
         "pages": [
           "experiments/v3-extensions",
+          "experiments/extension-authoring",
           "experiments/extension-troubleshooting",
+          "experiments/tracking-consent",
           {
             "group": "Despia V3 Extensions",
             "icon": "vial",
             "pages": [
               "experiments/samples/recorder",
               "experiments/samples/live-activities",
-              "experiments/samples/home-widgets"
+              "experiments/samples/home-widgets",
+              "experiments/samples/meta-ads",
+              "experiments/samples/tiktok-ads",
+              "experiments/samples/google-ads",
+              "experiments/samples/calendar",
+              "experiments/samples/alarms",
+              "experiments/samples/app-lock"
             ]
           }
         ]
@@ -575,8 +583,17 @@
     "indexing": "all"
   },
   "redirects": [
-    { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
-    { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
-    { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
+    {
+      "source": "/custom-code/extensions",
+      "destination": "/experiments/v3-extensions"
+    },
+    {
+      "source": "/local-database/introduction",
+      "destination": "/native-features/storage-vault"
+    },
+    {
+      "source": "/local-database/reference",
+      "destination": "/native-features/storage-vault"
+    }
   ]
 }

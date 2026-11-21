@@ -1,0 +1,141 @@
+---
+title: "App Lock"
+description: "Named focus groups, schedules and platform-specific app and domain controls for Despia V3."
+tag: "Experimental"
+---
+
+<Warning>
+  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. The extension must be compiled into a rebuilt native app. Native Screen Time shielding and Android Accessibility/VPN enforcement are not yet tested on devices.
+</Warning>
+
+Source repository: [App Lock](https://github.com/despia-legacy/app-lock).
+
+App Lock stores named groups of apps and websites, combines active groups, and schedules focus periods. iOS uses Family Controls, Managed Settings and Device Activity with native selection and shield extensions. Android provides a revocable foreground shield and an optional local DNS filter.
+
+You maintain the native code you copy or customize. This extension is experimental and targets the Despia V3 runtime. First-party V4 support comes through the separate package registry and API.
+
+## Install
+
+1. Copy the prepared `manifest.json`, `ios/` and `android/` into `public/despia/applock/`.
+2. Add `applock` to the `extensions` array in `public/despia/extensions.json`.
+3. For iOS distribution, the Apple Developer Account Holder must obtain Family Controls approval for the app and the three extension bundle IDs: `<app bundle id>.NXLockMonitor`, `<app bundle id>.NXLockShield` and `<app bundle id>.NXLockAction`. Provision `group.<app bundle id>.nx.applock` for the app and all three extensions. The manifest requests capabilities; it cannot grant signing rights. See [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement).
+4. Verify the build inputs, rebuild and install the native app. The iOS targets require iOS 16.6 or later.
+5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
+
+## Create and select a group
+
+Call `despia` from browser events and await requests sharing an output variable sequentially. Authorization and selection can answer before the person finishes the native UI. Read authorization again, and wait for a saved selection before applying the group.
+
+```javascript
+import despia from 'despia-native';
+
+async function createFocusGroup() {
+  const definition = {
+    id: 'prayer', name: 'Prayer time', domains: [],
+    android: {packages: [], categories: []},
+    shield: {title: 'Prayer time', message: 'Return after your prayer.'}
+  };
+  const reply = await despia('extension://applock/group_save?data=' + encodeURIComponent(JSON.stringify(definition)), ['appLockGroupSave']);
+  const answer = reply.appLockGroupSave;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.group.id;
+}
+
+async function requestAppLockAccess() {
+  const reply = await despia('extension://applock/authorization?request=true', ['appLockAuthorization']);
+  const answer = reply.appLockAuthorization;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+
+async function selectGroup(groupId) {
+  const reply = await despia('extension://applock/select?id=' + encodeURIComponent(groupId), ['appLockSelect']);
+  const answer = reply.appLockSelect;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+
+// From separate user actions, after native authorization/selection completes:
+async function activateGroup(groupId) {
+  const reply = await despia('extension://applock/apply?id=' + encodeURIComponent(groupId), ['appLockApply']);
+  const answer = reply.appLockApply;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+
+async function releaseGroup(groupId) {
+  const reply = await despia('extension://applock/release?id=' + encodeURIComponent(groupId), ['appLockRelease']);
+  const answer = reply.appLockRelease;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+```
+
+The SDK returns an object keyed by the watched variable. Check its full native envelope before reading `data`; native errors resolve instead of rejecting the SDK promise. The declared `selection` event reports Save or Cancel. Read `group_get` after selection; do not treat `select`'s `pending` answer as a saved choice. Use browser event registration and cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
+
+## Routes
+
+All routes use `extension://applock/<route>`. The table lists successful payloads inside the V3 result envelope.
+
+| Route | Parameters | Answer variable | Successful payload |
+| --- | --- | --- | --- |
+| `capabilities` | None | `appLockCapabilities` | Provider and platform capability fields |
+| `authorization` | Optional `request`, `revoke`; iOS `member`: `individual` or `child` | `appLockAuthorization` | Current authorization and pending state |
+| `groups` | None | `appLockGroups` | `groups` |
+| `group_get` | Required `id` | `appLockGroupGet` | `group` |
+| `group_save` | Required JSON string `data` | `appLockGroupSave` | Stored `group` |
+| `group_delete` | Required `id` | `appLockGroupDelete` | `id`, `deleted` |
+| `select` | Required `id` | `appLockSelect` | `group_id`, `pending`; completion through `selection` |
+| `apply` | Required `id` | `appLockApply` | `group_id`, `manual_enabled`, effective `active` |
+| `release` | Required `id` | `appLockRelease` | `group_id`, `manual_enabled`, effective `active` |
+| `release_all` | None | `appLockReleaseAll` | `released` |
+| `schedules` | None | `appLockSchedules` | Stored `schedules` |
+| `schedule_save` | Required JSON string `data` | `appLockScheduleSave` | Stored `schedule` |
+| `schedule_delete` | Required `id` | `appLockScheduleDelete` | `id`, `deleted` |
+| `events` | Optional `clear` Boolean | `appLockEvents` | Retained `events`; clear removes returned entries |
+| `android_apps` | None | `appLockAndroidApps` | Visible launcher `apps`, with package, label and category |
+| `android_accessibility` | Optional `request` Boolean | `appLockAndroidAccessibility` | Current Accessibility/VPN authorization state |
+| `android_vpn` | Optional `action`: `status`, `start` or `stop`; optional JSON string `data` | `appLockAndroidVpn` | Running/pending state, counters and config |
+
+JSON `data` parameters are limited to 4096 characters. Group IDs are app-owned strings of 1 to 128 Unicode code points. `group_save` requires `name`, generates an ID when omitted and preserves the existing native iOS selection. Optional `domains` are DNS hostnames, without schemes, paths, ports or wildcards. International names use punycode. Android groups use `android.packages` and `android.categories`; `android_apps` reports visible launcher apps, not every installed package.
+
+`shield` accepts `title`, `message`, `button`, `secondary_button`, `symbol`, `background_color`, `text_color` and `accent_color`. iOS uses `#RRGGBB` colors. Android uses the labels and background/text colors; it does not implement every iOS shield-style field.
+
+## Schedules and combined groups
+
+A schedule names `group_id` and accepts an optional `id`, `start_hour`, `start_minute`, `end_hour`, `end_minute`, `weekdays`, `time_zone` and `enabled`. Start/end fields are required. Weekdays use Sunday 1 through Saturday 7; end time is exclusive. Overnight intervals use the selected start day. Time zones are IANA names and schedules follow local wall-clock time.
+
+Manual activation and schedules form a union. Releasing a manual group does not disable its schedules. Deleting or disabling one schedule removes that schedule only. `release_all` disables this extension's groups and schedules and stops its Android DNS service.
+
+On iOS, `threshold_minutes` can delay activation until the selected activity reaches that threshold inside the window. `includes_past_activity: true` requires iOS 17.4 or later. Android returns `platform_limit` for usage thresholds. Device Activity can reject schedules under its own limits; a successful JavaScript call is not a promise that every interval is accepted by the OS.
+
+## iOS controls
+
+Family Activity selections stay opaque in native App Group storage. JavaScript receives application, category and website token counts, not app bundle IDs or individual names. A category-token count is not a count of its apps. Active groups are combined into native Screen Time shields; Device Activity monitors continue independently of the web page.
+
+Apple limits the effective explicit website filter to 50 domains across active groups. A union above that limit returns `platform_limit`; a later scheduled failure retains an `enforcement_failed` receipt. Explicit website filtering also disables Safari private browsing, as [Apple documents](https://developer.apple.com/documentation/managedsettings/webcontentsettings/blockedbyfilter-swift.property). These explicit DNS names are separate from opaque website selections in the picker.
+
+## Android controls
+
+The app shield uses a person-enabled Accessibility service. The selected package must be visible through the launcher query or an additional query declared in the module manifest; unknown packages fail open. It can cover a selected foreground app, but it does not suspend packages or stop their background work, audio or notifications. The person can revoke access. The launcher, system settings, permission screens, this app, dialer and System UI remain reachable, and the shield has a Stop all blocking control. It is not tamper-proof parental control.
+
+Android evaluates local-time schedules through the enabled Accessibility service and when DNS queries arrive.
+
+Domain filtering uses a separately consented VPN slot and only UDP DNS queries reaching its local resolver. It does not block HTTPS paths, hard-coded IPs, cached DNS, DNS over HTTPS, DNS over TLS or DNS over TCP. Other VPN use can conflict; the system consent flow controls replacement. The extension does not tunnel other app traffic or offer always-on lockdown.
+
+`android_vpn` can set `upstream_ip`, `upstream_tls_name` and `upstream_port` through its JSON `data`. Stop the service before changing that configuration. The default upstream is `8.8.8.8`, TLS name `dns.google`, port 853. Allowed queries use TLS with hostname verification. The extension reports counters and generic failures rather than DNS query history.
+
+Self-control apps must meet [Google Play's Accessibility disclosure, consent and declaration requirements](https://support.google.com/googleplay/android-developer/answer/16558241?hl=en&rd=2). This service does not declare itself an accessibility tool. VPN use and foreground-service eligibility need their own policy review. The extension does not establish store approval.
+
+## Events and recovery
+
+`authorization`, `selection` and `changed` notify the current document through `onAppLockAuthorization`, `onAppLockSelection` and `onAppLockChanged`. These callbacks are not replayed after reload. Read persisted groups, schedules and `events` when the page returns. The authorization route's `revoke` action releases this extension's controls. On Android, the person must disable Accessibility through the system screen; the route cannot turn that service off itself.
+
+## License
+
+Source available under the [Despia V3 Extension Source-Available Commercial License](https://github.com/despia-legacy/app-lock/blob/main/LICENSE). Inspection copies are permitted. Modification, building, execution and deployment require a valid Despia commercial license and project for the app. The standard price is USD 249 per app per operating system. This is not an open-source license.

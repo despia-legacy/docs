@@ -14,7 +14,7 @@ It is for the Despia V3 runtime. You own and maintain the copied native code. Fi
 ## Install
 
 1. Copy the files below into `public/despia/widgets/` in your web app, keeping their `ios/` and `android/` paths.
-2. Add `"widgets"` to the `extensions` array in `public/despia/extensions.json`, keeping your app identity and any other extension names.
+2. Add `"widgets"` to the `extensions` array in `public/despia/extensions.json`, keeping any other extension names.
 3. For iOS, register the App Group `group.<your bundle id>.nx.widgets` and enable it on both the app and the widget extension App IDs. The widget extension bundle ID is `<your bundle id>.NXWidgets`. Regenerate both provisioning profiles.
 4. Rebuild and install your native app with the extension compiled in. Changing native files requires fresh build verification and a new build.
 
@@ -111,11 +111,6 @@ Copy each file to its title's path. The `extensions.json` block is an example fo
 
 ```json public/despia/extensions.json
 {
-  "app": {
-    "client_id": "com.example.app",
-    "ios_bundle_id": "com.example.app",
-    "android_package": "com.example.app"
-  },
   "extensions": [
     "widgets"
   ]

@@ -67,7 +67,7 @@ async function reportRegistration(hasAnalyticsConsent) {
 
 | Route | Parameters | Answer variable | Successful data |
 | --- | --- | --- | --- |
-| configure | None | `metaadsConfigureResult` | configured, enabled. Initializes once and leaves collection disabled. |
+| configure | None | `metaadsConfigureResult` | configured, enabled. iOS validates native values without starting the SDK; Android initializes with automatic collection off. |
 | status | None | `metaadsStatusResult` | configured, enabled, sdk |
 | consent | enabled boolean required, advertiser_id and automatic_events optional booleans | `metaadsConsentResult` | iOS: enabled. Android: configured, enabled. Optional flags default false. |
 | activate | None | `metaadsActivateResult` | accepted: true. Logs app activation through Meta. |
@@ -82,7 +82,11 @@ Properties are a flat object with at most 25 entries, nonempty keys up to 40 cha
 
 This extension never presents ATT. Use the V3 trackingconsent:// call at your chosen moment. The prepared request/status callback API is a separate runtime change and must be released before it is used. Enable tracking support and include `NSUserTrackingUsageDescription` in the native build. Existing app-configured text wins; the prepared runtime can use an approved nonempty fallback as described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text). Purpose text does not enable tracking support by itself. Rebuild after native configuration changes.
 
-On iOS, advertiser_id=true enables collection only while ATT is authorized. The SDK reads ATT itself on iOS 17 and later. Enabling event collection is a separate decision from ATT. Turning this extension's collection off prevents its future bridge event calls and disables its automatic event and advertiser-id settings. It does not erase events already sent or guarantee cancellation of SDK work already in flight. Settings are process-local; reapply the app's stored choice after each launch.
+On iOS, configure checks that the native app ID and client token are present. It does not initialize or change the SDK. The first consent call with enabled=true starts the SDK using the verified Info.plist configuration, or reuses its matching existing instance. A different effective app ID or client token returns already_configured without changing that SDK's settings. A false choice before this extension has initialized or adopted the SDK leaves it unchanged. Explicit consent after that point changes the SDK's app-wide automatic event and advertiser ID settings. Android refuses an SDK already initialized by another integration. Its configure step can request vendor configuration even while bridge events are disabled. The first true consent call completes manual SDK initialization so Graph API responses can be processed; this is not a guarantee that configure sends no network traffic.
+
+Meta can persist its SDK settings between launches. On iOS, the current automatic_events and advertiser_id choices are applied after SDK initialization, because the supported settings API requires initialized dependencies. Startup can read earlier persisted values before these choices are applied. This adapter does not guarantee zero vendor startup work or that a current false optional flag overrides an earlier SDK setting before initialization finishes. Keep the adapter's explicit opt-in separate from any broader consent model required by your app.
+
+On iOS, advertiser_id=true enables collection only while ATT is authorized. The SDK reads ATT itself on iOS 17 and later. Enabling event collection is a separate decision from ATT. Turning this extension's collection off prevents its future bridge event calls. After this extension has initialized or adopted the SDK, that choice also disables its automatic event and advertiser-id settings. It does not erase events already sent or guarantee cancellation of SDK work already in flight. The adapter's enabled state is process-local; reapply the app's stored choice after each launch. The vendor SDK can persist its own settings.
 
 Meta's Core package includes FBAEMKit and SKAdNetwork code. Feature availability and campaign attribution depend on Meta account settings and SDK server configuration. Do not have multiple SDKs manage the same conversion values or send duplicate purchases.
 

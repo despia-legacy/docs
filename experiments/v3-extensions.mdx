@@ -31,6 +31,16 @@ Each sample is a complete template: copy its files, change the values the page n
 
 ---
 
+## AI skill
+
+An Agent Skill teaches your coding agent this whole page and the recorder sample, so it can write an extension without web access. It is for the Despia V3 runtime only. Install it from the [extension-skill repository](https://github.com/despia-legacy/extension-skill):
+
+```bash
+npx skills add despia-legacy/extension-skill
+```
+
+Or copy `skills/despia-v3-extensions` from that repository into your project's `.claude/skills/` folder.
+
 ## Which tool to use
 
 Native code is best written in a coding agent that works on your repository: **Claude Code**, **Codex** or **Cursor**. Copy a sample page into the agent, then ask it to change the code for your app.

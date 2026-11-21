@@ -20,9 +20,6 @@ Each sample is a complete template: copy its files, change the values the page n
 | Sample | What it adds | Tested on |
 | ------ | ------------ | --------- |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Android emulator, Samsung Galaxy S21 |
-| [Live Activities and Live Updates](/experiments/samples/live-activities) | Live Activities on iOS and Live Updates on Android, from your page or OneSignal | Android emulator, iOS simulator |
-| [Media Picker](/experiments/samples/media-picker) | The platforms' own file pickers, video transcoding and a durable upload | Android emulator, iPhone 15 (picker) |
-| [Home Screen Widgets](/experiments/samples/home-widgets) | Native stat and list widgets your page fills with JSON | iOS simulator |
 
 <Warning>
   **Experimental. V3 only.**
@@ -358,7 +355,7 @@ The bridge answer is a JavaScript string with typed parameters. These convention
 - **A table in one parameter.** One `string` parameter, with entries separated by `,` and fields by `~`. The extension parses it and refuses it whole.
 - **Answers the platform needs at once.** When the platform asks for a value the page cannot give in time, the extension answers from a native value store that the page sets, and reports each write as an event.
 - **Events a page may miss.** An event sent while no page is loaded is dropped. Keep each event in a native journal with a sequence number, offer a route that reads it (`events?after=<seq>`), and keep state readable through its own route.
-- **Files.** File bytes never belong in a bridge answer. Serve the file from the extension on `127.0.0.1` with a random per-file token in the URL, and answer with that URL. See [Media Picker](/experiments/samples/media-picker).
+- **Files.** File bytes never belong in a bridge answer. Serve the file from the extension on `127.0.0.1` with a random per-file token in the URL, and answer with that URL.
 
 ---
 
@@ -393,7 +390,5 @@ Build errors in your files are reported by their served path, `<extension>/<ios|
 
 - **iOS.** Background audio continues only while the audio session stays active. Recording must start in the foreground, and a force-quit ends it. Lock Screen widget families need iOS 16 and update on WidgetKit's budget. App Groups and new App IDs are manual steps in the Apple Developer portal.
 - **Android.** Android 14 and later only start a microphone foreground service while the app is visible. Lock Screen widgets depend on the device, so the foreground service notification is the guaranteed Lock Screen presence. Google Play requires foreground service type declarations.
-- **Live Activities.** iOS 16.1 and later, push-to-start 17.2. Attributes and state together are at most 4 KB. Android Live Updates need Android 16, and below that the same ongoing notification shows. See [Live Activities and Live Updates](/experiments/samples/live-activities).
-- **Files.** Android WorkManager stops a regular worker after 10 minutes, and an upload restarts from its first byte. See [Media Picker](/experiments/samples/media-picker).
-- **Home screen widgets.** iOS has no API that adds a widget for the person, and the App Group must be enabled on both App IDs by hand. See [Home Screen Widgets](/experiments/samples/home-widgets).
+- **Files.** Android WorkManager stops a regular worker after 10 minutes, and an upload restarts from its first byte.
 - **Both.** Apple managed capabilities and restricted Android permissions need approval from Apple or Google and pass the store's own review.

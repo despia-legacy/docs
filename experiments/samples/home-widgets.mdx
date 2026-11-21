@@ -5,13 +5,13 @@ icon: "grid-2"
 tag: "Experimental"
 ---
 
-This sample puts data from your web app into native home-screen widgets. It includes a stat card and a list with buttons and checkboxes. The page sets and reads the widget data, reloads the sample's widgets, lists installed widgets and reads queued taps.
+This extension puts data from your web app into native home-screen widgets. It includes a stat card and a list with buttons and checkboxes. The page sets and reads the widget data, reloads the extension's widgets, lists installed widgets and reads queued taps.
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
 
 ## Install
 
-1. Copy the files below into `public/despia/widgets/` in your web app, keeping their `ios/` and `android/` paths. The [sample repository](https://github.com/despia-legacy/despia-extension-home-widgets) carries the same template.
+1. Copy the files below into `public/despia/widgets/` in your web app, keeping their `ios/` and `android/` paths. The [extension repository](https://github.com/despia-legacy/despia-extension-home-widgets) carries the same template.
 2. Add `"widgets"` to the `extensions` array in `public/despia/extensions.json`, keeping your app identity and any other extension names.
 3. For iOS, register the App Group `group.<your bundle id>.nx.widgets` and enable it on both the app and the widget extension App IDs. The widget extension bundle ID is `<your bundle id>.NXWidgets`. Regenerate both provisioning profiles.
 4. Send the extension for approval and rebuild your native app. Changing the native files needs a new approval and build.
@@ -20,34 +20,29 @@ The manifest adds the `NXWidgets` WidgetKit target on iOS and a custom Glance mo
 
 ## Call it from your web app
 
-```javascript
-window.onWidgetsSet = (answer) => {
-  if (answer.ok) {
-    console.log(answer.data.template, answer.data.stored);
-  } else {
-    console.error(answer.code, answer.error);
-  }
-};
-
-const widget = {
-  title: "Today's orders",
-  value: "12",
-  caption: "Ready to dispatch",
-  progress: 0.6,
-  link: "/orders"
-};
-window.despia = "extension://widgets/set?template=stat&data="
-  + encodeURIComponent(JSON.stringify(widget));
-```
+Use the local `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Call these functions from client events.
 
 ```javascript
-window.onWidgetsGet = (answer) => console.log(answer);
-window.despia = "extension://widgets/get?template=stat";
+import {callExtension} from './despia-extension.js';
 
-window.onWidgetTap = (tap) => console.log(tap.template, tap.kind, tap.id);
-window.onWidgetsTaps = (answer) => console.log(answer);
-window.despia = "extension://widgets/taps";
+async function updateWidget() {
+  const widget = {
+    title: "Today's orders", value: '12', caption: 'Ready to dispatch',
+    progress: 0.6, link: '/orders'
+  };
+  const saved = await callExtension('extension://widgets/set?template=stat&data='
+    + encodeURIComponent(JSON.stringify(widget)));
+  console.log(saved.template, saved.stored);
+}
+
+async function readWidget() {
+  const widget = await callExtension('extension://widgets/get?template=stat');
+  const queued = await callExtension('extension://widgets/taps');
+  console.log(widget.data, queued.taps);
+}
 ```
+
+For live taps, register the declared `onWidgetTap` callback with browser lifecycle cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Read `taps` after loading the page to recover queued taps.
 
 Setting data does not place a widget on the screen. The person adds it from the widget gallery, or accepts an Android `pin` request.
 
@@ -65,7 +60,7 @@ Each success answer uses `{ok: true, data: ...}`. Failures use `{ok: false, code
 | `taps` | Optional: `ack` (integer from 0 to 9007199254740991) | `widgetsTaps`, `onWidgetsTaps` | `taps`, `dropped`, `next` |
 | `pin` | Required: `template` | `widgetsPin`, `onWidgetsPin` | Android: `requested: true` if the request was shown. iOS: `platform_limit` |
 
-`reload` touches only this sample's widget kinds. For `installed`, each iOS row contains `template` and `family`; each Android row contains `template`, `width` and `height` in dp.
+`reload` touches only this extension's widget kinds. For `installed`, each iOS row contains `template` and `family`; each Android row contains `template`, `width` and `height` in dp.
 
 ### Widget data
 
@@ -86,16 +81,16 @@ Taps are stored before they are emitted. Call `taps` after a page loads, then pa
 
 ### Errors
 
-Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), the sample can return `bad_data` or `storage_failed`. On iOS, missing App Group access returns `group_unavailable` for the storage routes. Android `pin` can return `pin_unavailable` when the launcher does not support pinning. iOS `pin` returns `platform_limit`.
+Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), the extension can return `bad_data` or `storage_failed`. On iOS, missing App Group access returns `group_unavailable` for the storage routes. Android `pin` can return `pin_unavailable` when the launcher does not support pinning. iOS `pin` returns `platform_limit`.
 
 ## Platform limits
 
 - The iOS widget extension requires iOS 17. The user places widgets through the widget gallery; iOS has no app API for placing one. App Group access is required to share the widget data and taps.
 - Android pinning needs Android 8 or later and a launcher that supports it. `requested: true` confirms the request was shown, not that a widget was placed. Check `installed` afterwards.
-- Widget size, placement and update timing are controlled by the OS and launcher. The sample requests updates of its own widget kinds only.
+- Widget size, placement and update timing are controlled by the OS and launcher. The extension requests updates of its own widget kinds only.
 - Android widget taps may fail to open a link when the app is already running.
 
-The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this sample.
+The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this extension.
 
 ## Files
 

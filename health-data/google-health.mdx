@@ -1,9 +1,352 @@
 ---
 title: "Google Health"
 icon: "google"
-description: "Google Health Connect integration for Android is coming soon to Despia."
+description: "Read and write Google Health Connect data on Android with the same calls you use for Apple Health: steps, heart rate, sleep, workouts, nutrition and more."
 ---
 
-Google Health Connect support for Android is on the roadmap. Read and write health and fitness data on Android using the same patterns as Apple Health - steps, heart rate, sleep, workouts, and more.
+Despia connects your web app to [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect), Android's on-device store for health and fitness data. You use the **same calls as [Apple Health](/health-data/apple-health)**: `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, `healthkit://observe` and `healthkit://unobserve`, with the same identifiers and the same result shapes. One code path serves iPhone and Android.
 
-To be notified when it ships, reach out at [support@despia.com](mailto:support@despia.com).
+On top of that, `healthconnect://` gives you what Health Connect offers beyond HealthKit: an availability check, the install flow, the Health Connect settings screen, explicit permission requests, time ranges and hourly buckets, deletes of your own records, and change tokens.
+
+<Info>
+  Android support is new. The type mapping, the request handling and the result shapes are covered by automated tests. Testing on devices is in progress, so check your flows on a real phone before you release.
+</Info>
+
+---
+
+## Installation
+
+Install `despia-native` as described on the [Apple Health](/health-data/apple-health#installation) page. Nothing else is needed in your web app.
+
+---
+
+## Setup
+
+Health Connect is built into your Android app only when you turn it on, because Google Play reviews every app that asks for health permissions.
+
+<Steps>
+  <Step title="Choose the data types">
+    List the types your app reads and writes. Use the HealthKit identifiers you already use on iOS (for example `HKQuantityTypeIdentifierStepCount`), Health Connect record names (for example `StepsRecord`), or Health Connect permission names (for example `android.permission.health.READ_STEPS`). Only these types are declared in your app, and Health Connect only asks the user for declared types.
+  </Step>
+  <Step title="Publish a privacy policy">
+    Health Connect shows your privacy policy from its permission screen, and Google Play requires one for health permissions. Without a privacy policy URL, Health Connect is left out of the build.
+  </Step>
+  <Step title="Turn it on for your app">
+    Contact [support@despia.com](mailto:support@despia.com) with your app, the read and write lists, the privacy policy URL, and whether you need background reads (observers while the app is closed) or history older than 30 days. These become the build settings below.
+  </Step>
+  <Step title="Rebuild and complete the Play Console declaration">
+    Rebuild the Android app. In Google Play Console, complete the Health apps declaration for the same data types. Health Connect access is part of the binary, so it cannot be changed over-the-air.
+  </Step>
+</Steps>
+
+| Build setting | Value |
+| :-- | :-- |
+| `HEALTH_CONNECT_ENABLED` | `true` |
+| `HEALTH_CONNECT_READ` | Comma-separated identifiers, record names or permission names, or `all` |
+| `HEALTH_CONNECT_WRITE` | The same, for writes |
+| `HEALTH_CONNECT_BACKGROUND` | `true` to let observers read while the app is closed |
+| `HEALTH_CONNECT_HISTORY` | `true` to read data older than 30 days before the user granted access |
+| `HEALTH_CONNECT_PRIVACY_URL` | Your privacy policy URL |
+
+An identifier that Health Connect has no type for stops the build with its name, so a typo never ships silently.
+
+---
+
+## Detecting the platform
+
+Check for Android the same way you check for iOS, and send the same calls.
+
+```javascript
+const ua = navigator.userAgent.toLowerCase()
+const isDespia = ua.includes('despia')
+const isDespiaIOS = isDespia && (ua.includes('iphone') || ua.includes('ipad'))
+const isDespiaAndroid = isDespia && ua.includes('android')
+
+if (isDespiaIOS || isDespiaAndroid) {
+    const data = await despia(
+        'readhealthkit://HKQuantityTypeIdentifierStepCount,HKQuantityTypeIdentifierHeartRate?days=7',
+        ['healthkitResponse']
+    )
+    const steps = data.healthkitResponse.HKQuantityTypeIdentifierStepCount
+}
+```
+
+---
+
+## Availability and install
+
+Health Connect runs on Android 9 and later. On Android 14 and later it is part of the system. On Android 13 and lower it is an app from Google Play, which the user may need to install or update.
+
+```javascript
+if (isDespiaAndroid) {
+    const { healthConnectStatus } = await despia('healthconnect://status', ['healthConnectStatus'])
+
+    if (healthConnectStatus.status === 'update_required' || healthConnectStatus.status === 'unavailable') {
+        // Opens Health Connect in Google Play (Android 13 and lower)
+        await despia('healthconnect://install', ['healthConnectInstall'])
+    }
+}
+```
+
+<ResponseField name="healthConnectStatus.status" type="string">
+  `available`, `update_required` (the Health Connect app must be updated), `unavailable` (not installed, or Android 8), `requires_android_8` (Android 7), or `not_included` (the app was built without Health Connect)
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.available" type="boolean">
+  `true` when calls can read and write
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.builtIn" type="boolean">
+  `true` on Android 14 and later, where Health Connect is part of the system
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.declared" type="string[]">
+  The Health Connect permissions your build declares
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.granted" type="string[]">
+  The permissions the user has granted (only when available)
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.backgroundRead" type="boolean">
+  Whether background reads are granted
+</ResponseField>
+
+<ResponseField name="healthConnectStatus.historyRead" type="boolean">
+  Whether reads older than 30 days are granted
+</ResponseField>
+
+On Android 7 (API 24 and 25), which the Health Connect library does not support, every health call answers at once with the same shapes as a build without Health Connect, using the code `health_connect_requires_android_8` (status `requires_android_8`). Android 8 answers `unavailable`.
+
+`healthConnectInstall` is `{ opened, status }`. When Health Connect is not usable, reads answer `{ "error": "health_connect_unavailable" }` or `{ "error": "health_connect_update_required" }` in `healthkitResponse`.
+
+---
+
+## Permissions
+
+As on iOS, the first read, write or observe of a type shows the Health Connect permission screen for the types in that call. Each type is asked at most once this way; after the user answers, later calls do not show the screen again. A type the user did not allow reads as an empty array, as on iOS.
+
+To ask again, for example from a settings page in your app, call `healthconnect://permissions`. It asks for every listed type that is not granted.
+
+```javascript
+const { healthConnectPermissions } = await despia(
+    'healthconnect://permissions?read=HKQuantityTypeIdentifierStepCount,HKCategoryTypeIdentifierSleepAnalysis&write=HKQuantityTypeIdentifierBodyMass&background=true',
+    ['healthConnectPermissions']
+)
+// { granted: [...], denied: [...], notDeclared: [...] }
+```
+
+<ParamField query="read" type="string">
+  Types to read. Without `read` and `write`, every type your build declares is asked.
+</ParamField>
+
+<ParamField query="write" type="string">
+  Types to write
+</ParamField>
+
+<ParamField query="background" type="boolean">
+  Also ask for background reads
+</ParamField>
+
+<ParamField query="history" type="boolean">
+  Also ask for data older than 30 days
+</ParamField>
+
+`notDeclared` lists permissions your build does not declare. Health Connect cannot ask for them; add them to the build settings and rebuild.
+
+| Call | Result |
+| :-- | :-- |
+| `healthconnect://settings` | Opens the Health Connect screen where the user manages your app's access and data. Result `healthConnectSettings`: `{ opened, status }` |
+| `healthconnect://revoke` | Removes every Health Connect permission your app holds. Result `healthConnectPermissions` with empty lists |
+
+The user can open your privacy policy from the Health Connect permission screen, and on Android 14 and later from the system's permission usage screen.
+
+---
+
+## Read
+
+Reads work exactly as on [Apple Health](/health-data/apple-health#read): `readhealthkit://` with identifiers on the host and `days`, `raw=true` and `write` in the query, or `healthkit://read?types=...`. The result lands in `healthkitResponse`, keyed by the identifier you passed.
+
+```javascript
+const data = await despia(
+    'readhealthkit://HKQuantityTypeIdentifierStepCount,HKCategoryTypeIdentifierSleepAnalysis?days=7',
+    ['healthkitResponse']
+)
+```
+
+| Shape | Returned for |
+| :-- | :-- |
+| `[{ date, value, unit }]`, one entry per local day, `0` for a day without data | Quantity types. Cumulative types (steps, distance, calories) are summed, other types averaged per day |
+| `[{ startDate, endDate, value, unit }]` | Quantity types with `raw=true`, one entry per sample |
+| `[{ startDate, endDate, value, label }]` | Sleep and the other category types |
+| Workout list, see [Workouts](#workouts) | `HKWorkoutTypeIdentifier` |
+| `[{ value: "" }]` | Characteristic types (Health Connect has no profile data) |
+
+Units and scales match iOS for the same identifier: kg for body mass, cm for height, a fraction from 0 to 1 for body fat and oxygen saturation, mg or mcg for nutrients, `count/min` for heart rate. Daily totals of cumulative types come from Health Connect's own aggregation, which removes the overlap when several apps record the same activity.
+
+Sleep sessions return an `inBed` entry (value 0) for the whole session, followed by one entry per stage: `awake` 2, `core` 3 (Health Connect light sleep), `deep` 4, `rem` 5, and `asleep` 1 for sleep without a stage.
+
+### Time ranges and hourly buckets
+
+`healthconnect://read` takes the same `types`, `days`, `raw` and `write` parameters, plus:
+
+<ParamField query="start" type="string">
+  ISO 8601 start, for example `2026-11-20T00:00:00Z` or `2026-11-20T00:00:00+04:00`. Replaces `days`.
+</ParamField>
+
+<ParamField query="end" type="string">
+  ISO 8601 end. Defaults to now.
+</ParamField>
+
+<ParamField query="bucket" type="string">
+  `day` (default) or `hour`
+</ParamField>
+
+```javascript
+const data = await despia(
+    'healthconnect://read?types=StepsRecord&start=2026-11-20T06:00:00Z&end=2026-11-20T18:00:00Z&bucket=hour',
+    ['healthkitResponse']
+)
+const hourlySteps = data.healthkitResponse.StepsRecord
+```
+
+Types can be HealthKit identifiers or Health Connect record names. When a read includes identifiers that Health Connect has no type for, they return an empty array and `window.healthConnectLimits` names each one with the reason. The same happens for skin temperature and mindfulness sessions when the Health Connect version on the device does not offer them yet (updating Health Connect adds them), and for a type whose read fails, with the error message as the reason.
+
+---
+
+## Workouts
+
+`healthkit://workouts?days=30` returns Health Connect exercise sessions in the iOS workout shape, newest first, in `healthkitWorkouts` and in `healthkitResponse.HKWorkoutTypeIdentifier`. Workouts need only the exercise permission; when the user has not granted calories or distance, that field is `0`, as on iOS.
+
+```json
+{
+  "date": "2026-11-20T06:30:00Z",
+  "activityType": "running",
+  "duration": 1800,
+  "calories": 312,
+  "distance": 5010,
+  "value": 5010,
+  "unit": "m",
+  "endDate": "2026-11-20T07:00:00Z",
+  "exerciseType": "RUNNING",
+  "title": "Morning run"
+}
+```
+
+`activityType` uses the iOS names (`running`, `cycling`, `hiit`, `traditionalStrengthTraining`, ...). Health Connect types without an iOS twin use their own name in camelCase. `exerciseType` is the Health Connect type and `title` the session title when the recording app set one. Calories and distance are the ones recorded by the same app during the session. `included=` adds statistics per workout exactly as on iOS, for example `included=HKQuantityTypeIdentifierHeartRateMax`.
+
+---
+
+## Write
+
+`writehealthkit://Identifier//Value` saves a value in the same unit as on iOS and answers in `healthkitWriteResponse` (`{ success, identifier, value, error }`), calling `window.onHealthKitWrite` when you define it.
+
+```javascript
+despia('writehealthkit://HKQuantityTypeIdentifierBodyMass//74.5')
+```
+
+`healthconnect://write` writes by Health Connect record name, with the value in the same unit a read of that type returns (for example kg for `WeightRecord`, a 0 to 1 fraction for `BodyFatRecord`), and an optional time range:
+
+```javascript
+despia('healthconnect://write?type=HydrationRecord&value=0.25&start=2026-11-20T08:00:00Z&end=2026-11-20T08:05:00Z')
+despia('healthconnect://write?type=BloodPressureRecord&systolic=120&diastolic=80')
+```
+
+Single-moment types are written at `end` (default now). Types that cover a period are written from `start` to `end` (default the last second). Blood pressure is one reading with both values. Category types (sleep, cycle tracking) are not written through these calls, as on iOS.
+
+Delete your own app's records of one type in a range with `healthconnect://delete?type=WeightRecord&days=7` (or `start` and `end`). Result in `healthConnectDelete`. Health Connect never lets an app delete another app's data this way.
+
+---
+
+## Observer
+
+`healthkit://observe` and `healthkit://unobserve` take the same parameters as on iOS, keep observers across restarts, and keep `observingHealthKit` up to date.
+
+```javascript
+despia('healthkit://observe?types=HKQuantityTypeIdentifierStepCount&frequency=hourly&server=https://your-server.com/webhook?user=user_abc123')
+```
+
+Health Connect does not notify apps when data changes. Despia checks for changes with Health Connect change tokens when your app comes to the foreground and on a schedule set by `frequency`: `hourly`, `daily`, `weekly`, and every 15 minutes for `immediate` (the shortest interval Android allows). Checks while the app is closed need background reads (`HEALTH_CONNECT_BACKGROUND` and the user's grant); without them, checks run when the app is opened. A new observer reports once when it starts.
+
+The webhook body matches iOS, with a `source` field:
+
+```json
+{
+  "event": "healthkit:update",
+  "userId": "device-id",
+  "timestamp": "2026-11-20T08:00:00Z",
+  "data": {
+    "HKQuantityTypeIdentifierStepCount": [
+      { "date": "2026-11-20T00:00:00Z", "value": 4210, "unit": "count" }
+    ]
+  },
+  "source": "healthconnect"
+}
+```
+
+`userId` is the Android device ID. Use a query parameter on `server` to identify your own users.
+
+A change counts as sent only when your server answers with a 2xx status. If the request fails, the same changes are sent again on the next check.
+
+### Change tokens
+
+To sync changes yourself, take a token and read changes since it later:
+
+```javascript
+const first = await despia('healthconnect://changes?types=StepsRecord,WeightRecord', ['healthConnectChanges'])
+// { token, upserts: [], deletions: [], hasMore: false, tokenExpired: false }
+
+const later = await despia(`healthconnect://changes?token=${encodeURIComponent(first.healthConnectChanges.token)}`, ['healthConnectChanges'])
+// { token, upserts: [{ recordType, id, startDate, endDate, source }], deletions: [ids], tokenExpired }
+```
+
+Tokens expire after 30 days. When `tokenExpired` is `true`, read the data again and take a new token.
+
+---
+
+## Type reference
+
+Every HealthKit identifier below works on Android through Health Connect.
+
+| Area | HealthKit identifiers | Health Connect type |
+| :-- | :-- | :-- |
+| Activity | `StepCount`, `DistanceWalkingRunning`, `FlightsClimbed`, `ActiveEnergyBurned`, `BasalEnergyBurned`, `AppleExerciseTime`, `PushCount` | Steps, Distance, FloorsClimbed, ActiveCaloriesBurned, BasalMetabolicRate, ExerciseSession, WheelchairPushes |
+| Activity distance and speed | `DistanceCycling`, `DistanceSwimming`, `DistanceWheelchair`, `DistanceDownhillSnowSports`, `DistanceRowing`, `DistancePaddleSports`, `DistanceSkatingSports`, `RunningSpeed`, `WalkingSpeed`, `CyclingSpeed`, `RowingSpeed`, `PaddleSportsSpeed`, `RunningPower`, `CyclingPower`, `CyclingCadence` | Distance, Speed and Power within exercise sessions of that activity; CyclingPedalingCadence |
+| Vitals | `HeartRate`, `RestingHeartRate`, `BloodPressureSystolic`, `BloodPressureDiastolic`, `BloodGlucose`, `OxygenSaturation`, `RespiratoryRate`, `BodyTemperature`, `BasalBodyTemperature`, `VO2Max` | HeartRate, RestingHeartRate, BloodPressure, BloodGlucose, OxygenSaturation, RespiratoryRate, BodyTemperature, BasalBodyTemperature, Vo2Max |
+| Body | `BodyMass`, `Height`, `BodyFatPercentage`, `LeanBodyMass` | Weight, Height, BodyFat, LeanBodyMass |
+| Nutrition | `DietaryEnergyConsumed`, `DietaryWater` and every `Dietary...` nutrient | Nutrition (one field per nutrient), Hydration |
+| Categories | `SleepAnalysis`, `MindfulSession`, `MenstrualFlow`, `IntermenstrualBleeding`, `OvulationTestResult`, `CervicalMucusQuality`, `SexualActivity` | SleepSession, MindfulnessSession, MenstruationFlow, IntermenstrualBleeding, OvulationTest, CervicalMucus, SexualActivity |
+| Workouts | `HKWorkoutTypeIdentifier` | ExerciseSession |
+
+Quantity identifiers take the `HKQuantityTypeIdentifier` prefix, categories `HKCategoryTypeIdentifier`.
+
+Health Connect types beyond HealthKit, by record name: `ElevationGainedRecord`, `TotalCaloriesBurnedRecord`, `BasalMetabolicRateRecord` (kcal/day), `HeartRateVariabilityRmssdRecord`, `BodyWaterMassRecord`, `BoneMassRecord`, `SkinTemperatureRecord`, `SpeedRecord`, `PowerRecord`, `StepsCadenceRecord`, `MenstruationPeriodRecord`, and `NutritionRecord.<field>` for one nutrient, including `transFat`, `unsaturatedFat`, `folicAcid` and `energyFromFat`. Blood pressure reads use `BloodPressureRecord.systolic` and `BloodPressureRecord.diastolic`.
+
+### HealthKit types without a Health Connect equivalent
+
+These return an empty array on Android (characteristics return `[{ value: "" }]`), and `healthConnectLimits` names them:
+
+- Heart rate variability SDNN: Health Connect stores RMSSD (`HeartRateVariabilityRmssdRecord`).
+- Characteristics: date of birth, biological sex, blood type, skin type, wheelchair use, move mode.
+- Apple scores and metrics: stand time and stand hours, move time, walking steadiness, walking heart rate average, sleeping wrist temperature, sleeping breathing disturbances, AFib burden, workout effort, Nike Fuel.
+- Mobility and environment: walking step length, double support, asymmetry, stair speed, six-minute walk, running stride and form, audio exposure, UV exposure, time in daylight, underwater depth, water temperature.
+- Lung function, inhaler use, insulin delivery, alcohol, falls, electrodermal activity, perfusion index, body mass index.
+- Cross-country skiing distance and speed: Health Connect has one skiing type.
+- Symptom categories and the health event categories (heart rate notifications, pregnancy and cycle events, handwashing, toothbrushing).
+
+These cannot be written on Android: the activity-specific distance, speed and power types (Health Connect records one value per time range and takes the activity from the exercise session), `AppleExerciseTime`, `BasalEnergyBurned` (write `BasalMetabolicRateRecord` instead), `SkinTemperatureRecord`, and the single blood pressure values (write `BloodPressureRecord` with both).
+
+---
+
+## Builds without Health Connect
+
+When an Android build does not include Health Connect, every health call still answers right away, so your code never waits: reads give `{ "error": "health_connect_not_included" }`, writes give `success: false`, workouts `[]`, observers `[]`, and the `despia-feature-not-included` event fires.
+
+---
+
+## Resources
+
+- [Health Connect developer guide](https://developer.android.com/health-and-fitness/guides/health-connect)
+- [Health Connect data types](https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types)
+- [Google Play health apps policy](https://support.google.com/googleplay/android-developer/answer/12991134)
+- [Apple Health](/health-data/apple-health), the same calls on iOS

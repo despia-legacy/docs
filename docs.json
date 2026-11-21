@@ -360,7 +360,9 @@
               "experiments/samples/meta-ads",
               "experiments/samples/tiktok-ads",
               "experiments/samples/google-ads",
-              "experiments/samples/calendar"
+              "experiments/samples/calendar",
+              "experiments/samples/alarms",
+              "experiments/samples/app-lock"
             ]
           }
         ]

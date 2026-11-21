@@ -12,9 +12,7 @@ It does not guarantee access to an advertising identifier or an attribution resu
 
 ## Native build and settings
 
-Enable tracking support and supply the `tracking_usage` purpose description in
-Despia. The build owns `NSUserTrackingUsageDescription`; an extension cannot
-replace it in its plist additions. Rebuild after changing native configuration.
+Enable tracking support in Despia. Supply `NSUserTrackingUsageDescription` through the app's existing configuration, or use an approved nonempty `ios.app.info_plist` fallback with `ios.app.custom_keys: true` after the prepared runtime change reaches the build. Nonempty app-configured text wins. This purpose text does not enable tracking support or choose the automatic-prompt behavior. Rebuild after native configuration changes.
 
 The prepared V3 settings have separate controls for tracking support and an
 automatic prompt at launch. Disable the automatic prompt to request from your

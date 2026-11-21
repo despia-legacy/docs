@@ -1,0 +1,101 @@
+---
+title: "Alarms"
+description: "Native alarms, timers and app-reported challenge workflows for Despia V3."
+tag: "Experimental"
+---
+
+<Warning>
+  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. An approved extension-enabled native build is required.
+</Warning>
+
+Alarms adds native alarms, timers and app-reported challenge workflows to a Despia V3 app. System alarms use AlarmKit on iOS 26 and later, including a countdown WidgetKit target. Android uses AlarmManager and a foreground audio service. Your app supplies the challenge UI and any exercise, scanning or other detection logic.
+
+You maintain the native code you copy or customize. This extension is experimental and targets the Despia V3 runtime. First-party V4 support comes through the separate package registry and API.
+
+## Install
+
+1. Copy the prepared `alarms/` folder to `public/despia/alarms/` in your web project.
+2. Add `alarms` to the `extensions` array in `public/despia/extensions.json`.
+3. Set the app's alarm purpose text. The prepared manifest includes `ios.app.custom_keys: true`, `ios.app.info_plist.NSAlarmKitUsageDescription` and the matching `requires.usage_descriptions` entry. It depends on the approved-purpose-text runtime change described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text). Nonempty app-configured text takes priority.
+4. Approve the source and rebuild through the extension-enabled native build path. The iOS manifest includes the `NXAlarmCountdown` target. Android permissions and private alarm components are declared by its module.
+5. Install `despia-native` in your web project and copy the app-owned `callExtension` helper from [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk). Website changes alone do not add native code to an installed app.
+
+## Create an alarm
+
+Call from browser click handlers or client lifecycle hooks. Permission requests can answer with `pending: true` before the system dialog finishes. Read `permissions` again after the person responds, before scheduling an alarm.
+
+```javascript
+import {callExtension} from './despia-extension.js';
+
+async function requestAlarmAccess() {
+  return callExtension('extension://alarms/permissions?request=true&delivery=system');
+}
+
+async function readAlarmAccess() {
+  return callExtension('extension://alarms/permissions');
+}
+
+async function createMovementAlarm() {
+  const definition = {
+    delivery: 'system', label: 'Morning movement',
+    schedule: {countdown_seconds: 60},
+    snooze_seconds: 300,
+    challenge: {kind: 'pushups', target: 10}
+  };
+  const saved = await callExtension('extension://alarms/save?alarm='
+    + encodeURIComponent(JSON.stringify(definition)));
+  return saved.alarm.id;
+}
+
+async function reportProgress(alarmId, progress) {
+  return callExtension('extension://alarms/challenge?id=' + encodeURIComponent(alarmId)
+    + '&progress=' + encodeURIComponent(progress));
+}
+```
+
+The helper checks the native envelope and returns its successful `data`. Its timeout is separate from the native operation. The challenge above records progress supplied by your app; it does not detect push-ups or verify that exercise occurred.
+
+## Routes
+
+All routes use `extension://alarms/<route>`. JSON parameters must be serialized and URL-encoded. The table lists successful payloads inside the V3 result envelope.
+
+| Route | Parameters | Successful payload |
+| --- | --- | --- |
+| `capabilities` | None | Provider and platform capability fields |
+| `permissions` | Optional `request` Boolean; iOS `delivery`: `system` or `notification` | Current authorization and optional `pending` |
+| `save` | Required JSON string `alarm` | `alarm` |
+| `get` | Required UUID `id` | `alarm`, with refreshed AlarmKit state where available |
+| `list` | Optional `group` | `alarms` |
+| `cancel` | Required `id` | Removed definition under `alarm` |
+| `stop` | Required `id`; optional `emergency` Boolean | `alarm` after stopping |
+| `snooze` | Required `id`; optional positive integer `seconds` | `alarm` with its next trigger |
+| `pause` | Required `id` | `alarm` after pausing |
+| `resume` | Required `id` | `alarm` after resuming |
+| `challenge` | Required `id` and nonnegative integer `progress` | Updated `alarm`; reaching the target stops it |
+| `events` | None | Retained `events` |
+| `events_ack` | Required JSON string `ids`, an array of receipt IDs | `acknowledged` count |
+| `android_access` | Required `access`: `exact_alarms`, `full_screen` or `notifications` | Access state and `opened` when a system screen opened |
+
+The `alarm` and `ids` JSON strings are limited to 4096 characters by the manifest. `save` generates a UUID when `id` is omitted; saving an existing ID replaces its definition. `group` is an optional app-defined string used by `list`.
+
+Choose one `schedule`: `{at_ms: ...}` for a future Unix-millisecond timestamp, `{countdown_seconds: ...}` for a positive countdown, or `{hour: 7, minute: 30, weekdays: [1, 2, 3, 4, 5]}` for local time. Alarms use ISO weekdays, Monday 1 through Sunday 7. Omitted or empty weekdays mean the next single local occurrence. Android accepts an IANA `timezone`; AlarmKit relative schedules follow the device's local time zone. On iOS, `next_at_ms` for a local schedule is a forecast, not an exact AlarmKit delivery timestamp.
+
+Optional fields include `label`, `body`, `enabled`, `sound`, `snooze_seconds`, `group`, `metadata` and `challenge`. A challenge requires an app-defined `kind` and positive `target`; reported progress must stay between zero and the target. A normal `stop` can return `challenge_incomplete`. `stop?emergency=true` remains available. Android's notification and native alarm screen provide an emergency stop, and Apple's system Stop control remains available.
+
+## Platform behavior
+
+On iOS 26 and later, default `delivery: "system"` uses AlarmKit authorization, system alarm presentation and the countdown Live Activity. Native `pause` and `resume` apply to countdowns. AlarmKit snooze uses the saved `snooze_seconds`; a different per-call `seconds` override is Android only. A custom iOS sound must already be bundled with the app.
+
+On older iOS, system alarms return `unsupported`. Explicit `delivery: "notification"` selects a notification reminder with separate notification authorization. It follows notification sound and Focus settings. It is not an AlarmKit alarm or a looping background ringtone, and it has no native countdown pause/resume.
+
+Android exact alarm access, notification permission and full-screen access are separate controls. Full-screen presentation depends on current access and notification settings. Google Play automatically enables full-screen intent permission only for eligible core alarm/calling use cases; other apps require user permission. Follow [Google Play's full-screen requirements](https://support.google.com/googleplay/android-developer/answer/13392821?hl=en) and [Android's exact-alarm guidance](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms). A permission in the manifest does not establish eligibility.
+
+Android sound can use `default` or an accessible `content:` or `file:` URI. Its per-player volume, looping and vibration do not change system volume or notification settings. Reboot recovery re-arms future alarms after unlock and records missed one-shot alarms rather than starting media playback from boot. Force-stop, revoked access and device restrictions can prevent delivery.
+
+## Events and recovery
+
+`changed` and `permission` events notify the current document through `onAlarmsChanged` and `onAlarmsPermission`. Read definitions and `events` after loading the page; event callbacks are not a replay guarantee. Opening the app from the native alarm UI retains an `opened` receipt with the logical alarm ID. Acknowledge retained receipt IDs through `events_ack`.
+
+## License
+
+Source available under the Despia V3 Extension Source-Available Commercial License. Inspection copies are permitted. Modification, building, execution and deployment require a valid Despia commercial license and project for the app. The standard price is USD 249 per app per operating system. This is not an open-source license.

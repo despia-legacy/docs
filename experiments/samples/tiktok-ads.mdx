@@ -66,13 +66,13 @@ Properties are a JSON object and preserve nested ecommerce objects, arrays and n
 
 ## Privacy and platform behavior
 
-This extension never requests ATT. TikTok's current iOS SDK does not automatically show that dialog. Use Despia's existing trackingconsent:// call separately, with the tracking_usage purpose description enabled in the native build. Collection consent is separate from ATT. Reapply the app's saved choice after every process launch.
+This extension never requests ATT. TikTok's current iOS SDK does not automatically show that dialog. Use Despia's existing trackingconsent:// call separately, after tracking support and its purpose description are included in the native build. Collection consent is separate from ATT. Reapply the app's saved choice after every process launch.
 
 The adapter refuses bridge event calls while disabled. iOS uses TikTok setTrackingEnabled(false), which can cache SDK events for later according to the vendor API. Android has startTrack but no matching stopTrack API in 1.7.1. On a false consent call this adapter destroys its SDK instance and requires configure again before collection resumes. Neither path erases events already transmitted or guarantees cancellation of an in-flight request. Review the vendor's collection and retention behavior for your app.
 
 Android Advertising ID collection is disabled in this starter. Native configuration can be adapted to the app's permitted collection model and base app Advertising ID permission. The SDK includes Android install referrer support. iOS SKAdNetwork support uses the SDK's defaults; configure campaign conversion settings in TikTok. Avoid competing conversion-value owners or duplicated purchase events.
 
-SKAdNetworkItems under ios.app.info_plist is customer-editable and starts empty. This Apple key describes the ad networks used by a source app displaying ads. It is not an Android setting or a substitute for the advertised app's SDK and campaign configuration. Add only current identifiers your own integration requires, then approve and rebuild. Purpose strings stay owned by Despia's permission configuration.
+SKAdNetworkItems under ios.app.info_plist is customer-editable and starts empty. This Apple key describes the ad networks used by a source app displaying ads. It is not an Android setting or a substitute for the advertised app's SDK and campaign configuration. Add only current identifiers your own integration requires, then approve and rebuild. Purpose text uses app configuration or the prepared approved fallback described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text).
 
 An existing initialized TikTok SDK is left to its original integration: configure returns already_configured. Adapt the native code if the app deliberately shares that SDK. The SDK can use app-wide lifecycle and exception handling, so test it with the app's other native integrations.
 

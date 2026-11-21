@@ -71,7 +71,7 @@ Properties are a flat object with at most 25 entries, nonempty keys up to 40 cha
 
 ## ATT and attribution configuration
 
-This extension never presents ATT. Use the V3 trackingconsent:// call at your chosen moment. The prepared request/status callback API is a separate runtime change and must be released before it is used. Enable the existing tracking_usage purpose description in Despia and rebuild for ATT support. NSUserTrackingUsageDescription is build-owned and cannot be overridden by an extension.
+This extension never presents ATT. Use the V3 trackingconsent:// call at your chosen moment. The prepared request/status callback API is a separate runtime change and must be released before it is used. Enable tracking support and include `NSUserTrackingUsageDescription` in the native build. Existing app-configured text wins; the prepared runtime can use an approved nonempty fallback as described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text). Purpose text does not enable tracking support by itself. Rebuild after native configuration changes.
 
 On iOS, advertiser_id=true enables collection only while ATT is authorized. The SDK reads ATT itself on iOS 17 and later. Enabling event collection is a separate decision from ATT. Turning this extension's collection off prevents its future bridge event calls and disables its automatic event and advertiser-id settings. It does not erase events already sent or guarantee cancellation of SDK work already in flight. Settings are process-local; reapply the app's stored choice after each launch.
 

@@ -9,8 +9,6 @@ This sample puts data from your web app into native home-screen widgets. It incl
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
 
-**Tested on:** iOS simulator, 8/8 scenarios; TestingBot Pixel, 5/5 scenarios; Android emulator, 7 of 8 scenarios. The Android emulator run failed the warm deep-link tap case, so that path is not yet proven.
-
 ## Install
 
 1. Copy the files below into `public/despia/widgets/` in your web app, keeping their `ios/` and `android/` paths. The [sample repository](https://github.com/despia-legacy/despia-extension-home-widgets) carries the same template.
@@ -95,7 +93,7 @@ Besides the [standard bridge errors](/experiments/v3-extensions#error-codes), th
 - The iOS widget extension requires iOS 17. The user places widgets through the widget gallery; iOS has no app API for placing one. App Group access is required to share the widget data and taps.
 - Android pinning needs Android 8 or later and a launcher that supports it. `requested: true` confirms the request was shown, not that a widget was placed. Check `installed` afterwards.
 - Widget size, placement and update timing are controlled by the OS and launcher. The sample requests updates of its own widget kinds only.
-- The Android emulator warm deep-link tap case failed in the recorded run. The cold deep-link case passed. The TestingBot Pixel result covers five scenarios and does not prove the failed emulator case.
+- Android widget taps may fail to open a link when the app is already running.
 
 The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this sample.
 

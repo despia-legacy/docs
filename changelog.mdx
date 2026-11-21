@@ -9,13 +9,13 @@ icon: "clock-rotate-left"
 
   V3 Extensions provide an experimental runtime and native source templates for Swift on iOS and Kotlin or Java on Android. An extension declares its routes, typed parameters, answers, events and native files in `manifest.json`. An extension-enabled app calls them with `extension://<name>/<route>?<params>`.
 
-  **Extension builds require confirmation and approval from Despia.** Publishing files under `public/despia/` and running a regular app build does not include them automatically. Confirm that your app can use the extension build path before relying on a new generation. A completed normal build does not validate or certify extension code.
+  **Extension builds require Despia approval.** The build path must be enabled for your app; standard app builds do not include extensions.
 
   The reference covers typed and custom native targets and modules, lifecycle hooks, dependencies and platform limits. Custom Android module directories cover their approved files recursively. Remote Swift packages require the complete `Package.resolved` graph as well as the root package declaration; approval covers the dependency closure.
 
   The build still owns signing, app identity and its protected configuration. Native permissions, entitlements and vendor account setup must match the app being built. You own and maintain your extension code. Changes need approval and a new native build, not an over-the-air source update.
 
-  Start with the [V3 Extensions guide](/experiments/v3-extensions), [troubleshooting](/experiments/extension-troubleshooting) and [Background Recorder template](/experiments/samples/recorder). Sample test results describe the listed device runs and do not certify every customer's extension or the availability of its build path. The [extension skill](https://github.com/despia-legacy/extension-skill) provides the authoring references.
+  Start with the [V3 Extensions guide](/experiments/v3-extensions), [troubleshooting](/experiments/extension-troubleshooting) and [Background Recorder template](/experiments/samples/recorder). The [extension skill](https://github.com/despia-legacy/extension-skill) provides the authoring references.
 </Update>
 
 <Update label="November 21, 2026" description="RevenueCat: live prices, customer identity, subscription lifecycle, offer codes, and native purchase results">

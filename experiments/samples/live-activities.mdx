@@ -5,13 +5,15 @@ icon: "stopwatch"
 tag: "Experimental"
 ---
 
+Source: [Live Activities repository](https://github.com/despia-legacy/despia-extension-live-activities) (private access required). Read its [LICENSE](https://github.com/despia-legacy/despia-extension-live-activities/blob/main/LICENSE) before using or modifying the extension.
+
 This extension starts, updates, ends and lists native activities from your web app. It includes delivery, score and timer templates. On iOS it uses ActivityKit for the Lock Screen and Dynamic Island. On Android it uses ongoing notifications, with Live Updates on Android 16 and later when the system allows promotion.
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for approval and rebuild requirements.
 
 ## Install
 
-1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths. The [extension repository](https://github.com/despia-legacy/despia-extension-live-activities) carries the same template.
+1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths.
 2. Add `"liveactivity"` to the `extensions` array in `public/despia/extensions.json`, keeping your app identity and any other extension names.
 3. Send the extension for approval and rebuild your native app. Changing the native files needs a new approval and build.
 
@@ -32,7 +34,8 @@ async function startTimer() {
     attributes: JSON.stringify({title: 'Pizza oven'}),
     state: JSON.stringify({startedAt, endsAt: startedAt + 900, label: 'Baking'})
   });
-  const activity = await callExtension('extension://liveactivity/start?' + params);
+  const activity = await callExtension('extension://liveactivity/start?'
+    + params.toString().replace(/\+/g, '%20'));
   console.log(activity.activityId, activity.state);
 }
 

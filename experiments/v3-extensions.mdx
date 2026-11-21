@@ -24,26 +24,30 @@ async function readRecorderStatus() {
 }
 ```
 
-Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The [ready-made extensions](/experiments/samples/recorder) include source you can copy and customize.
+Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The ready-made extensions below include source you can inspect and customize.
 
 ## Ready-made extensions
 
 These ready-made extensions include native source you can adapt. Copying it to your website is preparation for an approved extension build. Read the installation steps and platform limits before adapting an extension.
 
-Despia's extension repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying an extension requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the extension repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
+Source links require access to the private repositories. With that access, [fork privately where GitHub permits](https://docs.github.com/en/pull-requests/reference/forks), or clone a repository into your own private workspace. Customize an extension for your licensed app, or use its source as a reference when developing a new native capability.
 
-| Extension | What it adds |
-| ------ | ------------ |
-| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it |
-| [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities |
-| [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps |
+The Despia-authored code uses the Despia V3 Extension Source-Available Commercial License. It is proprietary, not open source. Local copies for inspection are permitted with lawful access. Other copying, modification, building, execution and deployment require a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Keep the `LICENSE`, copyright and third-party notices with your copies; the license does not permit standalone redistribution. Read each repository's `LICENSE` for the full terms. Earlier license grants and third-party rights remain intact. Your own extension code remains yours.
+
+| Extension | What it adds | Source |
+| ------ | ------------ | ------ |
+| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | [GitHub](https://github.com/despia-legacy/despia-extension-recorder) |
+| [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities | [GitHub](https://github.com/despia-legacy/despia-extension-live-activities) |
+| [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps | [GitHub](https://github.com/despia-legacy/despia-extension-home-widgets) |
+
+Start with a ready-made extension, or use its Swift, Kotlin or Java code as a reference for a new native capability. You can change the native implementation and its web API within the supported extension contract. Declare its files, routes and dependencies in the manifest, and account for the platform APIs, signing, entitlements and store policies it needs. Changed source requires approval and a new native build.
 
 <Warning>
   **Experimental. V3 only.**
 
   - V3 Extensions work only in Despia V3. They are never migrated to V4. V4 has its own first-party plugins and plugin system instead. You can stay on V3 as long as you want.
   - You own and maintain the native code. That includes the code you copy from an extension.
-  - Despia provides the templates and the extension system. Despia does not support code you have customised.
+  - Despia provides the ready-made extensions and the extension system. Despia does not support code you have customised.
 </Warning>
 
 ---
@@ -488,7 +492,7 @@ Both ways are declared in an extension's `manifest.json`.
 
 Declare dependencies and include their required graph files. Despia must approve the pinned dependency closure as part of an extension build. A package URL or Maven coordinate alone does not enable the extension or complete its approval. You do not need to manually copy library binaries into the app.
 
-**iOS: a Swift package from GitHub.** List it under `ios.packages` in `manifest.json` with its GitHub URL, the full commit `revision` of the release you want, and the products you use. Then link the product in your app target under `ios.app.packages`. From the Stream calling template:
+**iOS: a Swift package from GitHub.** List it under `ios.packages` in `manifest.json` with its GitHub URL, the full commit `revision` of the release you want, and the products you use. Then link the product in your app target under `ios.app.packages`. For example:
 
 ```json
 {

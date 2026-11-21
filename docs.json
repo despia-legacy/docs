@@ -353,12 +353,9 @@
             "icon": "vial",
             "pages": [
               "experiments/samples/recorder",
-              "experiments/samples/bluetooth",
               "experiments/samples/live-activities",
               "experiments/samples/media-picker",
-              "experiments/samples/home-widgets",
-              "experiments/samples/stream-calling",
-              "experiments/samples/meta-glasses"
+              "experiments/samples/home-widgets"
             ]
           }
         ]
@@ -579,7 +576,6 @@
   },
   "redirects": [
     { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
-    { "source": "/native-features/bluetooth", "destination": "/experiments/samples/bluetooth" },
     { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
     { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]

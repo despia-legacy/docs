@@ -3,7 +3,7 @@ title: "Writing a V3 extension"
 description: "Build configuration, Android permissions, route timeouts and hosting requirements."
 ---
 
-An extension is native code compiled into a new Despia V3 app build. Your website hosts the source files for the build to fetch. Changing those files does not update an installed app: approval and a new native build are required.
+An extension is native code compiled into a new Despia V3 app build. Your website hosts the source files for the build to fetch. Changing those files does not update an installed app: fresh source/build verification and a new native build are required.
 
 `public/despia/extensions.json` selects the extension folders. Each folder's `manifest.json` declares the routes, answers, events and native work. Your browser code queues a declared route through the Despia JS SDK, for example `despia('extension://laser/state')`. Use [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk) to await an answer safely.
 
@@ -15,7 +15,7 @@ Use an index containing only the folders you want:
 { "extensions": ["laser"] }
 ```
 
-Despia reads the client id, bundle id and Android package from the app's build configuration. You do not need to find a client id in the editor. An optional legacy `app` block must still match the build. The approval lock remains bound to the actual app being built.
+Despia reads the client id, bundle id and Android package from the app's build configuration. You do not need to find a client id in the editor. An optional legacy `app` block must still match the build. The signed build lock remains bound to the actual app being built.
 
 ## Compiler settings
 
@@ -52,7 +52,7 @@ Request the permissions required by the OS version and operation. Android 12 and
 
 ## Custom module directories
 
-An Android custom module's `dir` covers the approved directory tree recursively, including its Gradle file, manifest, sources and resources. You do not list each Java file separately. Files must remain inside that module directory and satisfy the extension file rules. Approval records the individual files and their hashes, so adding or changing a file requires approval again.
+An Android custom module's `dir` covers the declared directory tree recursively, including its Gradle file, manifest, sources and resources. You do not list each Java file separately. Files must remain inside that module directory and satisfy the extension file rules. Signed build inputs record the individual files and their hashes, so adding or changing a file requires a fresh verified snapshot.
 
 ## Routes that wait for a user
 
@@ -76,6 +76,6 @@ A user can leave a permission dialog open longer than the bridge deadline. For t
 
 ## Hosting and SPA fallbacks
 
-For `https://example.com/despia/`, the origin is `https://example.com` and the extension path prefix is `/despia`. The build fetches `extensions.json`, the selected folders' manifests and their approved files from that location. The local `public` directory name is not part of the URL.
+For `https://example.com/despia/`, the origin is `https://example.com` and the extension path prefix is `/despia`. The build fetches `extensions.json`, the selected folders' manifests and their declared files from that location. The local `public` directory name is not part of the URL.
 
-Serve these files as actual static files before your site's fallback to `index.html`. HTTP 200 alone does not prove a file is available. Open `/despia/extensions.json` directly and check that its body is JSON, then check the manifest and source paths. A fallback returning HTML for a missing required file fails parsing or the approved size and hash checks. Unknown routes may use an SPA fallback as long as the required extension paths return their correct bytes.
+Serve these files as actual static files before your site's fallback to `index.html`. HTTP 200 alone does not prove a file is available. Open `/despia/extensions.json` directly and check that its body is JSON, then check the manifest and source paths. A fallback returning HTML for a missing required file fails parsing or the build size and hash checks. Unknown routes may use an SPA fallback as long as the required extension paths return their correct bytes.

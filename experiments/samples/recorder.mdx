@@ -19,7 +19,7 @@ The page only ever sees a recording id and its state. The audio never crosses th
 
 ## Before installing the extension
 
-Confirm extension-build availability with Despia before installing this extension. The source needs approval and a native rebuild. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
+Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Automatic discovery of hosted `/despia/extensions.json` during a normal rebuild is under review and is not yet confirmed in deployed builds. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
 ## Files
 
@@ -29,7 +29,7 @@ Before you build, change these values to your own:
 
 - the upload host `upload.example.com` in both `hosts` lists in `manifest.json`.
 
-The approval policy is a file you send to Despia with your approval request. It is not served from your site. Despia reviews and approves these exact files before a build includes them.
+The build policy is part of the trusted build inputs and is not served from your site. Signed-source checks verify the exact files and dependency graph; artifact checks verify the build before signing. You own the behavior and maintenance of your native code.
 
 <Tabs>
   <Tab title="Manifest">
@@ -3255,7 +3255,7 @@ public final class UploadWorker extends Worker {
 </CodeGroup>
 
   </Tab>
-  <Tab title="Approval policy">
+  <Tab title="Build policy">
 
 <CodeGroup>
 

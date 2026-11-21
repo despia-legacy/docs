@@ -348,6 +348,7 @@
         "icon": "flask",
         "pages": [
           "experiments/v3-extensions",
+          "experiments/extension-troubleshooting",
           {
             "group": "Samples",
             "icon": "vial",

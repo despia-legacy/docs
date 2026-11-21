@@ -5,7 +5,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. An approved extension-enabled native build is required. Native Screen Time shielding and Android Accessibility/VPN enforcement are not yet tested on devices.
+  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. The extension must be compiled into a rebuilt native app. Native Screen Time shielding and Android Accessibility/VPN enforcement are not yet tested on devices.
 </Warning>
 
 Source repository: [App Lock](https://github.com/despia-legacy/app-lock).
@@ -19,7 +19,7 @@ You maintain the native code you copy or customize. This extension is experiment
 1. Copy the prepared `manifest.json`, `ios/` and `android/` into `public/despia/applock/`.
 2. Add `applock` to the `extensions` array in `public/despia/extensions.json`.
 3. For iOS distribution, the Apple Developer Account Holder must obtain Family Controls approval for the app and the three extension bundle IDs: `<app bundle id>.NXLockMonitor`, `<app bundle id>.NXLockShield` and `<app bundle id>.NXLockAction`. Provision `group.<app bundle id>.nx.applock` for the app and all three extensions. The manifest requests capabilities; it cannot grant signing rights. See [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement).
-4. Approve the source and rebuild through the extension-enabled native build path. The iOS targets require iOS 16.6 or later.
+4. Verify the build inputs, rebuild and install the native app. The iOS targets require iOS 16.6 or later.
 5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
 
 ## Create and select a group

@@ -5,7 +5,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. An approved extension-enabled native build is required. iOS alarm delivery is not yet tested on devices.
+  Source preview. Native integration and runtime changes are under review; hosted extension support is pending deployment. The extension must be compiled into a rebuilt native app. iOS alarm delivery is not yet tested on devices.
 </Warning>
 
 Source repository: [Alarms](https://github.com/despia-legacy/alarms).
@@ -19,7 +19,7 @@ You maintain the native code you copy or customize. This extension is experiment
 1. Copy the prepared `alarms/` folder to `public/despia/alarms/` in your web project.
 2. Add `alarms` to the `extensions` array in `public/despia/extensions.json`.
 3. Set the app's alarm purpose text. The prepared manifest includes `ios.app.custom_keys: true`, `ios.app.info_plist.NSAlarmKitUsageDescription` and the matching `requires.usage_descriptions` entry. It depends on the approved-purpose-text runtime change described in [approved iOS purpose text](/experiments/v3-extensions#approved-ios-purpose-text). Nonempty app-configured text takes priority.
-4. Approve the source and rebuild through the extension-enabled native build path. The iOS manifest includes the `NXAlarmCountdown` target. Android permissions and private alarm components are declared by its module.
+4. Verify the build inputs, rebuild and install the native app. The iOS manifest includes the `NXAlarmCountdown` target. Android permissions and private alarm components are declared by its module.
 5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
 
 ## Create an alarm

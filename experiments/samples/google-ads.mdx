@@ -5,7 +5,7 @@ tag: "Experimental"
 ---
 
 <Warning>
-  Source preview. Runtime changes and hosted extension support are pending deployment. An approved extension-enabled native build is required.
+  Source preview. Runtime changes and hosted extension support are pending deployment. The extension must be compiled into a rebuilt native app.
 </Warning>
 
 Source repository: [Google Ads](https://github.com/despia-legacy/google-ads).
@@ -24,11 +24,11 @@ Send native Firebase Analytics events from a Despia V3 app for use by a linked G
 3. Register the iOS and Android apps in the intended Firebase project. Link Firebase Analytics to Google Ads and select eligible conversion events in that account.
 4. Supply the iOS app's matching `GoogleService-Info.plist` through Despia's build configuration. The prepared V3 build copies it even when Firebase push is disabled. The adapter reads it when no default Firebase app exists.
 5. On Android, the app's generated Firebase resources take priority. If the app has none, fill the empty values in `googleads/android/googleads/src/main/res/values/google_ads.xml`: `google_app_id`, `google_api_key`, `project_id` and `gcm_defaultSenderId`. Use the Firebase Android app's configuration, never a service account credential or server key.
-6. Approve the extension source and rebuild through the extension-enabled path. Install the resulting native app. A website update or browser preview does not install native code.
+6. Verify the extension build inputs and rebuild the native app. Install the resulting native app. A website update or browser preview does not install native code.
 
 The iOS manifest declares `Firebase/CoreOnly` and `FirebaseAnalytics` at `10.29.0`, with a `Podfile.lock` and hashes for the complete CocoaPods dependency closure. Android uses Firebase BOM `34.11.0` and `firebase-analytics`. The extension adds no Messaging dependency and does not enable push.
 
-The bridge can be called from any web app that supports custom JavaScript and serves the extension files at their exact HTTPS paths. See [V3 Extensions](/experiments/v3-extensions) for the build and approval flow.
+The bridge can be called from any web app that supports custom JavaScript and serves the extension files at their exact HTTPS paths. See [V3 Extensions](/experiments/v3-extensions) for source verification and native rebuild requirements.
 
 ## Configure and consent
 

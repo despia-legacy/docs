@@ -1,0 +1,84 @@
+---
+title: "Tracking consent timing"
+description: "Request iOS App Tracking Transparency from your Despia V3 page and read its status."
+tag: "Experimental"
+---
+
+Source preview: the request/status result API and separate automatic-prompt
+setting are prepared runtime and editor changes. They are not deployed yet.
+Confirm the native build and settings rollout before using this contract.
+
+ATT controls Apple's tracking authorization. It is separate from an advertiser
+SDK's collection choice. This API does not install Meta, TikTok or AppsFlyer.
+It does not guarantee access to an advertising identifier or an attribution result.
+
+## Native build and settings
+
+Enable tracking support and supply the `tracking_usage` purpose description in
+Despia. The build owns `NSUserTrackingUsageDescription`; an extension cannot
+replace it in its plist additions. Rebuild after changing native configuration.
+
+The prepared V3 settings have separate controls for tracking support and an
+automatic prompt at launch. Disable the automatic prompt to request from your
+page at a suitable moment. The backing setting is
+`DESPIA_NX_ATT_AUTOMATIC_PROMPT`. An absent or null value keeps the previous
+automatic behavior. False selects manual timing. Tracking support must remain
+enabled for a manual request. AppsFlyer enablement is a separate choice.
+
+The backend schema, settings save/export path and editor publish must all carry
+this setting before the switch changes a generated app. Updating a web page
+alone does not change launch behavior in an installed binary.
+
+## Request and read status
+
+Register the callback before making a call from the top-level app page:
+
+```javascript
+window.onDespiaTrackingConsent = result => {
+  console.log(result.status, result.request_id);
+};
+window.despia = "trackingconsent://status?request_id=consent-screen";
+// After the person chooses to continue:
+window.despia = "trackingconsent://request?request_id=consent-choice";
+```
+
+The legacy `trackingconsent://` form still requests permission. A status call
+does not show the prompt. The result is also stored in
+`window.despiaTrackingConsent`.
+
+The answer is a flat object, separate from the extension result envelope:
+
+```json
+{
+  "ok": true,
+  "status": "authorized",
+  "supported": true,
+  "platform": "ios",
+  "request_id": "consent-choice"
+}
+```
+
+Status is `not_determined`, `restricted`, `denied`, `authorized` or `unknown`.
+The optional `request_id` is echoed and may contain at most 128 UTF-8 bytes.
+When tracking support is absent from the build, the answer has `ok: false`,
+`supported: false`, `status: "unavailable"` and `code: "not_included"`.
+An unsupported command answers with `code: "bad_request"` when the build can
+reach the bridge. An oversized request id or a subframe call gets no answer.
+
+Answers belong to the document that made the request. If it navigates or reloads
+while the system prompt is open, the old answer is dropped. Query status after
+the new page loads. The same helper serves the main web view and native page
+sheets. iOS decides whether a system prompt can be shown; a repeated request
+cannot override an earlier choice or a system restriction.
+
+## Platforms and checks
+
+This bridge is iOS only. Android has no Apple ATT prompt; advertiser identifier
+permissions and privacy choices follow the Android integration. Current Despia
+V3 iOS builds target iOS 16.6 and later. ATT's earlier OS introduction does not
+lower that target.
+
+Tested on: Swift wire-format checks, execution of the actual delivery JavaScript
+including navigation rejection, real iOS SDK helper typecheck and controller
+syntax parsing. A new physical-device prompt run and a complete iOS application
+archive are not yet tested for this change.

@@ -349,13 +349,17 @@
         "pages": [
           "experiments/v3-extensions",
           "experiments/extension-troubleshooting",
+          "experiments/tracking-consent",
           {
             "group": "Samples",
             "icon": "vial",
             "pages": [
               "experiments/samples/recorder",
               "experiments/samples/live-activities",
-              "experiments/samples/home-widgets"
+              "experiments/samples/home-widgets",
+              "experiments/samples/meta-ads",
+              "experiments/samples/tiktok-ads",
+              "experiments/samples/calendar"
             ]
           }
         ]
@@ -575,8 +579,17 @@
     "indexing": "all"
   },
   "redirects": [
-    { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
-    { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
-    { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
+    {
+      "source": "/custom-code/extensions",
+      "destination": "/experiments/v3-extensions"
+    },
+    {
+      "source": "/local-database/introduction",
+      "destination": "/native-features/storage-vault"
+    },
+    {
+      "source": "/local-database/reference",
+      "destination": "/native-features/storage-vault"
+    }
   ]
 }

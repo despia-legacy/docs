@@ -1,0 +1,98 @@
+---
+title: "Meta Ads"
+description: "Meta App Events and purchase measurement for Despia V3 on iOS and Android, independently of AppsFlyer."
+tag: "Experimental"
+---
+
+<Warning>
+  Source preview. This sample requires the prepared runtime changes and an approved extension build path. The hosted build path is not deployed yet. SDK compilation is not device or attribution certification.
+</Warning>
+
+Source repository: [Meta Ads](https://github.com/despia-legacy/meta-ads). This repository is private; access is required to read or copy its files.
+
+A native advertiser SDK extension using Meta Facebook Core SDK 19.0.1 on iOS and Android, independently of AppsFlyer. It sends app activation, custom or standard events and purchases through the SDK. It does not display Audience Network ads.
+
+For the Despia V3 runtime. First-party V4 support comes through the new package registry.
+
+**Source preview.** Real SDK compilation has been checked. The approved hosted extension build path and related runtime changes are not deployed yet. An ordinary app generation does not install this extension. Device events and advertising attribution are not yet tested.
+
+## Web frameworks and app builders
+
+Call the Despia V3 extension bridge from your app's JavaScript. It is independent
+of the web UI framework: React, Vue, Svelte, Next.js, TanStack and HTML5 apps use
+the same `window.despia = "extension://..."` interface.
+
+For Lovable, Base44, Replit or another app builder, use a project that lets you
+add custom JavaScript and serve the extension files at their exact HTTPS paths.
+You can edit those files with Claude Code, Codex, Cursor or your usual editor.
+The native extension must be approved and included in the installed Despia V3
+app. A browser preview alone does not provide native extension features.
+These are integration requirements, not a tested matrix of every builder.
+
+## Install
+
+1. Copy this repository's manifest.json, ios/ and android/ into public/despia/metaads/ in your web app.
+2. Add "metaads" to public/despia/extensions.json: `{ "extensions": ["metaads"] }`. The minimal index requires the no-app-identity runtime change to have reached your build. The legacy index remains compatible.
+3. Set FacebookAppID, FacebookClientToken and FacebookDisplayName in manifest.json under ios.app.info_plist. Set the matching Android APP_ID and CLIENT_TOKEN in MetaAdsExtension.java. Use app SDK configuration, never a server Graph API token.
+4. Approve the extension and its dependency closure, then rebuild and install the native app. Copying files to the website does not update an installed app.
+
+The Swift package is pinned to commit 7c3fb7856063fa1074d330616f4070f2ed10a49b. Android declares com.facebook.android:facebook-core:19.0.1. Dependencies are fetched and pinned during approval. Keep the included automatic initialization and collection flags off until the app explicitly configures and enables collection.
+
+## Call from the page
+
+```javascript
+window.onMetaadsConfigureResult = result => console.log(result);
+window.despia = "extension://metaads/configure";
+// After the user's collection choice, enable the operations you need:
+window.despia = "extension://metaads/consent?enabled=true&advertiser_id=false&automatic_events=false";
+window.despia = "extension://metaads/activate";
+window.despia = "extension://metaads/event?name=" + encodeURIComponent("fb_mobile_complete_registration")
+  + "&properties=" + encodeURIComponent(JSON.stringify({registration_method: "email"}));
+```
+
+Wait for each route's successful answer before calling the next one. The default answer is `window.metaads<Route>Result` and callback `onMetaads<Route>Result`, with the route name capitalized. All results use the V3 bridge envelope.
+
+| Route | Parameters | Successful data |
+| --- | --- | --- |
+| configure | None | configured, enabled. Initializes once and leaves collection disabled. |
+| status | None | configured, enabled, sdk |
+| consent | enabled boolean required, advertiser_id and automatic_events optional booleans | iOS: enabled. Android: configured, enabled. Optional flags default false. |
+| activate | None | accepted: true. Logs app activation through Meta. |
+| event | name required, optional properties JSON string, value numeric string | accepted: true |
+| purchase | amount numeric string and currency uppercase three-letter code required, optional properties JSON string | accepted: true |
+| user | Optional id, omit it to clear the SDK user id | accepted: true |
+| flush | None | accepted: true. Requests a flush, not a delivery receipt. |
+
+Properties are a flat object with at most 25 entries, nonempty keys up to 40 characters and string, number or boolean values. Name limits and parameter types are declared in manifest.json. Numbers must be finite. accepted means handed to the SDK, not received or attributed by Meta. Errors include not_configured, already_configured, consent_required and bad_request; Android can also return sdk_error. Unknown routes are rejected by the runtime before dispatch.
+
+## ATT and attribution configuration
+
+This extension never presents ATT. Use the V3 trackingconsent:// call at your chosen moment. The prepared request/status callback API is a separate runtime change and must be released before it is used. Enable the existing tracking_usage purpose description in Despia and rebuild for ATT support. NSUserTrackingUsageDescription is build-owned and cannot be overridden by an extension.
+
+On iOS, advertiser_id=true enables collection only while ATT is authorized. The SDK reads ATT itself on iOS 17 and later. Enabling event collection is a separate decision from ATT. Turning this extension's collection off prevents its future bridge event calls and disables its automatic event and advertiser-id settings. It does not erase events already sent or guarantee cancellation of SDK work already in flight. Settings are process-local; reapply the app's stored choice after each launch.
+
+Meta's Core package includes FBAEMKit and SKAdNetwork code. Feature availability and campaign attribution depend on Meta account settings and SDK server configuration. Neither AEM eligibility nor a campaign install result has been tested here. Do not have multiple SDKs manage the same conversion values or send duplicate purchases.
+
+SKAdNetworkItems is editable in ios.app.info_plist with custom_keys=true, and starts empty. Supply only the current network identifiers your integration requires. Apple defines this key for source apps displaying ads; adding a publisher list to an advertised app is not by itself install attribution. The advertised app's SDK handles its attribution registration and conversion logic. If your setup requires postback copies, coordinate the build-owned attribution endpoint with Despia instead of replacing another integration's endpoint. No Android SKAdNetwork list exists.
+
+## Platform limits and verification
+
+Current V3 iOS builds target iOS16.6 and later. Android module minSdk24, compileSdk36. An ATT API introduced in iOS14 does not lower the app's deployment target. Android uses the advertiser SDK and may need the base app's Advertising ID permission for identifier collection. Normal internet/network permissions are in the module manifest. Review the final merged manifest and store disclosures during approval.
+
+Tested on: real iOS SDK simulator typecheck and Android SDK module assemble only. Device events, advertiser dashboards, store installs, SKAdNetwork postbacks and AEM attribution: not yet tested. Both customer app ids and credentials still need their owners' ad account setup. No AppsFlyer integration is required by this extension.
+
+[Despia V3 Extensions documentation](https://setup.despia.com/experiments/v3-extensions) and [extension skill](https://github.com/despia-legacy/extension-skill).
+
+Vendor sources: [Meta iOS19.0.1](https://github.com/meta/facebook-ios-sdk/releases/tag/v19.0.1), [Meta Android19.0.1](https://github.com/meta/facebook-android-sdk/releases/tag/sdk-version-19.0.1), [Apple SKAdNetworkItems](https://developer.apple.com/documentation/BundleResources/Information-Property-List/SKAdNetworkItems).
+
+## License
+
+[Despia V3 Extension Source-Available Commercial License](LICENSE).
+You may inspect the source. Using or modifying this extension requires a valid
+Despia commercial license and a valid Despia project for the particular app.
+The standard price is **USD 249 per application per operating system**.
+iOS and Android require separate licenses. See [Despia](https://despia.com).
+Third-party SDKs keep their own licenses. Experimental V3 extensions do not
+include a commitment to maintenance or a V4 port.
+
+See [Tracking consent timing](/experiments/tracking-consent) for the prepared request/status callback and separate launch setting.

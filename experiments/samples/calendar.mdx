@@ -1,0 +1,114 @@
+---
+title: "Calendar"
+description: "Shared calendar routes over iOS EventKit and Android Calendar Provider, with native platform methods."
+tag: "Experimental"
+---
+
+<Warning>
+  Source preview. This sample requires the prepared runtime changes and an approved extension build path. The hosted build path is not deployed yet. SDK compilation is not device or attribution certification.
+</Warning>
+
+Source repository: [Calendar](https://github.com/despia-legacy/calendar). This repository is private; access is required to read or copy its files.
+
+A Despia V3 extension over iOS EventKit and the Android Calendar Provider. Shared routes cover event and calendar reads, writes, recurrence, alarms, permission state and native editor presentation. Named platform routes expose iOS Reminders and Android provider tables when there is no shared operation.
+
+For the Despia V3 runtime. First-party V4 support comes through the new package registry.
+
+**Source preview.** This sample depends on the prepared modern calendar/reminders purpose-string support and approved extension build path. The new runtime and editor settings are not deployed yet. Hosting these files and running a regular app build does not install them. Hardware behavior is not yet tested.
+
+## Web frameworks and app builders
+
+Call the Despia V3 extension bridge from your app's JavaScript. It is independent
+of the web UI framework: React, Vue, Svelte, Next.js, TanStack and HTML5 apps use
+the same `window.despia = "extension://..."` interface.
+
+For Lovable, Base44, Replit or another app builder, use a project that lets you
+add custom JavaScript and serve the extension files at their exact HTTPS paths.
+You can edit those files with Claude Code, Codex, Cursor or your usual editor.
+The native extension must be approved and included in the installed Despia V3
+app. A browser preview alone does not provide native extension features.
+These are integration requirements, not a tested matrix of every builder.
+
+## Install in an approved extension build
+
+1. Copy manifest.json, ios/ and android/ to public/despia/calendar/ in your web app.
+2. Add calendar to public/despia/extensions.json. The prepared minimal index is `{ "extensions": ["calendar"] }`; use it only after the no-app-identity runtime reaches your build. Existing matching legacy identity blocks remain compatible. Do not add manifest_version to the index.
+3. Enable calendar_usage in Despia's permissions. The prepared host emitter maps it to legacy, full-access and write-only iOS calendar descriptions. For the complete iOS sample, also supply DESPIA_NX_REMINDERS_USAGE, mapped to both reminders descriptions. The backend schema and editor deployment for that new child are pending. Purpose strings cannot be placed in ios.app.info_plist by this extension.
+4. Send calendar.policy.json with the approval request. It declares the Android READ_CALENDAR and WRITE_CALENDAR permission additions. These declarations are separate from the user's runtime consent. The policy file is not served from your site.
+5. Approve the source and rebuild through the extension-enabled path, then install that artifact.
+
+No Google Calendar cloud OAuth or server credential is included. Android reads calendars on the device, which may be synced by installed Google, Exchange or other account providers. iOS reads the calendars EventKit exposes. Neither OS guarantees that every cloud calendar or remote sharing feature is available through its device API.
+
+## Call from the page
+
+```javascript
+window.onCalendarPermissionsResult = result => console.log(result);
+window.onCalendarPermission = state => console.log(state);
+window.despia = "extension://calendar/permissions?request=true&access=full";
+// Once the permission result event indicates access:
+window.despia = "extension://calendar/calendars";
+const event = {
+  calendar_id: selectedCalendarId,
+  title: "Example appointment",
+  start_ms: Date.now() + 3600000,
+  end_ms: Date.now() + 7200000,
+  timezone: "Europe/Paris",
+  alarms: [{minutes: 15}]
+};
+window.despia = "extension://calendar/event_save?data=" + encodeURIComponent(JSON.stringify(event));
+```
+
+Register callbacks before calls and wait for dependent answers. Default outputs are ``window.calendar<Route>Result`` and ``onCalendar<Route>Result``, with the route converted to PascalCase and underscores removed. For example, event_save returns calendarEventSaveResult through onCalendarEventSaveResult. Responses use the V3 bridge envelope. IDs are opaque strings, not portable identifiers between platforms or accounts. Dates use Unix milliseconds. The route's data parameter is a JSON object encoded into a string of at most 4096 characters.
+
+## Shared routes
+
+| Route | Parameters | Successful data |
+| --- | --- | --- |
+| capabilities | None | Provider and supported feature booleans |
+| permissions | Optional request boolean, access full, write_only or reminders | Current permission state. A request is acknowledged promptly, then permission event reports the answer. |
+| calendars | Optional entity events or reminders, default events | Calendar rows. Reminders entity is iOS only. |
+| calendar_save | data object with title, optional id; optional entity | Saved calendar id and native metadata where available. New iOS calendars may need source_id. New Android calendars use a local account. |
+| calendar_delete | id, optional entity | deleted: true |
+| events | start_ms and end_ms required; optional calendar_id, offset, limit 1..100 | Event occurrences, next_offset, has_more |
+| event_get | id | Event fields, with platform metadata |
+| event_save | data object; optional span this or future | id, saved: true |
+| event_delete | id; optional span | deleted: true for supported operations |
+| present | Optional id, data and mode view, edit or create | presented: true, which does not mean saved |
+
+Event data supports id, calendar_id, title, start_ms, end_ms, all_day, timezone, location, notes and alarms. iOS also supports url. New Android events require calendar_id. An update preserves fields not supplied. EventKit requires a writable calendar. Android providers enforce their account and calendar rules.
+
+Alarm writes use `{minutes: 15}` for a reminder 15 minutes before the event. iOS reads return offset_seconds, while Android event_get returns the native reminder rows. This difference is explicit. Android does not accept a negative before-event reminder through the shared save route.
+
+Recurrence writes use an array of objects with frequency 0 daily, 1 weekly, 2 monthly or 3 yearly, a positive interval, optional end_count or end_ms, days_of_week objects with day 1 Sunday through 7 Saturday and optional week ordinal, and optional days_of_month, months_of_year, weeks_of_year, days_of_year and set_positions. iOS accepts EventKit recurrence rules. Android accepts one RRULE through the shared writer and returns raw RRULE/RDATE/EXRULE/EXDATE under android metadata. For a recurring Android save, include start_ms and end_ms so duration can be formed.
+
+EventKit supports this-event and future-event mutations. Android future-series splitting and recurring-series deletion need explicit provider operations through android_table. The shared delete route returns unsupported rather than silently deleting a recurring series. This sample does not implement an atomic Android series-split helper. Use native code when the operation needs a transaction spanning multiple provider rows.
+
+## Platform methods and native UI
+
+- ios_sources lists EventKit sources after event or reminders access is granted.
+- ios_reminders lists reminder records, optionally filtered by calendar_id and completed, with offset/limit pagination.
+- ios_reminder_save accepts a data object with id for updates, calendar_id, title, notes, location, url, priority, completed, start_ms, due_ms, completed_ms, timezone, alarms and recurrence. The device calendar interprets date components. ios_reminder_delete deletes by id. Android returns unsupported for these routes: Calendar Provider reminders are event alarms, not task lists.
+- android_table exposes query, insert, update and delete for events, calendars, attendees and reminders, plus read-only instances. Query supports optional id or event_id where appropriate, offset/limit, and start_ms/end_ms for instances. Writes use data with native provider column names and scalar values. Update/delete require a specific id. Sync-adapter-owned fields are not writable through this ordinary-app API. iOS returns unsupported.
+- present uses EventKit UI on iOS and installed calendar app intents on Android. iOS 17 can present a create editor without full calendar access; older iOS requires access. Reading an existing event requires full access. The iOS editor event reports saved, deleted, canceled or dismissed. Out-of-process editing does not provide an authoritative saved event payload. Android only acknowledges the handoff and does not claim a saved result; it can return unavailable if no calendar app handles the intent.
+
+No adapter can grant permissions itself. A system dialog may remain open longer than a route deadline, so permission completion is an event and state remains queryable. Activity recreation uses the same namespaced Android Activity Result Registry key. After the app process dies, query state again rather than relying on a past event. changed is a signal to refresh, not a durable change journal. Read results in small pages; provider data and long notes may exceed bridge output limits.
+
+## Limits and tests
+
+Current V3 iOS target is 16.6 and later. Android module minSdk24 and compileSdk36. Providers can reject read-only calendars, remote account writes or unsupported columns. iOS attendee fields are read-only in this adapter. Platform-only routes do not promise that every OS SDK method is already wrapped; the source is supplied so developers can add methods their app requires.
+
+Tested on: real EventKit SDK simulator typecheck, Android module assemble, 3 Android JVM boundary/recurrence tests and Swift value checks only. User-facing permission dialogs, native editors, provider writes, sync behavior and physical device behavior: not yet tested. These checks do not certify the hosted customer build path.
+
+[Despia V3 Extensions documentation](https://setup.despia.com/experiments/v3-extensions), [troubleshooting](https://setup.despia.com/experiments/extension-troubleshooting) and [extension skill](https://github.com/despia-legacy/extension-skill).
+
+Platform references: [Apple EventKit access](https://developer.apple.com/documentation/eventkit/accessing-calendar-using-eventkit-and-eventkitui), [Android Calendar Provider](https://developer.android.com/identity/providers/calendar-provider).
+
+## License
+
+[Despia V3 Extension Source-Available Commercial License](LICENSE).
+You may inspect the source. Using or modifying this extension requires a valid
+Despia commercial license and a valid Despia project for the particular app.
+The standard price is **USD 249 per application per operating system**.
+iOS and Android require separate licenses. See [Despia](https://despia.com).
+Third-party SDKs keep their own licenses. Experimental V3 extensions do not
+include a commitment to maintenance or a V4 port.

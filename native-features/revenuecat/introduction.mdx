@@ -4,7 +4,7 @@ description: "Native App Store and Google Play billing in your web app via the D
 icon: "circle-info"
 ---
 
-Native iOS and Android billing fully bridged to your web layer. Trigger purchases, display native paywalls, and check entitlements from your web app using `despia()`, with no native code and no native billing SDK to configure.
+Build purchases and subscriptions into your Despia V3 web app with the native RevenueCat bridge. Load store-localized prices, build a custom purchase screen or open a native paywall, identify customers, read entitlement lifecycle state, restore purchases, and present Apple offer-code redemption without adding a native billing library to your web project.
 
 ---
 
@@ -57,13 +57,13 @@ Configure RevenueCat, then connect it to Despia. The steps go in order, each one
 
 <Steps>
   <Step title="Create a RevenueCat account">
-    Go to [app.revenuecat.com](https://app.revenuecat.com) and sign up, or sign in with an existing account. RevenueCat is free up to a monthly tracked revenue threshold, after which a percentage fee applies, so account creation does not block early development.
+    Go to [app.revenuecat.com](https://app.revenuecat.com) and sign up, or sign in with an existing account. Follow RevenueCat's current account and store setup instructions.
   </Step>
   <Step title="Create an iOS app in RevenueCat">
     In RevenueCat, go to **Project settings \> Apps \> \+ New** and choose **App Store**. Enter your iOS bundle ID (e.g. `com.despia.myapp`), upload a new App Store Connect API key (App Manager), and an in-app purchase key. RevenueCat needs both to validate iOS receipts on your behalf.
   </Step>
   <Step title="Create an Android app in RevenueCat">
-    Repeat **Project settings \> Apps \> \+ New** and choose **Play Store**. Enter your Android package name (the same value as your iOS bundle ID for Despia apps) and upload your Google Play Service Account credentials JSON. This lets RevenueCat verify Play Store purchases.
+    Repeat **Project settings \> Apps \> \+ New** and choose **Play Store**. Enter your Android package name and upload your Google Play Service Account credentials JSON. This lets RevenueCat verify Play Store purchases.
   </Step>
   <Step title="Configure entitlements and offerings">
     In RevenueCat, go to **Entitlements \> \+ New** and create entitlements that represent the things users unlock, like `premium` or `no_ads`. Then go to **Products** and import your App Store Connect and Play Console products, attaching each to the matching entitlement. Finally, go to **Offerings** and group products into offerings that drive your paywalls (e.g. a `default` offering with monthly and annual packages).
@@ -80,119 +80,129 @@ Configure RevenueCat, then connect it to Despia. The steps go in order, each one
     Both values must match exactly what RevenueCat issued.
   </Step>
   <Step title="Rebuild your app">
-    Trigger a fresh build from the Despia Editor. The RevenueCat SDK has to be compiled into the app binary, so this cannot be applied over-the-air. After the build finishes, calls to `revenuecat://`, `getpurchasehistory://`, and the rest of the schemes will function in production.
+    Trigger a fresh build from the Despia Editor. The RevenueCat SDK has to be compiled into the app binary, so this cannot be applied over-the-air. Install the new native build and test purchases with the appropriate App Store or Google Play test account before release.
   </Step>
 </Steps>
 
 <Warning>
-  Skipping the rebuild leaves RevenueCat inactive even if the toggle reads enabled. Purchases will fail silently and entitlement checks will return empty arrays. If purchases stop working after editing settings, rebuild before opening a support ticket.
+  Changing the website or installing a JavaScript package does not add native bridge commands to an older app binary. Rebuild after enabling RevenueCat, changing its native settings, or adopting these runtime features.
 </Warning>
 
 ---
 
-## How it works
+## What you can build
 
-Despia bridges your web layer to the native RevenueCat SDK. Purchases go through the App Store or Google Play billing system. When a transaction completes, the runtime fires `window.onRevenueCatPurchase()` in your web layer. You can then check entitlements instantly using `getpurchasehistory://`, which queries the native store directly with no backend needed.
+| Need | Native bridge |
+| --- | --- |
+| Show the customer's actual purchase prices | `products`, or `offerings` for a single package list |
+| Display subscription duration and introductory pricing | Product periods, intro metadata, and display-ready offering fields |
+| Purchase before signup | Purchase/paywall with the current anonymous RevenueCat identity |
+| Associate purchases with an account | `login`, `logout`, and `whoami` |
+| Unlock subscription features | `customer.entitlements.active` |
+| Explain subscription status | Per-entitlement expiration, renewal, cancellation, billing-issue, trial, and ownership details |
+| Present a native purchase screen | `launchPaywall` with your RevenueCat offering |
+| Handle success, cancel, restore, and failure | `onRevenueCatResult` |
+| Redeem an Apple offer code | `redeem` on iPhone and iPad |
+| Restore or manage a subscription | `center` and its Customer Center events |
+
+## Load prices and customer access
+
+Install your callbacks before sending a command. This example requests the catalog first, then requests the current customer's entitlements after the catalog arrives, so the two bridge navigations do not replace each other.
 
 ```javascript
-// Check entitlements on load and after every purchase
-const data   = await despia('getpurchasehistory://', ['restoredData'])
-const active = (data.restoredData ?? []).filter(p => p.isActive)
+import despia from 'despia-native'
 
-if (active.some(p => p.entitlementId === 'premium')) unlockPremium()
+window.onRevenueCatProducts = (catalog) => {
+  if (!catalog.ok) {
+    console.error(catalog.code, catalog.error)
+    return
+  }
+  for (const product of catalog.products) {
+    console.log(product.id, product.title, product.priceString, product.period)
+  }
+  despia('revenuecat://customer')
+}
+
+window.onRevenueCatCustomer = (customer) => {
+  if (!customer.ok) {
+    console.error(customer.code, customer.error)
+    return
+  }
+  const hasPremium = customer.entitlements.active.includes('premium')
+  console.log({ hasPremium, subscription: customer.details?.premium })
+}
+
+despia('revenuecat://products')
 ```
 
-For users on the web app who are not in the Despia WebView, fall back to a RevenueCat Web Purchase Link with the user's ID appended.
+Replace `premium` with an entitlement ID configured in your RevenueCat project. Display the returned `priceString`; never hardcode the price or currency. Read the [catalog and offering fields](/native-features/revenuecat/reference#load-products-and-purchase-prices) before advertising trials or monthly-equivalent pricing.
+
+## Bind your signed-in account
+
+RevenueCat starts with an anonymous App User ID. Once your own authentication succeeds, bind your stable account ID and wait for the response before starting an account-bound purchase.
 
 ```javascript
-const isDespia = navigator.userAgent.toLowerCase().includes('despia')
+window.onRevenueCatUser = (account) => {
+  if (!account.ok) {
+    console.error(account.code, account.error)
+    return
+  }
+  console.log(account.user, account.anonymous, account.entitlements.active)
+}
 
-if (isDespia) {
-    despia(`revenuecat://launchPaywall?external_id=${userId}&offering=default`)
-} else {
-    window.location.href = `https://pay.rev.cat/<your_token>/${encodeURIComponent(userId)}`
+despia(`revenuecat://login?external_id=${encodeURIComponent(userId)}`)
+```
+
+Use `revenuecat://whoami` to inspect the current identity and `revenuecat://logout` when your own user signs out. Bridge 2 also supports purchasing as the current user without `external_id`, including before signup. RevenueCat's identity and transfer rules determine how anonymous purchases associate with an existing account. See [identity and capability detection](/native-features/revenuecat/reference#identify-the-customer).
+
+## Purchase or open a paywall
+
+Register one result handler for the native flows your page uses:
+
+```javascript
+window.onRevenueCatResult = (outcome) => {
+  if (outcome.source === 'redeem') return
+  if (outcome.cancelled) return
+  if (!outcome.ok) {
+    if (!outcome.restored) console.error(outcome.code, outcome.error)
+    return
+  }
+  despia('revenuecat://customer')
+}
+
+// Choose one action in response to a button tap.
+function buyProduct(productId) {
+  despia(`revenuecat://purchase?product=${encodeURIComponent(productId)}`)
+}
+
+function openPaywall() {
+  despia('revenuecat://launchPaywall')
 }
 ```
 
-<CardGroup cols={2}>
-  <Card title="Reference" icon="book" href="/native-features/revenuecat/reference">
-    All schemes, parameters, response fields, callback behaviour, and webhook setup.
-  </Card>
+Pass a product ID returned by the native catalog, including the Android base plan suffix for subscriptions. A successful consumable purchase can have no entitlement. Verify and fulfill consumables on your backend instead of treating an empty entitlement array as a failed transaction.
 
-  <Card title="Webhooks" icon="webhook" href="https://setup.despia.com/best-practices/backend/revenuecat/webhooks">
-    Full backend webhook handler covering all RevenueCat event types.
-  </Card>
-</CardGroup>
+For normal browsers outside Despia, use RevenueCat's web checkout rather than a native scheme. Keep the same account identity across platforms and verify protected backend access server-side.
 
----
+## Redeem codes, restore, and manage subscriptions
 
-## Entitlement check
+On iPhone and iPad, `despia('revenuecat://redeem')` presents Apple's offer-code sheet. Its immediate `presented` result only acknowledges the sheet; check customer entitlements after redemption. Android users redeem Google Play codes through Google Play.
 
-Set up entitlements in your RevenueCat dashboard first. Create an entitlement (e.g. `premium`), then attach both your iOS and Android products to it. Both platforms will return the same `entitlementId` in the response.
+Open `despia('revenuecat://center')` from your Restore Purchases or Manage Subscription button. `onRevenueCatCenter` reports restore progress, management selections, feedback, and dismissal. iOS also reports refund-request activity; refund approval remains a server-side event. See the [Customer Center reference](/native-features/revenuecat/reference#customer-center-and-restoring-purchases).
 
-```javascript
-// Reuse this function on app load, page navigation, and in onRevenueCatPurchase
-async function checkEntitlements() {
-    const data   = await despia('getpurchasehistory://', ['restoredData'])
-    const active = (data.restoredData ?? []).filter(p => p.isActive)
+## Check access on the client and server
 
-    if (active.some(p => p.entitlementId === 'premium')) unlockPremium()
-    if (active.some(p => p.entitlementId === 'no_ads'))  removeAds()
-}
+Use `customer.entitlements.active` to update native-app UI, refreshing it when the app opens and after purchases, restores, and account changes. Customer info may come from RevenueCat's cache, so do not describe it as a guaranteed real-time network verification.
 
-checkEntitlements()
-window.onRevenueCatPurchase = checkEntitlements
-```
-
----
-
-## Customer Center
-
-The RevenueCat Customer Center is a native UI where users can restore purchases, manage their subscription, request refunds (iOS only), and submit feedback surveys without leaving your app. Trigger it from your web layer with a single scheme.
-
-```javascript
-despia(`revenuecat://center?external_id=${userId}`)
-```
-
-When the user runs Restore Purchases from inside the sheet, the recommended fully-safe pattern is to also fire your existing Despia restore flow on `restoreCompleted`. The Customer Center's restore and the Despia `getpurchasehistory://` query both hit the native store, but running both back-to-back guarantees your web layer reflects whatever the device thinks is true, regardless of timing or edge cases.
-
-```javascript
-window.onRevenueCatCenter = (event) => {
-    if (event.event === 'restoreCompleted') {
-        // Fully safe: run the Despia restore + entitlement check ourselves
-        checkEntitlements()
-    }
-    if (event.event === 'dismissed') {
-        // Catch-all on close, in case any other state changed inside the sheet
-        checkEntitlements()
-    }
-}
-```
-
-<Info>
-  Google Play does not allow in-app refund requests, so the Customer Center on Android has no refund button and the `refundRequested` / `refundCompleted` events never fire on Android. Configure a **custom URL** management option in your RevenueCat dashboard to route Android users to your support email or Google Play subscriptions page. See the [Reference](/native-features/revenuecat/reference) for the full Android refund fallback pattern.
-</Info>
-
-See the [Reference](/native-features/revenuecat/reference) for the full event list and payload fields.
-
----
+For protected server resources, authenticate the user on your backend and verify the entitlement for that account. Use [RevenueCat webhooks](/best-practices/backend/revenuecat/webhooks) for renewals, refunds, billing issues, and changes while the app is closed. Keep secret RevenueCat API keys on the server.
 
 ## Resources
 
 <CardGroup cols={2}>
-  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
-    despia-native
+  <Card title="Reference" icon="book" href="/native-features/revenuecat/reference">
+    Every command, response field, callback, platform difference, and error condition.
   </Card>
-
-  <Card title="RevenueCat Dashboard" icon="link" href="https://app.revenuecat.com">
-    Configure entitlements, offerings, and paywalls
-  </Card>
-
-  <Card title="RevenueCat Webhooks" icon="book" href="https://www.revenuecat.com/docs/integrations/webhooks">
-    Event types, fields, and sample payloads
-  </Card>
-
-  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
-    [support@despia.com](mailto:support@despia.com)
+  <Card title="Webhooks" icon="webhook" href="/best-practices/backend/revenuecat/webhooks">
+    Connect RevenueCat lifecycle events to your backend.
   </Card>
 </CardGroup>

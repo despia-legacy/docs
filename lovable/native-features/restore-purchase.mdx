@@ -1,8 +1,40 @@
 ---
 title: "Restore Purchase"
-description: "Restore and retrieve a user's complete purchase history from Apple App Store and Google Play Store using the Despia SDK."
+description: "Restore purchases with Customer Center and read available store purchase rows using the Despia SDK."
 icon: "recycle"
 ---
+
+Use RevenueCat Customer Center for a user-initiated restore. It presents native restore and subscription-management options, then reports the outcome to your web app.
+
+```javascript
+import despia from 'despia-native'
+
+window.onRevenueCatCenter = (activity) => {
+  if (activity.event === 'restoreCompleted' || activity.event === 'dismissed') {
+    despia('revenuecat://customer')
+  }
+  if (activity.event === 'restoreFailed') {
+    console.error(activity.errorCode, activity.errorMessage)
+  }
+}
+
+window.onRevenueCatCustomer = (customer) => {
+  if (!customer.ok) {
+    console.error(customer.code, customer.error)
+    return
+  }
+  console.log(customer.entitlements.active)
+}
+
+// Call from your Restore Purchases button.
+function restorePurchases() {
+  despia('revenuecat://center')
+}
+```
+
+Replace your UI's access state with the returned active entitlement IDs. A completed restore does not prove that an active purchase was found. A management-screen visit does not prove cancellation, and an iOS refund-request submission does not prove refund approval.
+
+The purchase-history examples below remain available for existing integrations. For the complete event and entitlement contract, use the [RevenueCat reference](/native-features/revenuecat/reference).
 
 <iframe src="https://www.youtube.com/embed/N5KsbfD8wqU" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -15,7 +47,7 @@ icon: "recycle"
 
   Retrieve purchase history by calling: `despia("getpurchasehistory://", ["restoredData"])`
 
-  This will query the native app stores and return all purchases associated with the current device/account, including active subscriptions, expired subscriptions, and one-time purchases.
+  This reads store purchase rows available to the native runtime. It is not a complete ledger of expired purchases or consumed products and does not itself initiate a Customer Center restore.
 
   The response array includes objects with :
 
@@ -44,7 +76,7 @@ icon: "recycle"
 
 ## How it Works
 
-Despia queries the native platform's billing system to retrieve all purchases associated with the current user's App Store or Google Play account. This includes active subscriptions, expired subscriptions, consumables, and non-consumable (lifetime) purchases. The data is normalized into a consistent format across both iOS and Android platforms.
+Despia reads the purchase rows available from the native store and RevenueCat integration. Available history differs by platform and purchase state; it is not an exhaustive ledger of expired or consumed purchases. Use `revenuecat://customer` for active RevenueCat entitlement IDs and Customer Center for an explicit restore.
 
 ## Installation
 

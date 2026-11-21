@@ -4,6 +4,42 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="November 21, 2026" description="RevenueCat: live prices, customer identity, subscription lifecycle, offer codes, and native purchase results">
+  ## A full RevenueCat toolkit for Despia V3
+
+  Despia's RevenueCat bridge now gives your web app the store data and native purchase flows needed to build a subscription experience from product discovery through account management. Use your own purchase screen or a RevenueCat native paywall, with the same core response shapes on iOS and Android.
+
+  ### Build purchase screens with actual store prices
+
+  Load offerings, packages, and products with `revenuecat://products`. Each product includes its purchase ID, localized title and price, currency, billing period, and introductory-pricing metadata. Display `priceString` from the store, so your purchase screen shows the customer's storefront price without a hardcoded currency or amount.
+
+  The single-offering `revenuecat://offerings` command also returns a display-ready package list, monthly-equivalent pricing where applicable, and trial or introductory-offer details. On iOS it checks intro eligibility and hides an offer when the user is known to be ineligible. The store still confirms the offer at checkout.
+
+  ### Support anonymous purchases and signed-in accounts
+
+  Let a customer purchase before signup, then bind their account through `revenuecat://login`. Read the current RevenueCat identity with `whoami`, switch accounts with another login, and return to an anonymous identity with `logout` when your user signs out. Purchases and paywalls can use the current RevenueCat user without repeating `external_id` on every call. RevenueCat applies its own identity and transfer rules when associating anonymous purchases with an existing account.
+
+  ### Understand the subscription, not just the product
+
+  `revenuecat://customer` returns active and historical entitlement IDs, active subscription product IDs, and the store management URL. Its per-entitlement details let your UI distinguish a trial from a normal subscription, a cancelled renewal from expired access, and a billing issue from an inactive entitlement. Read expiration dates, renewal state, purchase timestamps, sandbox status, and family-sharing ownership without parsing a raw vendor payload.
+
+  ### Handle every purchase outcome explicitly
+
+  Direct purchases and native paywalls report through `window.onRevenueCatResult`. Handle successful transactions, restored access, normal cancellation, and failure separately. Successful consumables no longer have to be mistaken for failed subscriptions just because they grant no entitlement. Legacy purchase hooks and purchase-history reads remain available for existing integrations.
+
+  ### Offer native redemption and account management
+
+  - Open Apple's offer-code redemption sheet on iPhone and iPad with `revenuecat://redeem`. The presentation acknowledgement is separate from the eventual entitlement change. Google Play users redeem their codes through Google Play.
+  - Open RevenueCat Customer Center for restoring purchases and managing subscriptions. Its callbacks report restore progress, management selections, feedback surveys, and dismissal.
+  - Handle iOS refund-request events without treating request submission as refund approval. Keep final refund and subscription lifecycle changes connected to your backend through RevenueCat webhooks.
+
+  ### Adopt it in your app
+
+  Rebuild your iOS and Android apps with the current Despia V3 runtime. Register callbacks before calling the bridge, send one command at a time, and use the `bridge` capability field to account for customers still on older builds. No extra native billing library is needed in your web project.
+
+  The [RevenueCat setup guide](/native-features/revenuecat/introduction) and [full reference](/native-features/revenuecat/reference) now cover the commands, price shapes, entitlement lifecycle fields, callbacks, platform differences, and error handling. Verify server-controlled access on your backend with the same authenticated account ID.
+</Update>
+
 <Update label="November 20, 2026" description="iOS RevenueCat builds use one SDK for purchases and paywalls">
   ## More consistent RevenueCat builds on iOS
 

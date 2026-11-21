@@ -5,7 +5,7 @@ description: "Build configuration, Android permissions, route timeouts and hosti
 
 An extension is native code compiled into a new Despia V3 app build. Your website hosts the source files for the build to fetch. Changing those files does not update an installed app: approval and a new native build are required.
 
-`public/despia/extensions.json` selects the extension folders. Each folder's `manifest.json` declares the routes, answers, events and native work. Your page calls a declared route with `window.despia = "extension://laser/state"`.
+`public/despia/extensions.json` selects the extension folders. Each folder's `manifest.json` declares the routes, answers, events and native work. Your browser code queues a declared route through the Despia JS SDK, for example `despia('extension://laser/state')`. Use [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk) to await an answer safely.
 
 ## App identity
 

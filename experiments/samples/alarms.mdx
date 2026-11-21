@@ -71,7 +71,7 @@ All routes use `extension://alarms/<route>`. JSON parameters must be serialized 
 | `snooze` | Required `id`; optional positive integer `seconds` | `alarm` with its next trigger |
 | `pause` | Required `id` | `alarm` after pausing |
 | `resume` | Required `id` | `alarm` after resuming |
-| `challenge` | Required `id` and nonnegative integer `progress` | Updated `alarm`; reaching the target stops it |
+| `challenge` | Required `id` and `progress`, finite decimal numeric text up to 64 characters | Updated `alarm`; reaching the target stops it |
 | `events` | None | Retained `events` |
 | `events_ack` | Required JSON string `ids`, an array of receipt IDs | `acknowledged` count |
 | `android_access` | Required `access`: `exact_alarms`, `full_screen` or `notifications` | Access state and `opened` when a system screen opened |
@@ -80,7 +80,7 @@ The `alarm` and `ids` JSON strings are limited to 4096 characters by the manifes
 
 Choose one `schedule`: `{at_ms: ...}` for a future Unix-millisecond timestamp, `{countdown_seconds: ...}` for a positive countdown, or `{hour: 7, minute: 30, weekdays: [1, 2, 3, 4, 5]}` for local time. Alarms use ISO weekdays, Monday 1 through Sunday 7. Omitted or empty weekdays mean the next single local occurrence. Android accepts an IANA `timezone`; AlarmKit relative schedules follow the device's local time zone. On iOS, `next_at_ms` for a local schedule is a forecast, not an exact AlarmKit delivery timestamp.
 
-Optional fields include `label`, `body`, `enabled`, `sound`, `snooze_seconds`, `group`, `metadata` and `challenge`. A challenge requires an app-defined `kind` and positive `target`; reported progress must stay between zero and the target. A normal `stop` can return `challenge_incomplete`. `stop?emergency=true` remains available. Android's notification and native alarm screen provide an emergency stop, and Apple's system Stop control remains available.
+Optional fields include `label`, `body`, `enabled`, `sound`, `snooze_seconds`, `group`, `metadata` and `challenge`. A challenge requires an app-defined `kind` and a finite positive `target`. Target and progress may be fractional; progress must stay between zero and the target. For a custom workflow, a client handler can call `await reportProgress(alarmId, 0.5)`: URL encoding converts that number to the decimal text `0.5`. Non-finite values are rejected. A normal `stop` can return `challenge_incomplete`. `stop?emergency=true` remains available. Android's notification and native alarm screen provide an emergency stop, and Apple's system Stop control remains available.
 
 ## Platform behavior
 

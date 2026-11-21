@@ -348,6 +348,7 @@
         "icon": "flask",
         "pages": [
           "experiments/v3-extensions",
+          "experiments/extension-authoring",
           "experiments/extension-troubleshooting",
           "experiments/tracking-consent",
           {

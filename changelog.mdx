@@ -15,7 +15,17 @@ icon: "clock-rotate-left"
 
   The build still owns signing, app identity and its protected configuration. Native permissions, entitlements and vendor account setup must match the app being built. You own and maintain your extension code. Changes need approval and a new native build, not an over-the-air source update.
 
-  Web examples use the Despia JS SDK, with client-side React and Vue usage, explicit timeout and error handling, and a local helper for concurrent extension calls.
+  ### Add an extension without copying app identity
+
+  List the folder names in `public/despia/extensions.json`:
+
+  ```json
+  { "extensions": ["recorder"] }
+  ```
+
+  Despia uses the app identity already configured for the build. Existing files with an `app` block keep working when that block matches the build. The signed approval lock must still match the app being built.
+
+  Web examples use the published Despia JS SDK directly, with client-side React and Vue usage and explicit timeout and error handling.
 
   Start with the [V3 Extensions guide](/experiments/v3-extensions), [troubleshooting](/experiments/extension-troubleshooting) and [Background Recorder template](/experiments/samples/recorder). The [extension skill](https://github.com/despia-legacy/extension-skill) provides the authoring references.
 </Update>

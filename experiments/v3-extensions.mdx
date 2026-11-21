@@ -32,7 +32,7 @@ These ready-made extensions include native source you can adapt. Copying it to y
 
 Despia's extension repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying an extension requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the extension repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
 
-| Sample | What it adds |
+| Extension | What it adds |
 | ------ | ------------ |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it |
 | [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities |
@@ -305,7 +305,13 @@ Use the extension's state or journal routes to recover after page loads. Events 
 import despia from 'despia-native';
 
 const previous = despia.onRecorderState;
-const onState = recording => console.log(recording.recordingId, recording.state);
+const onState = recording => {
+  if (typeof previous === 'function') {
+    try { previous(recording); }
+    catch (error) { console.error('Previous recorder listener failed', error); }
+  }
+  console.log(recording.recordingId, recording.state);
+};
 globalThis.onRecorderState = onState;
 
 // Call this during component cleanup.

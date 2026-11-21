@@ -4,25 +4,16 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-<Update label="November 21, 2026" description="V3 Extensions: add your own Swift and Kotlin or Java code to a Despia V3 app and call it from your web app">
-  ## V3 Extensions: your own native code in Despia V3
+<Update label="November 21, 2026" description="V3 Extensions: experimental runtime, native source templates and authoring reference">
+  ## V3 Extensions preview
 
-  V3 Extensions are a big update for Despia V3. You write native files, describe them in a JSON manifest, serve them from your web app, and Despia compiles them into a new native build of your app. Your web code then calls them with one scheme: `extension://<name>/<route>?<params>`. This is experimental and works only in Despia V3.
+  V3 Extensions provide an experimental runtime and native source templates for Swift on iOS and Kotlin or Java on Android. An extension declares its routes, typed parameters, answers, events and native files in `manifest.json`. An extension-enabled app calls them with `extension://<name>/<route>?<params>`.
 
-  ### Write real native code, without Xcode or Android Studio
+  **Extension builds require confirmation and approval from Despia.** Publishing files under `public/despia/` and running a regular app build does not include them automatically. Confirm that your app can use the extension build path before relying on a new generation. A completed normal build does not validate or certify extension code.
 
-  Add Swift on iOS and Kotlin or Java on Android. You do not open Xcode or Android Studio: you place the files in your web app's `public/despia` folder and Despia builds them. Each extension is a folder with a `manifest.json` that declares its routes, typed parameters, answers, events and native files, plus `ios/` and `android/` folders beside it. Every call is checked against the manifest first, and every call answers exactly once in the page that made it.
+  The reference covers typed and custom native targets and modules, lifecycle hooks, dependencies and platform limits. Custom Android module directories cover their approved files recursively. Remote Swift packages require the complete `Package.resolved` graph as well as the root package declaration; approval covers the dependency closure.
 
-  ### Custom native UI and richer native targets
-
-  - On iOS, declare typed targets such as widgets, notification service and content extensions, share extensions and intents, or a custom target with its own product type, build settings, script phases, entitlements, link targets and packages. A custom target takes a full `info_plist`.
-  - On Android, declare a typed module (sources, resources, permissions and components such as services, receivers, providers and activities) or a custom module with your own `build.gradle`, `AndroidManifest.xml`, sources and resources.
-  - Add your own files, such as source, assets and binaries. Every file must be named in its manifest, and binaries need approval.
-  - Hook into the app lifecycle, send events from native code to the page, set an Android `min_sdk`, or link an iOS package as optional.
-
-  ### Swift packages and Maven libraries, no downloads
-
-  Name a Swift package by its GitHub URL, or an Android Maven library by its coordinate, and Despia fetches and pins it, with everything it depends on, when it approves your extension. You never download a library yourself. See [Adding a Swift package or a Maven library](/experiments/v3-extensions#adding-a-swift-package-or-a-maven-library). Any change to a manifest or native file needs a new approval and a new native build, and cannot be applied over-the-air. Extensions are enabled per app by Despia.
+  The build still owns signing, app identity and its protected configuration. Native permissions, entitlements and vendor account setup must match the app being built. You own and maintain your extension code. Changes need approval and a new native build, not an over-the-air source update.
 
   ### Add an extension without copying app identity
 
@@ -34,13 +25,7 @@ icon: "clock-rotate-left"
 
   Despia uses the app identity already configured for the build. Existing files with an `app` block keep working when that block matches the build. The signed approval lock must still match the app being built.
 
-  ### What stays owned by the build
-
-  The build sets the bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia, and push and associated-domain entitlements. Apple managed capabilities and restricted Android permissions still need approval from Apple or Google. You own and maintain the native code, and Despia does not support code you have customised.
-
-  ### Start from a template, or use the AI skill
-
-  The [V3 Extensions guide](/experiments/v3-extensions) covers the folder layout, manifest, parameter types, result shape, error codes, both native handlers and the platform limits. The [Background Recorder sample](/experiments/samples/recorder) is a complete template that records audio in the background and uploads it. The [AI skill](https://github.com/despia-legacy/extension-skill) teaches your coding agent the whole system: install it with `npx skills add despia-legacy/extension-skill`.
+  Start with the [V3 Extensions guide](/experiments/v3-extensions), [troubleshooting](/experiments/extension-troubleshooting) and [Background Recorder template](/experiments/samples/recorder). Sample test results describe the listed device runs and do not certify every customer's extension or the availability of its build path. The [extension skill](https://github.com/despia-legacy/extension-skill) provides the authoring references.
 </Update>
 
 <Update label="November 21, 2026" description="RevenueCat: live prices, customer identity, subscription lifecycle, offer codes, and native purchase results">

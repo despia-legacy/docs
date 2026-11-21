@@ -5,7 +5,11 @@ icon: "puzzle-piece"
 tag: "Experimental"
 ---
 
-V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. Despia builds them into your app. Your web code then calls them with one scheme:
+<Warning>
+  **Requires an extension-enabled build.** Publishing files under `/despia/` does not enable extensions. A regular Despia app build, including a normal staging build, does not automatically fetch or compile them. Despia must confirm availability for your app and approve the files before starting the extension build path. A successful ordinary build is not proof that extensions were included.
+</Warning>
+
+V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code then calls them with one scheme:
 
 ```javascript
 window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
@@ -15,11 +19,13 @@ Use V3 Extensions when you need a native capability that Despia does not offer a
 
 ## Samples
 
-Each sample is a complete template: copy its files, change the values the page names, and call it from your web app.
+Each sample is a native source template. Copying it to your website is preparation for an approved extension build. Read the tested results and platform limits before using it.
+
+Despia's extension sample repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying a sample requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the sample repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
 
 | Sample | What it adds | Tested on |
 | ------ | ------------ | --------- |
-| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Android emulator, Samsung Galaxy S21 |
+| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Samsung Galaxy S21 |
 | [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities | iOS simulator 7/7; Android emulator 44/44 steps; TestingBot Galaxy A12 5/5 |
 | [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps | iOS simulator 8/8; TestingBot Pixel 5/5; Android emulator 7 of 8 |
 
@@ -43,15 +49,17 @@ npx skills add despia-legacy/extension-skill
 
 Or copy `skills/despia-v3-extensions` from that repository into your project's `.claude/skills/` folder.
 
-## Which tool to use
+For compiler settings, Android Activity access, runtime permissions, timeouts and static hosting, read the [extension authoring guide](/experiments/extension-authoring).
 
-Native code is best written in a coding agent that works on your repository: **Claude Code**, **Codex** or **Cursor**. Copy a sample page into the agent, then ask it to change the code for your app.
+## Frameworks, app builders and editors
 
-No-code tools such as Lovable or Base44 are not a good fit for writing native code. If your app lives in one of them, connect it to GitHub and make the native changes from Claude Code, Codex or Cursor on that repository. Pasting a sample unchanged into a no-code tool can work, because the files only need to be placed at the right paths.
+The JavaScript bridge is independent of your web UI framework. React, Vue, Svelte, Next.js, TanStack and HTML5 apps use the same `window.despia = "extension://..."` calls inside the installed Despia V3 app.
+
+For Lovable, Base44, Replit or another app builder, use a project that supports custom JavaScript and serves the extension files at their exact HTTPS paths. A route that returns your web app's HTML instead of the requested JSON or Swift file needs a hosting fix before approval. These are integration requirements, not a tested matrix of every builder.
+
+Edit the native files in your repository with Claude Code, Codex, Cursor or your usual editor. Connect the builder's GitHub repository when you need direct access to its static files. The native code still needs approval and a native rebuild. A browser preview alone does not provide native extension features.
 
 ---
-
-For compiler settings, Android permission requests, custom module directories, timeouts and hosting, see [Writing a V3 extension](/experiments/extension-authoring).
 
 ## How it works
 
@@ -63,10 +71,10 @@ For compiler settings, Android permission requests, custom module directories, t
     Your files are served from your app's own HTTPS origin. Despia reads them and compiles them into a new native build of your app. Extensions are enabled per app by Despia. Any change to the manifest or to a native file needs to be approved again and needs a new native build. It cannot be applied over-the-air.
   </Step>
   <Step title="Your web app calls a route">
-    The page sends `extension://<id>/<route>?<params>`. The runtime first checks the call: the extension and route exist, only declared parameters are present, and each value has the declared type. Only then does it call your native handler.
+    The page sends `extension://<id>/<route>?<params>`. In a build that includes the extension runtime, it first checks the call: the extension and route exist, only declared parameters are present, and each value has the declared type. Only then does it call your native handler.
   </Step>
   <Step title="The answer comes back once">
-    Every call answers exactly once, in the page that made it. The runtime sets the route's answer variable on `window` and then calls the route's callback with it.
+    Every admitted call gets one terminal answer in its calling document. The runtime sets the route's answer variable on `window` and then calls the route's callback with it.
   </Step>
 </Steps>
 
@@ -78,7 +86,7 @@ Put the files in your web app's `public` folder, so they are served from your ap
 
 ```text
 public/despia/
-├── extensions.json              # the list of extension folders
+├── extensions.json              # your app identity and the list of extension folders
 └── recorder/                    # one folder per extension; the folder name is the extension id
     ├── manifest.json            # routes, parameters, outputs, events and native files
     ├── ios/
@@ -87,17 +95,21 @@ public/despia/
         └── ...                  # Java or Kotlin sources and resources
 ```
 
-`extensions.json` lists the extension folders:
+`extensions.json` names your app and lists the extension folders:
 
 ```json public/despia/extensions.json
 {
-  "extensions": ["recorder"]
+  "extensions": [
+    "recorder"
+  ]
 }
 ```
 
+`extensions.json` holds the app identity and lists the extension folders. The three identity values:
+
 Despia takes app identity from the existing build configuration. You do not copy it into this file. A legacy `app` block remains optional and must match the build if present. The signed approval lock must still match the app being built.
 
-`extensions.json` lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Keys outside the index schema are refused, and so is a folder listed twice.
+`extensions.json` lists 1 to 8 folders, and each folder name matches `[a-z][a-z0-9]{1,23}`. Any other key is refused, including `manifest_version`. Each folder has its own `manifest.json` with a `version` field. A folder listed twice is also refused.
 
 The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
 
@@ -247,7 +259,7 @@ An error carries a code and a message, and nothing else. If the page must tell f
 | `handler_error`    | Your handler failed                                                        |
 | Your own codes     | Any code your handler returns, for example `busy` or `permission_denied`   |
 
-A call to an extension or route that this build does not contain answers your `callback` if you gave one. Otherwise it fires the `despia-feature-not-included` event. A build without any extensions does not answer at all. To detect an extension, call a status route with a `callback` and treat no answer as not included.
+In an extension-enabled build, a call to an extension or route that is not registered answers your explicit `callback` if you gave one; otherwise it fires `despia-feature-not-included`. A build without the extension runtime cannot answer these calls. Silence alone does not identify the cause: also check the installed build, calling frame and origin, the JavaScript setter, and the exact callback name. A `despia-iphone` user agent is not proof of extension inclusion. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
 ---
 
@@ -378,7 +390,7 @@ Both ways are declared in an extension's `manifest.json`.
 
 ### Adding a Swift package or a Maven library
 
-You never download a library yourself. Name it in your files, and when Despia approves the extension it fetches the library and everything it depends on and pins those exact copies. The build then uses the pinned copies, so nothing is downloaded while your app builds.
+Declare dependencies and include their required graph files. Despia must approve the pinned dependency closure as part of an extension build. A package URL or Maven coordinate alone does not enable the extension or complete its approval. You do not need to manually copy library binaries into the app.
 
 **iOS: a Swift package from GitHub.** List it under `ios.packages` in `manifest.json` with its GitHub URL, the full commit `revision` of the release you want, and the products you use. Then link the product in your app target under `ios.app.packages`. From the Stream calling template:
 
@@ -395,6 +407,7 @@ You never download a library yourself. Name it in your files, and when Despia ap
         "products": ["StreamVideo"]
       }
     ],
+    "package_resolved": "ios/Package.resolved",
     "app": {
       "packages": ["StreamVideo"]
     }
@@ -402,7 +415,7 @@ You never download a library yourself. Name it in your files, and when Despia ap
 }
 ```
 
-Swift packages come from `github.com` over https.
+Swift packages come from `github.com` over https. `ios.package_resolved` is required for remote packages and names the complete pinned SwiftPM graph, including transitive packages. Include that file in the extension folder. The snippet above is an excerpt; use the sample's graph file or generate the graph for your own dependency set. A missing graph is refused with `NX-M100`.
 
 **iOS: a CocoaPod.** The manifest also accepts CocoaPods. Declare exact pod names and versions in `ios.pods`, point `ios.podfile_lock` at the lockfile under your extension's `ios/` folder, and put the installed-tree SHA-256 for every root pod in that lockfile in `ios.pod_trees`:
 
@@ -448,7 +461,7 @@ Both ways may also declare:
 - **Android `meta_data`.** Application `<meta-data>` entries, each a `name` and exactly one of `value` or `resource`. A name the app already declares, or another extension declares, is refused. Keep account values in your config, not in a public repository.
 - **iOS `packages[].weak: true`.** Every product of that package is linked as optional, so an app whose deployment target is below the package's minimum still launches. Guard its use with `#available`.
 
-Files are accepted by type: source and text formats, assets and binaries. Every file must be named in its `manifest.json`, and an unreferenced file is refused. Hidden files (names that start with a dot) are always refused. Binaries need approval.
+Files are accepted by type: source and text formats, assets and binaries. Every file must be covered by its `manifest.json`, and an unreferenced file is refused. A custom Android module `dir` covers its approved module tree recursively. Hidden files (names that start with a dot) are always refused. Binaries need approval.
 
 ---
 

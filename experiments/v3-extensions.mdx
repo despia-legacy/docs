@@ -9,21 +9,30 @@ tag: "Experimental"
   **Requires an extension-enabled build.** Despia must enable extension builds for your app and approve the source before rebuilding the native app. A standard app build does not install extensions.
 </Warning>
 
-V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code then calls them with one scheme:
+V3 Extensions let you add your own native code to a Despia V3 app. You write the Swift (iOS) and Kotlin or Java (Android) files, describe them in a JSON manifest, and serve them from your web app. The approved extension build compiles them into your app. Your web code calls the approved extension with the Despia JS SDK. For example, read the Recorder state from a client event:
 
 ```javascript
-window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
+import despia from 'despia-native';
+
+// Run from a browser click handler or client lifecycle hook.
+async function readRecorderStatus() {
+  const responses = await despia('extension://recorder/status', ['recorderStatus']);
+  const answer = responses.recorderStatus;
+  if (answer === undefined) throw new Error('No native reply within 30 seconds');
+  if (!answer.ok) throw new Error(JSON.stringify(answer.error ?? answer));
+  return answer.data;
+}
 ```
 
-Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The [Samples](/experiments/samples/recorder) are complete templates you can copy and change.
+Use V3 Extensions when you need a native capability that Despia does not offer as a feature yet, or when you need full control over the native code. The [ready-made extensions](/experiments/samples/recorder) include source you can copy and customize.
 
-## Samples
+## Ready-made extensions
 
-Each sample is a native source template. Copying it to your website is preparation for an approved extension build. Read the installation steps and platform limits before adapting a sample.
+These ready-made extensions include native source you can adapt. Copying it to your website is preparation for an approved extension build. Read the installation steps and platform limits before adapting an extension.
 
-Despia's extension sample repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying a sample requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the sample repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
+Despia's extension repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying an extension requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the extension repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
 
-| Sample | What it adds |
+| Extension | What it adds |
 | ------ | ------------ |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it |
 | [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities |
@@ -33,7 +42,7 @@ Despia's extension sample repositories use the Despia V3 Extension Source-Availa
   **Experimental. V3 only.**
 
   - V3 Extensions work only in Despia V3. They are never migrated to V4. V4 has its own first-party plugins and plugin system instead. You can stay on V3 as long as you want.
-  - You own and maintain the native code. That includes the code you copy from a sample.
+  - You own and maintain the native code. That includes the code you copy from an extension.
   - Despia provides the templates and the extension system. Despia does not support code you have customised.
 </Warning>
 
@@ -51,7 +60,7 @@ Or copy `skills/despia-v3-extensions` from that repository into your project's `
 
 ## Frameworks, app builders and editors
 
-The JavaScript bridge is independent of your web UI framework. React, Vue, Svelte, Next.js, TanStack and HTML5 apps use the same `window.despia = "extension://..."` calls inside the installed Despia V3 app.
+The Despia JS SDK works with React, Vue, Svelte, Next.js, TanStack and HTML apps. Import it in your project, then call it from a client lifecycle hook or click handler inside the installed Despia V3 app. React and Vue both have browser access in client code. Server rendering must not execute native calls.
 
 For Lovable, Base44, Replit or another app builder, use a project that supports custom JavaScript and serves the extension files at their exact HTTPS paths. A route that returns your web app's HTML instead of the requested JSON or Swift file needs a hosting fix before approval.
 
@@ -118,7 +127,7 @@ Despia approves the extensions for exactly this app. If a value does not match t
 
 The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
 
-To add a sample to your app, copy its folder under `public/despia/` and add its name to `extensions.json`. Despia approves `extensions.json` and every other file, each `manifest.json` included. A change to any of them needs a new approval.
+To add an extension to your app, copy its folder under `public/despia/` and add its name to `extensions.json`. Despia approves `extensions.json` and every other file, each `manifest.json` included. A change to any of them needs a new approval.
 
 <Note>
   Calls are accepted only from the top-level page of your app's own HTTPS origin, or from origins you list in `bridge.allowed_origins`. Iframes, other origins, popups and page sheets get no answer.
@@ -179,54 +188,141 @@ Keep large data on the native side and pass identifiers through the bridge. A ca
 
 ---
 
-## Calling a route
+## Calling a route with the Despia JS SDK
 
-<Tabs>
-  <Tab title="Promise">
-    With the `despia-native` package, pass the route's answer variable to `despia()` and await it:
+Install the SDK in your web project:
 
-    ```javascript
-    import despia from 'despia-native';
+```bash
+npm install despia-native
+```
 
-    const r = await despia(
-      'extension://recorder/start?upload=' + encodeURIComponent(uploadUrl),
-      ['recorderStart']
-    );
+Import `despia` from `despia-native`. The examples use the published 1.0.28 API. A command without watched variables resolves when queued, not when the native operation finishes. Pass one answer variable when you need a result:
 
-    if (r.recorderStart.ok) {
-      console.log(r.recorderStart.data.recordingId);
-    } else {
-      console.error(r.recorderStart.code, r.recorderStart.error);
+```javascript
+import despia from 'despia-native';
+
+// Run from a browser click handler or client lifecycle hook.
+async function readRecorderStatus() {
+  const responses = await despia('extension://recorder/status', ['recorderStatus']);
+  const answer = responses.recorderStatus;
+  if (answer === undefined) throw new Error('No native reply within 30 seconds');
+  if (!answer.ok) throw new Error(JSON.stringify(answer.error ?? answer));
+  return answer.data;
+}
+```
+
+`recorderStatus` is the output variable declared by the Recorder manifest. Serialize calls that watch the same declared variable: await one before starting the next, including calls from other components. Sharing a watched variable across concurrent requests can mix responses.
+
+The SDK resolves native error answers as well as successes. Check `answer.ok`; a native failure does not reject the SDK promise. A single-variable watch resolves to `undefined` after 30 seconds if no value arrives. That timeout does not cancel native work. Inspect the returned native envelope rather than assuming every command uses the same error shape.
+
+### A helper for concurrent extension calls
+
+Copy this app-owned helper to `despia-extension.js`. It uses the published SDK, a unique native callback function and a separate unique watched variable for each request. Native extension callbacks are functions; setting `callback` in the URL does not turn that callback name into an answer variable. The helper forwards the callback into the variable the SDK watches and removes both globals when finished.
+
+```javascript
+import despia from 'despia-native';
+
+// App helper, not an export from despia-native. Call only in the browser.
+export async function callExtension(command) {
+  const suffix = crypto.randomUUID().replace(/-/g, '');
+  const callbackKey = 'nxCallback' + suffix;
+  const watchKey = 'nxReply' + suffix;
+  const url = new URL(command);
+  url.searchParams.set('callback', callbackKey);
+  globalThis[callbackKey] = envelope => { globalThis[watchKey] = envelope; };
+  try {
+    const responses = await despia(url.toString(), [watchKey]);
+    const envelope = responses[watchKey];
+    if (envelope === undefined) throw new Error('No native reply within 30 seconds');
+    if (!envelope.ok) {
+      const error = new Error('Native extension request failed');
+      error.response = envelope;
+      throw error;
     }
-    ```
-  </Tab>
-  <Tab title="Callback">
-    Define the route's callback, then set `window.despia`:
+    return envelope.data;
+  } finally {
+    delete globalThis[callbackKey];
+    delete globalThis[watchKey];
+  }
+}
+```
 
-    ```javascript
-    window.onRecorderStart = (result) => {
-      if (result.ok) {
-        console.log(result.data.recordingId);
-      } else {
-        console.error(result.code, result.error);
-      }
-    };
+`callExtension` is a local helper, not a `despia-native` export. It returns the successful envelope's `data`. It throws when the SDK times out or native `ok` is false; native failures remain available on `error.response`. Each call watches one variable, so concurrent calls do not share reply state. The native route still has its own deadline and may continue after the SDK's 30-second wait.
 
-    window.despia = "extension://recorder/start?upload=" + encodeURIComponent(uploadUrl);
-    ```
-  </Tab>
-  <Tab title="Per-call callback">
-    Add `callback=<name>` to replace the route's callback for that one call:
+Variable and callback names must be valid JavaScript names of up to 64 characters, must not start with `__`, and must not be browser or runtime globals. The helper's generated names fit these rules.
 
-    ```javascript
-    window.onStatusOnce = (result) => console.log(result.data.state);
+### React
 
-    window.despia = "extension://recorder/status?id=" + id + "&callback=onStatusOnce";
-    ```
-  </Tab>
-</Tabs>
+Importing the SDK is safe during server rendering. Call it from a client event or lifecycle hook. In Next.js, put the component behind a client boundary.
 
-Variable and callback names must be valid JavaScript names of up to 64 characters, must not start with `__`, and must not be a browser or runtime global.
+```jsx
+'use client';
+import {useState} from 'react';
+import {callExtension} from './despia-extension.js';
+
+export function RecorderStatus() {
+  const [message, setMessage] = useState('');
+  async function readStatus() {
+    try {
+      const status = await callExtension('extension://recorder/status');
+      setMessage(status.state);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+  return <button onClick={readStatus}>{message || 'Read recording status'}</button>;
+}
+```
+
+### Vue
+
+The same helper works from a Vue click handler. For an automatic call, use `onMounted`, never server setup execution.
+
+```vue
+<script setup>
+import {ref} from 'vue';
+import {callExtension} from './despia-extension.js';
+const message = ref('');
+async function readStatus() {
+  try {
+    const status = await callExtension('extension://recorder/status');
+    message.value = status.state;
+  } catch (error) {
+    message.value = error.message;
+  }
+}
+</script>
+<template>
+  <button @click="readStatus">{{ message || 'Read recording status' }}</button>
+</template>
+```
+
+### Events
+
+Use the extension's state or journal routes to recover after page loads. Events are notifications, not a replay guarantee. Register the declared native callback before starting the operation, and remove your handler when its component unmounts:
+
+```javascript
+import despia from 'despia-native';
+
+const previous = despia.onRecorderState;
+const onState = recording => {
+  if (typeof previous === 'function') {
+    try { previous(recording); }
+    catch (error) { console.error('Previous recorder listener failed', error); }
+  }
+  console.log(recording.recordingId, recording.state);
+};
+globalThis.onRecorderState = onState;
+
+// Call this during component cleanup.
+function stopListening() {
+  if (globalThis.onRecorderState !== onState) return;
+  if (previous === undefined) delete globalThis.onRecorderState;
+  else globalThis.onRecorderState = previous;
+}
+```
+
+The SDK proxy reads existing browser properties such as `despia.onRecorderState`. It does not register event handlers when you assign to that proxy. Event registration above uses the native callback global explicitly; commands still go through the SDK. Run this registration only in the browser. The extension manifest defines each event's callback and scope.
 
 ---
 
@@ -270,7 +366,7 @@ In an extension-enabled build, a call to an extension or route that is not regis
 
 ## The iOS handler
 
-The manifest names the entry type in `ios.app.entry_type`. It is a class marked `@MainActor` that conforms to `NativeExtension`. From the [recorder sample](/experiments/samples/recorder):
+The manifest names the entry type in `ios.app.entry_type`. It is a class marked `@MainActor` that conforms to `NativeExtension`. From the [recorder extension](/experiments/samples/recorder):
 
 ```swift ios/app/RecorderExtension.swift (excerpt)
 @MainActor
@@ -326,7 +422,7 @@ Each hook is called only when its name is listed in `ios.app.lifecycle`. The run
 
 ## The Android handler
 
-The manifest names the entry class in `android.entry_class`. It implements `com.despia.nativeext.NativeExtension`. From the recorder sample:
+The manifest names the entry class in `android.entry_class`. It implements `com.despia.nativeext.NativeExtension`. From the recorder extension:
 
 ```java android/recorder/java/despia/ext/recorder/RecorderExtension.java (excerpt)
 public final class RecorderExtension implements NativeExtension {
@@ -373,7 +469,7 @@ public final class RecorderExtension implements NativeExtension {
 
 ---
 
-## Patterns the samples use
+## Patterns the extensions use
 
 The bridge answer is a JavaScript string with typed parameters. These conventions keep that workable.
 
@@ -420,7 +516,7 @@ Declare dependencies and include their required graph files. Despia must approve
 }
 ```
 
-Swift packages come from `github.com` over https. `ios.package_resolved` is required for remote packages and names the complete pinned SwiftPM graph, including transitive packages. Include that file in the extension folder. The snippet above is an excerpt; use the sample's graph file or generate the graph for your own dependency set. A missing graph is refused with `NX-M100`.
+Swift packages come from `github.com` over https. `ios.package_resolved` is required for remote packages and names the complete pinned SwiftPM graph, including transitive packages. Include that file in the extension folder. The snippet above is an excerpt; use the extension's graph file or generate the graph for your own dependency set. A missing graph is refused with `NX-M100`.
 
 **iOS: a CocoaPod.** The manifest also accepts CocoaPods. Declare exact pod names and versions in `ios.pods`, point `ios.podfile_lock` at the lockfile under your extension's `ios/` folder, and put the installed-tree SHA-256 for every root pod in that lockfile in `ios.pod_trees`:
 

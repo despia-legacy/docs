@@ -21,6 +21,8 @@ Use V3 Extensions when you need a native capability that Despia does not offer a
 
 Each sample is a native source template. Copying it to your website is preparation for an approved extension build. Read the tested results and platform limits before using it.
 
+Despia's extension sample repositories use the Despia V3 Extension Source-Available Commercial License. You may inspect the source. Using or modifying a sample requires a valid Despia commercial license for the particular app and operating system, plus a valid Despia project for that app. The standard price is USD 249 per application per operating system. iOS and Android require separate licenses. Read the sample repository's `LICENSE` for the full terms. Third-party SDK licenses remain separate. Your own extension code remains yours.
+
 | Sample | What it adds | Tested on |
 | ------ | ------------ | --------- |
 | [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | iPhone 15, Samsung Galaxy S21 |
@@ -47,11 +49,13 @@ npx skills add despia-legacy/extension-skill
 
 Or copy `skills/despia-v3-extensions` from that repository into your project's `.claude/skills/` folder.
 
-## Which tool to use
+## Frameworks, app builders and editors
 
-Native code is best written in a coding agent that works on your repository: **Claude Code**, **Codex** or **Cursor**. Copy a sample page into the agent, then ask it to change the code for your app.
+The JavaScript bridge is independent of your web UI framework. React, Vue, Svelte, Next.js, TanStack and HTML5 apps use the same `window.despia = "extension://..."` calls inside the installed Despia V3 app.
 
-No-code tools such as Lovable or Base44 are not a good fit for writing native code. If your app lives in one of them, connect it to GitHub and make the native changes from Claude Code, Codex or Cursor on that repository. Pasting a sample unchanged into a no-code tool can work, because the files only need to be placed at the right paths.
+For Lovable, Base44, Replit or another app builder, use a project that supports custom JavaScript and serves the extension files at their exact HTTPS paths. A route that returns your web app's HTML instead of the requested JSON or Swift file needs a hosting fix before approval. These are integration requirements, not a tested matrix of every builder.
+
+Edit the native files in your repository with Claude Code, Codex, Cursor or your usual editor. Connect the builder's GitHub repository when you need direct access to its static files. The native code still needs approval and a native rebuild. A browser preview alone does not provide native extension features.
 
 ---
 

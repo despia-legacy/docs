@@ -1,0 +1,81 @@
+---
+title: "Writing a V3 extension"
+description: "Build configuration, Android permissions, route timeouts and hosting requirements."
+---
+
+An extension is native code compiled into a new Despia V3 app build. Your website hosts the source files for the build to fetch. Changing those files does not update an installed app: approval and a new native build are required.
+
+`public/despia/extensions.json` selects the extension folders. Each folder's `manifest.json` declares the routes, answers, events and native work. Your page calls a declared route with `window.despia = "extension://laser/state"`.
+
+## App identity
+
+Use an index containing only the folders you want:
+
+```json public/despia/extensions.json
+{ "extensions": ["laser"] }
+```
+
+Despia reads the client id, bundle id and Android package from the app's build configuration. You do not need to find a client id in the editor. An optional legacy `app` block must still match the build. The approval lock remains bound to the actual app being built.
+
+## Compiler settings
+
+The current V3 iOS project uses Swift language mode **5.0**. Generated extension targets inherit the host setting unless a permitted custom target setting changes it. The compiler version and language mode are different: a Swift 6 compiler can compile Swift 5 language mode.
+
+The current V3 Android app uses **compileSdk 36**. A custom module supplies its own Gradle configuration and must be compatible with the host app. These are build settings, not promises that every API is available on every supported device. Check the OS version before using a newer API.
+
+## Android permissions and the Activity
+
+There are three separate steps:
+
+1. Declare the required permission in the built Android manifest.
+2. For a dashboard-owned permission, list it in `android.requires.permissions` so the build verifies that the base app enables it.
+3. Request runtime permission from the user where Android requires it.
+
+`android.requires.permissions` is an assertion about the base app. It does not grant runtime consent. In a custom module, put Android permission declarations and their attributes in the module's own `AndroidManifest.xml`. For example, `usesPermissionFlags="neverForLocation"` belongs on the `BLUETOOTH_SCAN` declaration. Use that assertion only if the extension does not derive physical location from scan results. Android can filter some BLE beacons when it is set.
+
+`ExtContext.app()` returns the Application context. It is not an Activity. To receive the host Activity, declare the lifecycle hook:
+
+```json
+{
+  "android": {
+    "lifecycle": ["application_create", "activity_lifecycle"],
+    "requires": {
+      "permissions": ["android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_CONNECT"]
+    }
+  }
+}
+```
+
+This is an excerpt: keep your entry class and module declarations alongside it. Implement `NativeExtension.onActivityEvent(Activity, ActivityEvent)`. For an AndroidX `ComponentActivity`, register an `ActivityResultContracts.RequestMultiplePermissions` launcher through its Activity Result Registry during `CREATED`, using `ctx.resultKey("permissions")`. Unregister it during `DESTROYED`. Preserve outstanding request state across Activity recreation and finish it if the Activity is finishing. Do not keep a destroyed Activity reference.
+
+Request the permissions required by the OS version and operation. Android 12 and later use `BLUETOOTH_SCAN` for scanning and `BLUETOOTH_CONNECT` for connecting. Older Android versions have different scan permission requirements. The base build must also enable any dashboard-owned permission listed under `requires`.
+
+## Custom module directories
+
+An Android custom module's `dir` covers the approved directory tree recursively, including its Gradle file, manifest, sources and resources. You do not list each Java file separately. Files must remain inside that module directory and satisfy the extension file rules. Approval records the individual files and their hashes, so adding or changing a file requires approval again.
+
+## Routes that wait for a user
+
+Put `timeout_ms` on the route, beside `name`, `params` and `output`:
+
+```json
+{
+  "name": "request_permission",
+  "params": {},
+  "timeout_ms": 25000,
+  "output": {
+    "variable": "laserPermissionResult",
+    "callback": "onLaserPermissionResult"
+  }
+}
+```
+
+The default is **20000 milliseconds**. The accepted range is **1000 to 25000 milliseconds**. Both `"params": {}` and omitting `params` are accepted for a route without parameters.
+
+A user can leave a permission dialog open longer than the bridge deadline. For that workflow, answer promptly with your own pending state, then emit a declared event when the user answers. Also expose a status route so the page can recover state after navigation. Any pending result shape or event is part of your extension's API, not a built-in permission result. For a handler that waits, check `call.isActive()` on Android or `call.isActive` on iOS before starting work after an asynchronous answer. A late Allow must not start an operation for a call that already timed out.
+
+## Hosting and SPA fallbacks
+
+For `https://example.com/despia/`, the origin is `https://example.com` and the extension path prefix is `/despia`. The build fetches `extensions.json`, the selected folders' manifests and their approved files from that location. The local `public` directory name is not part of the URL.
+
+Serve these files as actual static files before your site's fallback to `index.html`. HTTP 200 alone does not prove a file is available. Open `/despia/extensions.json` directly and check that its body is JSON, then check the manifest and source paths. A fallback returning HTML for a missing required file fails parsing or the approved size and hash checks. Unknown routes may use an SPA fallback as long as the required extension paths return their correct bytes.

@@ -235,11 +235,11 @@ export async function callExtension(command) {
   const suffix = crypto.randomUUID().replace(/-/g, '');
   const callbackKey = 'nxCallback' + suffix;
   const watchKey = 'nxReply' + suffix;
-  const url = new URL(command);
+  const url = new URL(command.replace(/\+/g, '%2B'));
   url.searchParams.set('callback', callbackKey);
   globalThis[callbackKey] = envelope => { globalThis[watchKey] = envelope; };
   try {
-    const responses = await despia(url.toString(), [watchKey]);
+    const responses = await despia(url.toString().replace(/\+/g, '%20'), [watchKey]);
     const envelope = responses[watchKey];
     if (envelope === undefined) throw new Error('No native reply within 30 seconds');
     if (!envelope.ok) {

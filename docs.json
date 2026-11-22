@@ -245,6 +245,7 @@
         "icon": "bolt-lightning",
         "expanded": false,
         "pages": [
+          "native-features/os-version",
           "native-features/user-agent",
           {
             "group": "OneSignal",

@@ -269,6 +269,7 @@
             "icon": "key",
             "pages": [
               "native-features/oauth/easy-login-flow",
+              "native-features/oauth/base44",
               {
                 "group": "Legacy",
                 "pages": [

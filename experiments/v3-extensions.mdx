@@ -554,9 +554,24 @@ Files are accepted by type: source and text formats, assets and binaries. Every 
 
 ## What the build owns
 
-You cannot set these. The build sets them for you: bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia (declare them under `requires`), and push and associated-domain entitlements. App Groups are logical names. A group named `nativeext` becomes `group.<bundle id>.nx.nativeext`.
+You cannot set these. The build sets them for you: bundle id and package name, versions, team and signing, URL types, App Transport Security, purpose strings and permissions your app already sets in Despia (declare them under `requires`), and push and associated-domain entitlements.
 
 Build errors in your files are reported by their served path, `<extension>/<ios|android>/<your path>:<line>:<column>`, for example `recorder/ios/app/RecorderExtension.swift:42:17`. Secrets, tokens and build machine paths are redacted.
+
+## Set up iOS App Groups
+
+Use an App Group when your iOS app and an embedded target, such as a widget, need to read and write the same data.
+
+1. In the extension's `manifest.json`, put the same logical name in `com.apple.security.application-groups` under `ios.app.entitlements` and under `entitlements` on each target in `ios.targets` that needs the shared data. Keep the short name, such as `widgets`, in the manifest.
+2. In Apple Developer, register `group.<app bundle ID>.nx.<logical name>`. For the [Home Widgets extension](/experiments/samples/home-widgets) with an app bundle ID of `com.example.myapp`, register `group.com.example.myapp.nx.widgets`.
+3. Assign the group to the main App ID and to every participating extension App ID on the same Apple Developer team. A generated target's bundle ID is the main bundle ID followed by a dot and the target's `bundle_suffix`. If the manifest omits `bundle_suffix`, the build uses the target name. In this example, assign the group to `com.example.myapp` and `com.example.myapp.NXWidgets`. Register a separate App ID for a new target before assigning its group.
+4. Regenerate the provisioning profiles for the app and all participating targets. Use those profiles for the next native build, then install it on an iPhone to check that both processes can access the shared data.
+
+The manifest requests the entitlement. Apple provisioning grants it. If you see `NX-S010`, check that the build has a profile for the reported bundle ID. If you see `NX-S011` for `com.apple.security.application-groups`, check that the reported bundle's profile grants the exact group ID.
+
+These steps are for extensions declared in your V3 manifest. Use the separate setup guides for the built-in [Home Widgets](/native-features/home-widgets) and [Share Extension](/native-features/share-extension).
+
+[Register an App Group in Apple Developer](https://developer.apple.com/help/account/identifiers/register-an-app-group/) and [assign it to an App ID](https://developer.apple.com/help/account/identifiers/enable-app-capabilities/).
 
 ---
 

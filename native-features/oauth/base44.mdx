@@ -5,12 +5,12 @@ icon: "key"
 ---
 
 <Warning>
-  Planned preview, not released. Google and Facebook must complete sign-in and establish a session inside the signed app's WebView before this guide can be published as an available integration. Reaching a provider's sign-in screen does not establish that session.
+  In development. The signed app pilot will verify provider sign-in and the resulting Base44 session inside the WebView.
 </Warning>
 
 The planned core runtime flow opens a system authentication browser and returns the user to their Base44 app. It keeps the provider's browser session separate from the WebView until the app completes its supported return flow.
 
-This is a Despia V3 runtime feature. It does not require installing a native extension or copying a helper into your web app. The exact Base44 launch command will be documented after the runtime contract and session handoff are verified.
+The integration is planned for the Despia V3 runtime. The pilot will determine whether a Base44 app needs any setup beyond domain linking.
 
 ## JavaScript SDK
 
@@ -24,7 +24,7 @@ npm install despia-native
 import despia from 'despia-native'
 ```
 
-Use the SDK's actual `despia(...)` function for documented native commands. This preview does not introduce a `despia.base44()` method or a separate authentication package.
+Use `despia(...)` for the native commands in the Despia API reference. Supported setup and any integration calls will be documented after the pilot.
 
 ## Platform availability
 
@@ -50,7 +50,7 @@ If the web host cannot serve these association files, resolve that hosting requi
 
 The existing generic `oauth://` HTTPS flow expects an authorization URL outside the app's own host. An own-host entry URL is declined because the callback watches that host. Base44's own-host login start therefore needs the dedicated, reviewed core handoff; do not substitute it into the generic example and assume it has the same result.
 
-The pilot must verify the final Base44 session inside the WebView, including the return to an already-open app and persistence after relaunch. Cancellation, a wrong return origin and a failed exchange must leave the app signed out rather than treating browser closure as success. The final command, supported provider configuration and error behavior will be added only after those results are established.
+The pilot covers the Base44 session inside the WebView, including the return to an already-open app and persistence after relaunch. Cancellation, an unexpected return origin and a failed exchange must leave the app signed out.
 
 ## Sign in with Apple
 

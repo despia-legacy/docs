@@ -34,6 +34,21 @@ On Android, read `despia.httpsAuthCallback` because browser support, verified Ap
 
 Show only providers enabled for the Base44 app. Google and Facebook support, cancellation, return navigation and session persistence remain subject to the signed-app pilot. Do not show an unavailable provider solely because the device passes an OS check.
 
+For the pilot, run the following check in client code before showing the Google button in the Despia app. Combine the result with the provider settings in your Base44 app.
+
+```javascript
+async function canUseHttpsAuthReturn() {
+  if (despia.httpsAuthCallback !== true) return false
+
+  const { osVersion } = await despia('getosversion://', ['osVersion'])
+  if (osVersion?.platform === 'android') return true
+  if (osVersion?.platform !== 'ios') return false
+
+  const [major, minor = 0] = osVersion.version.split('.').map(Number)
+  return major > 17 || (major === 17 && minor >= 4)
+}
+```
+
 ## Configure the app's domain
 
 Follow [Easy OAuth](/native-features/oauth/easy-login-flow) and [Deeplinking](/native-features/deeplinking) for the existing V3 setup.

@@ -1,13 +1,13 @@
 ---
 title: "Apple Auth"
-description: "Sign In with Apple, platform-aware. Native Face ID on iOS, Chrome Custom Tabs on Android, popup on web."
+description: "Use the native Apple sign-in sheet on iOS and browser-based Apple sign-in on Android and the web."
 icon: "apple"
 ---
 
-Sign In with Apple using the Apple JS SDK in three flavors. iOS uses the SDK's native popup mode to surface the Face ID / Apple ID sheet directly inside the WebView. Android cannot trigger that sheet, so the flow goes through Chrome Custom Tabs and a deeplink bridge. Web uses the standard SDK popup.
+Despia V3 can present the native Apple sign-in sheet on iOS when the app is signed with the Sign in with Apple capability. Android uses the browser through Despia's OAuth bridge. Web apps can use the Apple JS SDK.
 
 <Info>
-  All native capabilities here come from `despia-native`. No additional native libraries are needed. The Apple JS SDK script tag must be placed before your app script.
+  The Android examples use `despia-native`. Load the Apple JS SDK before your app script when you use the Apple JS examples.
 </Info>
 
 ---
@@ -68,7 +68,7 @@ Add the Apple JS SDK to your HTML before your app script:
 
 | Platform | Approach | Notes |
 | --- | --- | --- |
-| iOS native | Apple JS SDK, `usePopup: true` | Opens native Face ID / Apple ID sheet. No browser session. |
+| iOS native | Despia's native Apple sign-in bridge | Presents Apple's sign-in sheet. The app's signed entitlement and an app backend that accepts the native credential are required. |
 | Android native | `oauth://` bridge | Apple JS SDK does not trigger a native dialog on Android. Uses Chrome Custom Tabs. |
 | Web | Apple JS SDK, `usePopup: true` | Standard browser popup. |
 
@@ -76,7 +76,7 @@ Add the Apple JS SDK to your HTML before your app script:
 
 ## How it works
 
-On iOS, the SDK has a special hook into the system that lets it summon the native Apple ID sheet from inside a WebView, so no external browser is involved. On Android no such hook exists, so the flow opens Chrome Custom Tabs, lets Apple redirect to a small bridge HTML file, and uses a deeplink with the `oauth/` prefix to close the tab and pass the token back to the WebView.
+Despia's iOS runtime presents the Apple sign-in sheet through AuthenticationServices. The Apple JS compatibility bridge can handle popup requests on supported builds and origins. Your backend verifies the Apple response and creates your app session. The Android legacy flow uses Chrome Custom Tabs and an `oauth/` deeplink to resume the WebView.
 
 ### iOS
 
@@ -84,7 +84,7 @@ On iOS, the SDK has a special hook into the system that lets it summon the nativ
 flowchart TD
     A["User taps Sign in with Apple"] --> B["userAgent includes 'despia' + 'iphone'"]
     B --> C["Apple JS SDK init + signIn()"]
-    C --> D["Native Face ID / Apple ID sheet"]
+    C --> D["Apple sign-in via the available popup handler"]
     D --> E["Apple returns id_token to JS callback"]
     E --> F["App sends id_token to backend"]
     F --> G["Session created, user logged in"]
@@ -124,17 +124,13 @@ const isDespiaAndroid = isDespia &&
 
 ---
 
-## iOS, Apple JS SDK popup
+## iOS Apple sign-in
 
-Initialize the SDK and call `signIn()` with `usePopup: true`. The `id_token` arrives directly in the JS callback, no redirect, no `oauth://` bridge.
+The Apple JS examples below use popup mode. When the Despia compatibility bridge handles the request, Apple returns the native credential through the JavaScript callback. Despia preserves the Apple JS redirect flow on HTTPS when you use redirect mode.
 
-<Danger>
-  Always use `usePopup: true` and read the `id_token` from the JS callback. Using a redirect instead causes a blank white screen during the auth flow and will result in App Store rejection.
-</Danger>
+Enable Sign in with Apple on the app's Apple App ID and rebuild with a provisioning profile that includes the capability. Verify the token on your backend. Use the bundle ID as the expected audience for a native token and the Services ID registered for the web flow when validating a web token. Your backend must also validate Apple's signature, issuer, expiration and the nonce for the request.
 
-<Info>
-  Known regression in iOS 17.1, `usePopup: true` showed an HTML form instead of the native Face ID sheet inside WKWebView. Fixed in iOS 17.2 and later. Authentication still worked, just without biometrics.
-</Info>
+The native bridge returns an Apple credential. Your app's authentication backend must use it to establish the signed-in session.
 
 <Tabs>
   <Tab title="React">
@@ -919,7 +915,8 @@ Add this to your `/auth` page during development. Remove it before submitting to
     - `usePopup: true` set in `AppleID.auth.init()`
     - `redirectURI` matches the origin of the page running the SDK
     - `id_token` read from `response.authorization.id_token` in the JS callback
-    - No redirect flow used, redirect causes a blank white page and App Store rejection
+    - Signed build includes the Sign in with Apple capability when you use the native sheet
+    - Backend validates the audience for the selected flow and establishes the app session
   </Accordion>
 
   <Accordion title="Android flow">
@@ -956,8 +953,8 @@ Add this to your `/auth` page during development. Remove it before submitting to
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Why doesn't iOS need the oauth:// bridge?">
-    The Apple JS SDK with `usePopup: true` opens the native Face ID / Apple ID sheet directly via a special Apple API. No external browser session is opened so there is nothing to close. The `oauth://` bridge and `native-callback.html` are Android-only.
+  <Accordion title="How does the native iOS sheet return?">
+    The Despia native Apple bridge returns the Apple credential to the calling page. A backend exchange creates the signed-in app session. The Android legacy example returns through its own browser callback.
   </Accordion>
 
   <Accordion title="What does the oauth/ prefix do?">

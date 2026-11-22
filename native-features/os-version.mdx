@@ -5,7 +5,7 @@ icon: "mobile"
 ---
 
 <Warning>
-  Preview, not yet released. This API is awaiting the iOS and Android runtime reviews and native device verification. Older installed builds do not answer this command.
+  This API is in preview and requires an upcoming V3 runtime build.
 </Warning>
 
 Read the device's operating system from native code. Call the API from a client event or client lifecycle after your page is running inside Despia.
@@ -27,8 +27,6 @@ if (isDespia) {
 
   if (os) {
     console.log(os.platform, os.version)
-  } else {
-    // This build did not answer before the SDK timeout.
   }
 }
 ```
@@ -49,6 +47,6 @@ Await calls that watch `osVersion` sequentially. The published npm SDK watches o
 
 ## Version and capability checks
 
-An OS version describes the device; it does not confirm permissions or feature availability. For HTTPS authentication callbacks, also check `despia.httpsAuthCallback` and follow the [Easy OAuth setup](/native-features/oauth/easy-login-flow). That flow requires iOS 17.4 or later on iOS. Browser support and domain verification also affect availability on Android.
+For HTTPS authentication callbacks, check `despia.httpsAuthCallback` and follow the [Easy OAuth setup](/native-features/oauth/easy-login-flow). That flow requires iOS 17.4 or later on iOS. Browser support and domain verification also affect availability on Android.
 
-The runtime changes are tracked in [iOS #1108](https://github.com/wizeddev/d-ios/pull/1108) and [Android #367](https://github.com/wizeddev/d-android/pull/367). Rebuild the native app with a released implementation before relying on this command.
+Rebuild and install the native app after this API is released.

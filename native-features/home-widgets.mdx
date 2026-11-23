@@ -13,7 +13,7 @@ icon: "border-all"
 `widget://` registers a remote SVG endpoint as the source for your app's home screen widget on iOS and Android. The OS fetches the SVG at the interval you set, swaps the rendered widget contents, and shows the new state on the home screen even when your app is closed. Your backend personalizes the SVG per user by reading the request, looking up the data, and substituting tokens like `{NAME}` and `{SCORE}` before responding.
 
 <Info>
-  Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly. Android needs a build made after November 23, 2026 with Home Widget turned on. Older Android builds ignore the call.
+  Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly. Android needs a build made after November 23, 2026 with Home Widget turned on. Older Android builds do not handle the call: nothing appears on the home screen.
 </Info>
 
 ---
@@ -123,7 +123,7 @@ if (isDespia) {
 ```
 
 <Warning>
-  The URL must be a publicly fetchable HTTPS endpoint that returns `Content-Type: image/svg+xml`. Data URLs (`data:image/svg+xml;...`), blob URLs, and file paths are rejected. The OS fetches the SVG from the network on each refresh, so the bytes have to live on a real server or CDN.
+  Use a publicly fetchable HTTPS URL that returns an SVG (`Content-Type: image/svg+xml`) or an image. The widget fetches it again on every refresh, outside your web page, so blob URLs and URLs that need your page's login cookies do not work. A `data:` URL works, but it cannot change between refreshes: send a new `widget://` call to change it.
 </Warning>
 
 ---

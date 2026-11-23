@@ -145,6 +145,12 @@ window.onNotificationEvent = function (payload) {
 
 ---
 
+## Replacing and grouping notifications
+
+Opening your app resets its badge, and delivered notifications stay until the user taps or clears them. To keep the list tidy, send a `collapse_id` so a new notification replaces the old one, or a `thread_id` (iOS) and `android_group` (Android) so related notifications stack into one group. No app update is needed. See [Replacing and grouping notifications](/native-features/onesignal/reference#replacing-and-grouping-notifications).
+
+---
+
 ## OneSignal and Despia setup
 
 Configure OneSignal with your iOS and Android credentials, then connect everything to Despia. The steps go in order, each one feeds the next.

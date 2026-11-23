@@ -1,6 +1,6 @@
 ---
 title: "Home Widgets"
-description: "Render dynamic SVG content from your backend into iOS home screen widgets, refreshed in the background at the interval you specify."
+description: "Render dynamic SVG content from your backend into iOS and Android home screen widgets, refreshed in the background at the interval you specify."
 icon: "border-all"
 ---
 
@@ -10,15 +10,15 @@ icon: "border-all"
   The video uses a specific AI coding tool to demonstrate the setup, but the configuration works 1:1 with Cursor, Claude Code, or any other tool. Despia is web framework and tooling agnostic, so the only things that matter are the SDK call, the public SVG URL, and the refresh interval.
 </Note>
 
-`widget://` registers a remote SVG endpoint as the source for an iOS home screen widget. The OS fetches the SVG at the interval you set, swaps the rendered widget contents, and shows the new state on the home screen even when your app is closed. Your backend personalizes the SVG per user by reading the request, looking up the data, and substituting tokens like `{NAME}` and `{SCORE}` before responding.
+`widget://` registers a remote SVG endpoint as the source for your app's home screen widget on iOS and Android. The OS fetches the SVG at the interval you set, swaps the rendered widget contents, and shows the new state on the home screen even when your app is closed. Your backend personalizes the SVG per user by reading the request, looking up the data, and substituting tokens like `{NAME}` and `{SCORE}` before responding.
 
 <Info>
-  Home Widgets is currently iOS-only. The Android equivalent uses a different rendering pipeline (RemoteViews) that does not accept SVG content. Plan widget UX around iOS first, and gate the SDK call behind `isDespiaIOS` so Android users do not see a broken affordance.
+  Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly. Android needs a build made after November 23, 2026 with Home Widget turned on. Older Android builds do not handle the call: nothing appears on the home screen.
 </Info>
 
 ---
 
-## Apple Developer and Despia setup
+## iOS setup: Apple Developer and Despia
 
 Home Widgets on iOS runs as a separate Widget Extension target with its own bundle identifier. The widget and your core app communicate through an App Group, which is what lets the widget reach into shared storage when it builds the SVG payload. You configure the bundle ID and App Group in Apple Developer, then enable the target in the Despia Editor and rebuild.
 
@@ -43,6 +43,19 @@ Home Widgets on iOS runs as a separate Widget Extension target with its own bund
   </Step>
   <Step title="Rebuild your app">
     Trigger a fresh build from the Despia Editor. The widget target has to be compiled into your app binary and signed with the matching provisioning profile, so this cannot be applied over-the-air. After the build finishes, the widget becomes available for users to add to their home screen, and your `widget://` SDK call sets the SVG source.
+  </Step>
+</Steps>
+
+## Android setup
+
+Android needs no Google Play Console step. The same **App \> Targets \> Home Widget** setting adds the widget to your Android build.
+
+<Steps>
+  <Step title="Enable Home Widgets in the Despia Editor">
+    Open the Despia Editor, go to **App \> Targets \> Home Widget** and turn it on. The widget name, description, fallback image and refresh rate you set there are used on both platforms.
+  </Step>
+  <Step title="Rebuild your Android app">
+    Start a new Android build. The widget is compiled into the app, so it cannot be added over the air. After the update, users find your widget in the launcher's widget list and add it to the home screen. Apps with Home Widget turned off build exactly as before.
   </Step>
 </Steps>
 
@@ -97,25 +110,20 @@ Home Widgets on iOS runs as a separate Widget Extension target with its own bund
 
 ## How it works
 
-Pass a publicly accessible HTTPS URL to a server endpoint that returns SVG, plus a refresh interval in minutes. The OS picks up the URL on the next widget refresh cycle and treats it as the new source.
+Pass a publicly accessible HTTPS URL to a server endpoint that returns SVG, plus a refresh interval in minutes. The OS picks up the URL on the next widget refresh cycle and treats it as the new source. On Android, the widget also redraws as soon as the call is made.
 
 ```javascript
 import despia from 'despia-native'
 
 const isDespia = navigator.userAgent.toLowerCase().includes('despia')
 
-const isDespiaIOS = isDespia && (
-    navigator.userAgent.toLowerCase().includes('iphone') ||
-    navigator.userAgent.toLowerCase().includes('ipad')
-)
-
-if (isDespiaIOS) {
+if (isDespia) {
     despia('widget://https://myapp.com/widgets/user/abc123?refresh=10')
 }
 ```
 
 <Warning>
-  The URL must be a publicly fetchable HTTPS endpoint that returns `Content-Type: image/svg+xml`. Data URLs (`data:image/svg+xml;...`), blob URLs, and file paths are rejected. The OS fetches the SVG from the network on each refresh, so the bytes have to live on a real server or CDN.
+  Use a publicly fetchable HTTPS URL that returns an SVG (`Content-Type: image/svg+xml`) or an image. The widget fetches it again on every refresh, outside your web page, so blob URLs and URLs that need your page's login cookies do not work. A `data:` URL works, but it cannot change between refreshes: send a new `widget://` call to change it.
 </Warning>
 
 ---
@@ -125,14 +133,14 @@ if (isDespiaIOS) {
 | Position | Value | Notes |
 | :-- | :-- | :-- |
 | URL | A full HTTPS URL to your SVG endpoint | Must respond with `Content-Type: image/svg+xml`. Use a path that includes the user ID so each user gets their own widget |
-| `refresh` | Minutes between refreshes | Whole minutes only. Common values: `1`, `2`, `3`, `5`, `10`, `15`, `30`, `60`. iOS may extend the interval under battery pressure, so treat your value as a minimum, not a guarantee |
+| `refresh` | Minutes between refreshes | Whole minutes only. Common values: `1`, `2`, `3`, `5`, `10`, `15`, `30`, `60`. iOS may extend the interval under battery pressure, so treat your value as a minimum, not a guarantee. Android refreshes in the background at most every 15 minutes |
 | `value` | Any string, URL-encoded | Optional. Handed to `window.onWidgetOpen` when the user taps the widget. See [Open the app from the widget](#open-the-app-from-the-widget) |
 
 ```javascript
 const userId  = currentUser.id
 const minutes = 10
 
-if (isDespiaIOS) {
+if (isDespia) {
     despia(`widget://https://myapp.com/widgets/user/${userId}?refresh=${minutes}`)
 }
 ```
@@ -149,14 +157,9 @@ import despia from 'despia-native'
 
 const isDespia = navigator.userAgent.toLowerCase().includes('despia')
 
-const isDespiaIOS = isDespia && (
-    navigator.userAgent.toLowerCase().includes('iphone') ||
-    navigator.userAgent.toLowerCase().includes('ipad')
-)
-
 function WidgetSync({ user }) {
     useEffect(() => {
-        if (!user || !isDespiaIOS) return
+        if (!user || !isDespia) return
 
         const url = `https://myapp.com/widgets/user/${user.id}`
         despia(`widget://${url}?refresh=10`)
@@ -175,7 +178,7 @@ To change the refresh rate later (for example, slowing it down for inactive user
 Add `value` to the `widget://` call and a tap on the widget opens your app and calls `window.onWidgetOpen` with that value. Use it to send the user straight to the screen the widget shows, for example an order, a match or a profile.
 
 ```javascript
-if (isDespiaIOS) {
+if (isDespia) {
     despia(`widget://https://myapp.com/widgets/user/${user.id}?refresh=10&value=${encodeURIComponent('orders/42')}`)
 }
 ```
@@ -201,7 +204,7 @@ How it behaves:
 </Note>
 
 <Info>
-  Requires an iOS build made after this feature shipped. Older builds ignore `value` and open the app without calling `window.onWidgetOpen`.
+  Requires an iOS build made after this feature shipped, or an Android build made after November 23, 2026. Older builds ignore `value` and open the app without calling `window.onWidgetOpen`.
 </Info>
 
 ---
@@ -256,7 +259,9 @@ Two practical notes:
 
 ## Refresh interval guidance
 
-iOS does not honor your refresh interval literally. The OS schedules widget updates in batches and may stretch your interval based on battery state, network quality, and how often the user is actually looking at the home screen. Use these intervals as rough targets:
+Neither platform honors your refresh interval literally. Android runs background work no more often than every 15 minutes, so on Android a `refresh` below `15` refreshes every 15 minutes. The widget still redraws at once whenever your app calls `widget://`, so open-app updates are immediate.
+
+iOS does not honor your refresh interval literally either. The OS schedules widget updates in batches and may stretch your interval based on battery state, network quality, and how often the user is actually looking at the home screen. Use these intervals as rough targets:
 
 | Interval | Practical use |
 | :-- | :-- |
@@ -266,6 +271,17 @@ iOS does not honor your refresh interval literally. The OS schedules widget upda
 | `60` plus | Static or near-static content where freshness barely matters |
 
 Aim for the longest interval that feels acceptable. Shorter intervals do not always deliver, and they drain the user's battery more visibly than longer ones. A widget that updates every 15 minutes consistently is a better experience than one that _might_ update every minute but sometimes goes 30 minutes between refreshes.
+
+---
+
+## Android behavior
+
+- **Size:** the widget starts at 4 by 2 cells, the size of the iOS medium widget, and the user can resize it. Your SVG is drawn again at each new size and shown whole, like on iOS. Design for a wide canvas such as `360 × 169`.
+- **Images:** a PNG, JPEG or WebP response fills the widget. An SVG is fitted inside it.
+- **Errors:** when the endpoint fails, the widget shows the error until the next refresh, as on iOS. Before the first image loads, it shows your app icon and name.
+- **Background work:** refreshes run only while at least one widget is on the home screen and the device is online.
+- **Storage:** the widget URL lives in the app's storage. Clearing the app's data in Android settings resets it to the fallback image until your app calls `widget://` again.
+- **SVG features:** Android renders SVG with its own engine. Shapes, paths, gradients and text work, and so do images embedded as `data:` URIs. Images linked by URL inside the SVG and web fonts loaded with CSS `@import` are not loaded; Android uses its system fonts instead.
 
 ---
 

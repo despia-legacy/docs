@@ -1,19 +1,19 @@
 ---
 title: "Home Widgets"
-description: "Display dynamic SVG content in iOS home screen widgets with real-time data updates and user personalization through your Lovable mobile app."
+description: "Display dynamic SVG content in iOS and Android home screen widgets with real-time data updates and user personalization through your Lovable mobile app."
 icon: "border-all"
 ---
 
 <iframe src="https://www.youtube.com/embed/oAUh41pgFOA" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
 <Card title="Lovable Prompt" icon="sparkles">
-  Add iOS home widget functionality to my app using the Despia SDK from: [**https://www.npmjs.com/package/despia-native**](https://www.npmjs.com/package/despia-native)
+  Add iOS and Android home widget functionality to my app using the Despia SDK from: [**https://www.npmjs.com/package/despia-native**](https://www.npmjs.com/package/despia-native)
 
   First, install the package: `npm install despia-native`
 
   Then import it: `import despia from 'despia-native'`
 
-  Create a dynamic home widget system that uses Despia’s command method like: `` despia(`widget://${svg}?refresh=${refresh_time}`) `` to set and update SVG content in iOS home screen widgets with personalized user data.
+  Create a dynamic home widget system that uses Despia’s command method like: `` despia(`widget://${svg}?refresh=${refresh_time}`) `` to set and update SVG content in iOS and Android home screen widgets with personalized user data.
 
   <Danger>
     **This feature requires native capabilities which will be fully provided by the “despia-native” npm package, no additional native libraries are needed!**
@@ -24,7 +24,7 @@ icon: "border-all"
   Please follow the installation instructions for the "despia-native" npm package closely, and do not modify my instructions. Implementation as mentioned is critical.
 </Card>
 
-**How it works:** Despia acts as a bridge between your Lovable app and iOS home widget system. Smart widgets are SVG-based widgets that display dynamic content from your backend, update automatically at specified intervals, and can show user-specific data. Every time the widget requests the image, it loads data from your backend and injects text using string replacement for tokenized text like `{NAME}` and `{SCORE}` with user data from the database.
+**How it works:** Despia acts as a bridge between your Lovable app and the iOS and Android home widget systems. Smart widgets are SVG-based widgets that display dynamic content from your backend, update automatically at specified intervals, and can show user-specific data. Every time the widget requests the image, it loads data from your backend and injects text using string replacement for tokenized text like `{NAME}` and `{SCORE}` with user data from the database.
 
 ## Installation
 
@@ -160,6 +160,6 @@ Your backend endpoint should return SVG content with tokenized text replacement:
 
 ## Lovable Integration
 
-This SDK is optimized for Lovable's prompt-based AI builder, enabling quick integration of native iOS smart widgets into your generated apps with dynamic SVG content and real-time data updates.
+This SDK is optimized for Lovable's prompt-based AI builder, enabling quick integration of native iOS and Android smart widgets into your generated apps with dynamic SVG content and real-time data updates.
 
 For additional support or questions, please contact our support team at [**support@despia.com**](mailto:support@despia.com)

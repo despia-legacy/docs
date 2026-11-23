@@ -278,7 +278,7 @@ Aim for the longest interval that feels acceptable. Shorter intervals do not alw
 
 ## Android behavior
 
-- **Size:** the widget starts at 4 by 2 cells, the size of the iOS medium widget, and the user can resize it. Your SVG is drawn again at each new size and shown whole, like on iOS. Design for a wide canvas such as `360 × 169`. On a Pixel the 4 by 2 cell is a little taller than the iOS medium widget, so such an SVG shows thin bands of the widget background above and below it. The background is white in light mode and black in dark mode, as on iOS.
+- **Size:** the widget starts at 4 by 2 cells, the size of the iOS medium widget, and the user can resize it. Your SVG is drawn again at each new size and shown whole, like on iOS. Design for a wide canvas such as `360 × 169`. The widget's rounded tile takes your SVG's shape and fills the cell as far as that shape allows, centred, so the SVG reaches the tile's edges with no bands, as on iOS. The tile keeps the launcher's own corner radius. An SVG with `preserveAspectRatio="none"` or `"slice"`, or with no size, fills the whole cell instead. The tile is white in light mode and black in dark mode, as on iOS.
 - **Images:** a PNG, JPEG or WebP response fills the widget. An SVG is fitted inside it.
 - **Errors:** when the endpoint fails, the widget shows the error until the next refresh, as on iOS. Before the first image loads, it shows your app icon and name.
 - **Background work:** refreshes run only while at least one widget is on the home screen and the device is online.

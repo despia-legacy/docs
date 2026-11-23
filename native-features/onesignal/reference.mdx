@@ -192,6 +192,40 @@ const response = await fetch('https://onesignal.com/api/v1/notifications', {
 | `delayed_option` | string | `"timezone"` to deliver at a specific local time |
 | `delivery_time_of_day` | string | Time for timezone delivery, e.g. `"9:00AM"` |
 | `ios_critical_alert` | number | Set to `1` to send a critical alert on iOS. Requires the Critical Alerts entitlement and must be enabled in Despia before use. |
+| `collapse_id` | string | Notifications with the same `collapse_id` replace each other, so only the newest stays on the device. Up to 64 characters. |
+| `thread_id` | string | iOS: groups notifications with the same value into one stack in Notification Center. |
+| `android_group` | string | Android: groups notifications with the same value into one stack in the notification shade. |
+
+---
+
+## Replacing and grouping notifications
+
+Opening your app resets its badge to zero. Notifications already delivered stay in Notification Center and on the lock screen, and tapping one removes only that one, as in most apps. You decide how they pile up with fields on each send. These are standard OneSignal fields, so no app update or Despia setting is needed.
+
+**Replace instead of stack.** Give related notifications the same `collapse_id`. Each new one replaces the previous one, so only the latest is shown, for example a live score or an order status.
+
+```javascript
+body: JSON.stringify({
+    app_id:                    process.env.ONESIGNAL_APP_ID,
+    include_external_user_ids: [userId],
+    headings:                  { en: 'Order #4567' },
+    contents:                  { en: 'Out for delivery' },
+    collapse_id:               'order-4567',
+})
+```
+
+**Group into one stack.** Give related notifications the same `thread_id` (iOS) and `android_group` (Android). They stay separate but show as one group the user can expand or clear with one swipe, for example all messages in a chat.
+
+```javascript
+body: JSON.stringify({
+    app_id:                    process.env.ONESIGNAL_APP_ID,
+    include_external_user_ids: [userId],
+    headings:                  { en: 'Sarah' },
+    contents:                  { en: 'See you at 7?' },
+    thread_id:                 'chat-982',
+    android_group:             'chat-982',
+})
+```
 
 ---
 

@@ -4,14 +4,16 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-<Update label="November 23, 2026" description="Home Widgets on Android">
-  ## Home Widgets now work on Android
+<Update label="November 23, 2026" description="Major update: Android home-screen widgets, matching iOS">
+  ## Android home-screen widgets, matching iOS
 
-  The `widget://` call now shows your SVG home screen widget on Android as well as iOS. One web app serves both platforms: the same URL, `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps the widget.
+  Home Widgets now run on Android as well as iOS. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
 
-  - **Same setting:** the **Home Widget** setting in the Despia Editor now adds the widget to Android builds too. Apps with it turned off build exactly as before.
-  - **SVG on Android:** Despia draws your SVG at the widget's size, and draws it again when the user resizes the widget. PNG, JPEG and WebP responses work too.
+  - **One setting:** the **Home Widget** setting in the Despia Editor now adds the widget to Android builds too. Apps with it turned off build exactly as before.
+  - **Your SVG, drawn natively:** Despia draws your SVG at the widget's size and draws it again when the user resizes the widget. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, as on iOS.
+  - **Tap to open:** a tap opens your app and calls `window.onWidgetOpen` with the widget's `value`, even when the app was closed.
   - **Refresh:** Android refreshes in the background at most every 15 minutes. A `widget://` call from your app redraws the widget at once.
+  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode.
 
   Start a new Android build to get it. See [Home Widgets](/native-features/home-widgets).
 </Update>

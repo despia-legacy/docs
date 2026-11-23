@@ -40,7 +40,7 @@ The Despia-authored code uses the Despia V3 Extension Source-Available Commercia
 
 | Extension | What it adds | Source |
 | ------ | ------------ | ------ |
-| [Background Recorder](/experiments/samples/recorder) | Records audio in the background and uploads it | [GitHub](https://github.com/despia-legacy/recorder) |
+| [Background Recorder](/experiments/samples/recorder) | Records audio and uploads the file with its own raw PUT contract | [GitHub](https://github.com/despia-legacy/recorder) |
 | [Live Activities](/experiments/samples/live-activities) | Starts, updates and ends delivery, score and timer activities | [GitHub](https://github.com/despia-legacy/live-activities) |
 | [Home Widgets](/experiments/samples/home-widgets) | Fills native stat and list widgets and reads taps | [GitHub](https://github.com/despia-legacy/home-widgets) |
 
@@ -80,7 +80,7 @@ Edit the native files in your repository with Claude Code, Codex, Cursor or your
 
 <Steps>
   <Step title="The manifest declares the extension">
-    Each extension has a `manifest.json`. It declares the extension id, its routes, the typed parameters of each route, the answer variable and callback of each route, its events, and the native files for each platform.
+    Each extension has a `manifest.json`. Its folder supplies the extension id. The manifest declares its routes, the typed parameters of each route, the answer variable and callback of each route, its events, and the native files for each platform.
   </Step>
   <Step title="Despia builds it into your app">
     Your files are served from your app's own HTTPS origin. The extension build process fetches and verifies the index, source files and pinned dependencies, then compiles them into a new native build. Signed inputs bind the build to your app. Changed source needs fresh build verification and a native rebuild; it cannot be applied over-the-air.
@@ -98,6 +98,43 @@ Edit the native files in your repository with Claude Code, Codex, Cursor or your
 ## Source and build verification
 
 The build verifies source hashes, the complete pinned dependency graph, app identity and the signed build lock. Signing checks also compare the compiled artifact with those inputs. These checks protect build hosts, signing keys and app boundaries. You remain responsible for the behavior and maintenance of your extension code. Apple-managed capabilities, provisioning and store requirements still apply.
+
+## Build inclusion and release checks
+
+| Stage | What it establishes | What it does not establish |
+| --- | --- | --- |
+| Hosting | Required paths return the intended JSON, native source and resources | That a native app contains them |
+| Input verification | The selected source, identity and dependency graph match the verified build inputs | That the code compiles or behaves correctly |
+| Native build and artifact checks | The selected extension compiles and the resulting artifact matches the checked inputs | User consent, device behavior, store approval or a successful provider operation |
+| Installed-app exercise | A particular artifact performs the exercised behavior | Untested lifecycle cases, devices, providers or combinations |
+
+Uploading or deploying web files does not update an installed native binary. Changed native files, manifests, dependencies, permissions or targets require fresh build verification and a native rebuild. Web UI changes can be hosted separately only when they remain compatible with the installed native API.
+
+Automatic discovery of hosted `/despia/extensions.json` during a normal rebuild is under review and is not confirmed deployed. Check the actual build inputs and installed artifact. There is no documented per-app manual enrollment switch in this flow. Source hosting alone does not establish native inclusion. The source/dependency and signing checks are technical verification, not a human review of every developer-owned extension.
+
+### Prepare the source
+
+1. Read the current runtime's index format. It requires `app` identity and 1 to 8 extension names. Copy real app identifiers from the project; do not infer or manufacture them.
+2. Put the index at `public/despia/extensions.json` and each manifest at `public/despia/<name>/manifest.json`. Serve the native files and resources at their exact paths on the app's HTTPS origin.
+3. Check response bodies, not just HTTP status. A SPA fallback returning HTML with status 200 is not a valid JSON index or Swift file. Keep static extension paths ahead of the fallback. The fetcher uses `despia-nx-fetch/1`.
+4. Declare every required source, resource, target and pinned dependency. Keep trusted policy/signing inputs outside the public source tree. Do not place service credentials or private signing material in an extension folder.
+5. Keep the build inputs stable while verifying and building. Changing a served file without refreshing the verified snapshot is a different source input, not a harmless hosting change.
+
+### Check the selected native build
+
+Use the host's actual compiler, Swift language mode, Android SDK and device minimum, plus the pinned vendor SDK's real API. A declared dependency or a standalone type check is not host integration. The current `android.min_sdk` gates extension availability on older devices; it does not raise the host app's minimum or make an incompatible library safe to link.
+
+Declarations, runtime permission, provisioning and store eligibility are separate checks. Keep the host's delegates and WebView ownership intact, use declared lifecycle hooks and persist long-running state natively. Read [App Group setup](#set-up-ios-app-groups) before building shared app/widget storage.
+
+### Qualify the feature you intend to release
+
+Record the source revision, selected extension names, native build result and installed artifact. Exercise the actual operation, permission denial and relevant reload/background/recovery cases. State whether evidence came from a validator, mock, real SDK compile, simulator/emulator, physical device or live provider. A successful default build does not prove an extension was included, and signing does not prove its behavior.
+
+For uploads, verify the endpoint's method, body, authentication, redirects and retry behavior. Recorder's raw audio PUT is separate from a general multipart file uploader. A recording pass does not prove an untested upload combination or uninterrupted background execution. See [Recorder boundaries](/experiments/samples/recorder#recording-and-upload-boundaries).
+
+Share sanitized codes and source/artifact identifiers when diagnosing failures. Do not log raw commands, tokens, authenticated URLs or user content. Current runtime logs must not be assumed to redact every sensitive input.
+
+For a failing stage, use [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
 ## Folder layout in your web app
 
@@ -227,6 +264,27 @@ async function readRecorderStatus() {
 
 The SDK resolves native error answers as well as successes. Read the full envelope through `reply.recorderStatus`, including `ok`, `code`, `error` and `data`. Check `answer.ok`; a native failure does not reject the SDK promise. A single-variable watch resolves to `undefined` after 30 seconds if no value arrives. That timeout does not cancel native work. Inspect the returned native envelope rather than assuming every command uses the same error shape.
 
+### Query encoding and the two timeouts
+
+Encode each value, not the whole command:
+
+```javascript
+import despia from 'despia-native';
+
+async function readRecording(id) {
+  const command = 'extension://recorder/status?id=' + encodeURIComponent(id);
+  const reply = await despia(command, ['recorderStatus']);
+  const answer = reply.recorderStatus;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+```
+
+For JSON-in-a-string parameters, encode `JSON.stringify(value)`. The native decoder preserves literal `+`. If you construct a query with `URLSearchParams`, replace its form-encoded `+` with `%20` before sending; `%2B` already means a literal plus. Do not append `?` when there are no parameters. Duplicate keys, malformed escapes and undeclared parameters are rejected.
+
+The native route's `timeout_ms` defaults to 20000 and accepts 1000 to 25000 milliseconds. The SDK's single-variable watch waits 30 seconds. Native `timeout` is an error envelope; a missing watched value is `undefined`. Neither timer rolls back a native operation. Long operations should acknowledge an accepted/pending state, then expose status and declared events.
+
 ### React
 
 Importing the SDK is safe during server rendering. Call it from a client event or lifecycle hook. In Next.js, put the component behind a client boundary. Keep calls sharing an output variable sequential, including calls from other components.
@@ -329,7 +387,7 @@ Every answer has the same shape:
 | `error`     | The error message on error                                        |
 | `code`      | The error code on error                                           |
 
-An error carries a code and a message, and nothing else. If the page must tell failures apart, give each one its own code.
+A native failure uses flat `code` and `error` fields in this envelope, not a nested `error.code` object. If the page must tell failures apart, give each one its own code.
 
 ### Error codes
 
@@ -457,16 +515,34 @@ public final class RecorderExtension implements NativeExtension {
 
 ## Patterns the extensions use
 
-The bridge answer is a JavaScript string with typed parameters. These conventions keep that workable.
+The command is a URL string; the native answer is a structured envelope. These are implementation conventions, not extra manifest types or built-in SDK services.
 
 - **Bytes.** A parameter named `hex` (hex digits, even length) or `b64` (standard or URL-safe base64), exactly one of them, and lower-case `hex` in answers.
 - **UUIDs and lists.** UUIDs are `string` parameters in 16-bit, 32-bit or 128-bit form, and answers give lower-case 128-bit. Lists are comma-separated strings.
 - **A table in one parameter.** One `string` parameter, with entries separated by `,` and fields by `~`. The extension parses it and refuses it whole.
 - **Answers the platform needs at once.** When the platform asks for a value the page cannot give in time, the extension answers from a native value store that the page sets, and reports each write as an event.
 - **Events a page may miss.** An event sent while no page is loaded is dropped. Keep each event in a native journal with a sequence number, offer a route that reads it (`events?after=<seq>`), and keep state readable through its own route.
-- **Files.** File bytes never belong in a bridge answer. Serve the file from the extension on `127.0.0.1` with a random per-file token in the URL, and answer with that URL.
+- **Files.** File bytes never belong in a bridge answer. Return a native file identifier. If your implementation provides a local file server, confine access and use unguessable, short-lived tokens. There is no universal file-server API in the extension context.
 
 ---
+
+## Validate the contract before native work
+
+JSON parsing is only the first check. Use the runtime's manifest validator, then the selected native build. Schema validation rejects unknown fields.
+
+| Item | Current contract |
+| --- | --- |
+| Index | Only `app` and `extensions`; 1 to 8 distinct extension folder names |
+| Folder manifest | `version`; the folder supplies `id`, so an explicit `id` is rejected |
+| Route names | Lowercase letter followed by lowercase letters, digits or `_`, up to 32 characters |
+| Parameters | Only declared names and type-specific fields; `callback` is reserved for the bridge |
+| Outputs | Valid JavaScript names; a route's output variable and callback must differ |
+| Timeout | `timeout_ms` on the route, default 20000, range 1000 to 25000 milliseconds |
+| Paths | Relative to the extension folder, in the platform tree, no traversal or symlinks |
+
+Declare a string for encoded JSON only when the handler actually parses and validates that JSON. The bridge does not infer object types, file references or new routes from JavaScript. `https_url` host approval is a destination constraint, not authentication or a guarantee that a later redirect is safe. Recheck stored destinations before delayed network work.
+
+Source paths and custom directory coverage must agree with the fetched tree. Names and case matter. Do not put credentials, build policy, signing material, package caches or editor directories in the hosted source tree. The only supported hidden resource member is `.xccurrentversion` directly inside a non-hidden `.xcdatamodeld` bundle; this does not allow arbitrary dotfiles.
 
 ## Declaring native work
 

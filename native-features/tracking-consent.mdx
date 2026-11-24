@@ -1,0 +1,71 @@
+---
+title: "Tracking Consent"
+description: "Ask for App Tracking Transparency from your page at the moment you choose, and read the tracking status on iOS and Android."
+icon: "user-shield"
+---
+
+```javascript
+import despia from 'despia-native';
+
+window.onDespiaTrackingConsent = (answer) => {
+  if (answer.ok) console.log(answer.status, despia.trackingDisabled);
+};
+
+button.addEventListener('click', () => {
+  despia('trackingconsent://request?request_id=' + encodeURIComponent(crypto.randomUUID()));
+});
+```
+
+`trackingconsent://request` shows Apple's tracking prompt on iOS, and `trackingconsent://status` reads the current answer without a prompt. On Android, where there is no tracking prompt, both read the device's ad-tracking setting. Every answer also updates [`despia.trackingDisabled`](/native-features/app-privacy) before your callback runs, so the two never disagree.
+
+The tracking status is separate from an advertising SDK's own data choices. This call installs no advertising SDK and does not guarantee an advertising identifier or an attribution result.
+
+---
+
+## Calls
+
+| Call | Does |
+| --- | --- |
+| `trackingconsent://request` (or `trackingconsent://`) | iOS: shows the tracking prompt when iOS allows it, then answers. Android: reads the setting and answers. |
+| `trackingconsent://status` | Answers the current status. Never shows a prompt. |
+
+Both take an optional `request_id` (at most 128 bytes), which is echoed in the answer so you can match it to your call. A call with a longer `request_id` gets no answer, and on iOS so does a call from a frame: call from your page's top document.
+
+## The answer
+
+The answer is stored in `window.despiaTrackingConsent`, `window.trackingDisabled` is updated, and then `window.onDespiaTrackingConsent(answer)` is called:
+
+```json
+{ "ok": true, "status": "authorized", "supported": true, "platform": "ios", "request_id": "..." }
+```
+
+| `status` | iOS | Android |
+| --- | --- | --- |
+| `authorized` | The user allowed tracking | Ad tracking is not limited and the advertising ID is present |
+| `denied` | The user did not allow it | Ad tracking is limited, the advertising ID was deleted, or the state could not be read |
+| `not_determined` | Not asked yet | |
+| `restricted` | Tracking is restricted on the device | |
+| `unavailable` | The build has no tracking support (`ok: false`, `supported: false`, `code: "not_included"`) | The same, for a build without tracking (for example a Families app) |
+| `unknown` | A call that is not `request` or `status` (`ok: false`, `code: "bad_request"`) | The same |
+
+`despia.trackingDisabled` is `false` only for `authorized`.
+
+Answers belong to the document that asked. If the page navigates or reloads while the prompt is open, the answer is dropped; read `status` again on the new page.
+
+## When to ask
+
+By default the app asks at launch. When your app's settings turn the launch prompt off, nothing is asked until your page calls `trackingconsent://request`, and `despia.trackingDisabled` stays `true` until the user allows tracking. Ask from a tap, after you explain why. iOS shows its prompt once: a later request cannot change an earlier answer or a device restriction, and answers the current status. On iOS the user changes it in Settings, and the app picks the change up when it returns to the foreground.
+
+## Ads
+
+On iOS, AdMob requests are non-personalised for every status except `authorized`, in every build.
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Prompt | Apple's App Tracking Transparency prompt | None: the user limits ad tracking or deletes the advertising ID in Settings |
+| Purpose text | `NSUserTrackingUsageDescription`, from your app's tracking setting | Not used |
+| Build | Tracking support must be on; a build without it answers `not_included` | Tracking builds declare the `AD_ID` permission; declare in the Play Console that the app uses the advertising ID |
+
+Rebuild the app after you change tracking settings: they are compiled into the app, and a web update does not change them.

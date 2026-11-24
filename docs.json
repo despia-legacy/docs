@@ -365,6 +365,7 @@
           "native-features/biometrics",
           "native-features/speech-recognition",
           "native-features/app-privacy",
+          "native-features/tracking-consent",
           "native-features/safe-areas",
           "native-features/screen-radius",
           "native-features/in-app-rating",

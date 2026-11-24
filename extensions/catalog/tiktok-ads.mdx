@@ -75,7 +75,7 @@ Properties are a JSON object and preserve nested ecommerce objects, arrays and n
 
 ## Privacy and platform behavior
 
-This extension never requests ATT. TikTok's current iOS SDK does not automatically show that dialog. Use Despia's existing trackingconsent:// call separately, after tracking support and its purpose description are included in the native build. Collection consent is separate from ATT. Reapply the app's saved choice after every process launch.
+This extension never requests ATT. TikTok's current iOS SDK does not automatically show that dialog. Use Despia's existing [`trackingconsent://` call](/native-features/tracking-consent) separately, after tracking support and its purpose description are included in the native build. Collection consent is separate from ATT. Reapply the app's saved choice after every process launch.
 
 On iOS, configured means the native values are present, not that the SDK has started or the vendor account has accepted them. The first consent call with enabled=true initializes the SDK with automatic event, payment and enhanced postback logging disabled. The pinned SDK completes its local initialization synchronously; its later remote configuration is separate. Local initialization can fail, and it is not a vendor account validation. An SDK already initialized by another integration is left unchanged and returns already_configured at this first opt-in. A false choice before initialization makes no SDK call. Initialization and the consent update run together on the main actor without an asynchronous gap. A later false request disables tracking on its next main-actor turn. Read enabled before sending events. Android checks existing SDK ownership during configure.
 

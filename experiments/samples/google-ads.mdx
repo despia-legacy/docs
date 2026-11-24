@@ -26,7 +26,7 @@ Send native Firebase Analytics events from a Despia V3 app for use by a linked G
 5. On Android, the app's generated Firebase resources take priority. If the app has none, fill the empty values in `googleads/android/googleads/src/main/res/values/google_ads.xml`: `google_app_id`, `google_api_key`, `project_id` and `gcm_defaultSenderId`. Use the Firebase Android app's configuration, never a service account credential or server key.
 6. Verify the extension build inputs and rebuild the native app. Install the resulting native app. A website update or browser preview does not install native code.
 
-The iOS manifest declares `Firebase/CoreOnly` and `FirebaseAnalytics` at `10.29.0`, with a `Podfile.lock` and hashes for the complete CocoaPods dependency closure. Android uses Firebase BOM `34.11.0` and `firebase-analytics`. The extension adds no Messaging dependency and does not enable push.
+The iOS manifest declares `Firebase/CoreOnly` and `FirebaseAnalytics` at `10.29.0`, with a `Podfile.lock` and hashes for the complete CocoaPods dependency closure. Android uses Firebase BOM `35.2.0` (the latest release, 11 November 2026, read 24 November 2026 on Google Maven) and `firebase-analytics`. The extension adds no Messaging dependency and does not enable push.
 
 The bridge can be called from any web app that supports custom JavaScript and serves the extension files at their exact HTTPS paths. See [V3 Extensions](/experiments/v3-extensions) for source verification and native rebuild requirements.
 
@@ -78,7 +78,7 @@ async function reportLead(hasAnalyticsConsent) {
 | `property` | Required `name`; optional `value`; omit to clear | `googleadsPropertyResult` | `accepted: true` |
 | `reset` | None | `googleadsResetResult` | `accepted: true` |
 
-Results use the V3 bridge envelope. `status.sdk` is `10.29.0` on iOS and `BOM34.11.0` on Android. `accepted` means the call was handed to the SDK. It does not confirm event ingestion, attribution or a recorded conversion.
+Results use the V3 bridge envelope. `status.sdk` is `10.29.0` on iOS and `BOM35.2.0` on Android. `accepted` means the call was handed to the SDK. It does not confirm event ingestion, attribution or a recorded conversion.
 
 `properties` accepts a JSON object of strings and finite numbers, plus Firebase's `items` array of objects containing strings and finite numbers. Booleans, nulls and other nested objects are rejected. The encoded JSON string is limited to 4096 characters. Event names have a 40-character bridge limit, user IDs 256, property names 24 and property values 36. Firebase applies its own event and parameter rules as well.
 
@@ -90,7 +90,7 @@ Errors include `not_configured`, `configuration_conflict`, `consent_required` an
 
 ## Platform limits
 
-Both platforms require Firebase configuration for the distributed app's own bundle ID or package. Android's module requires API 24 or later and compile SDK 36. The iOS adapter uses the V3 build's existing Firebase 10.29.0 SDK. Automatic Google Ads on-device event conversion measurement is not included; it requires a coordinated SDK upgrade.
+Both platforms require Firebase configuration for the distributed app's own bundle ID or package. Android's module requires API 24 or later and compile SDK 36. The iOS adapter uses the V3 build's existing Firebase 10.29.0 SDK: the V3 base app's Podfile.lock fixes every Firebase pod at 10.29.0, so the extension cannot take the latest Firebase iOS release (13.2.0 of 13 November 2026, read 24 November 2026 on the firebase-ios-sdk releases page) until the base app moves. Automatic Google Ads on-device event conversion measurement is not included; it requires a coordinated SDK upgrade.
 
 Google Ads linkage, event eligibility, consent and campaign attribution depend on the app's account configuration. A successful bridge answer is not evidence of a conversion.
 

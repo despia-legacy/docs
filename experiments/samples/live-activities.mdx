@@ -1508,10 +1508,11 @@ android {
 
 dependencies {
     implementation project(':nativeext-api')
-    // The Despia app's own versions (the app's build.gradle): the notification permission request
-    // (ActivityResultRegistry) and @Keep on the class OneSignal loads by name.
+    // Latest stable releases (Google Maven, read 2026-11-24: activity 1.13.0 of March 11, 2026; annotation
+    // 1.11.0 of September 23, 2026): the notification permission request (ActivityResultRegistry) and
+    // @Keep on the class OneSignal loads by name.
     implementation 'androidx.activity:activity:1.13.0'
-    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'androidx.annotation:annotation:1.11.0'
     compileOnly('com.onesignal:OneSignal:[5.0.0, 5.1.99]') {
         exclude group: 'com.onesignal', module: 'location'
         exclude group: 'com.google.android.gms', module: 'play-services-ads-identifier'

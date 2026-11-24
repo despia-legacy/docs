@@ -260,7 +260,7 @@ The build policy is part of the trusted build inputs and is not served from your
         ],
         "dependencies": [
           "androidx.core:core:1.18.0",
-          "androidx.work:work-runtime:2.11.2"
+          "androidx.work:work-runtime:2.12.0"
         ]
       }
     ]
@@ -3320,7 +3320,7 @@ The manifest declares everything the recorder needs. The build adds them to your
     - **Foreground service.** `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MICROPHONE`, with the service type `microphone`. Google Play asks you to declare this use.
     - **Notifications.** `POST_NOTIFICATIONS`, for the recording notification and its stop action.
     - **Widget.** `StatusWidgetProvider`, an exported app widget receiver.
-    - **Libraries.** `androidx.core:core:1.18.0` and `androidx.work:work-runtime:2.11.2`.
+    - **Libraries.** `androidx.core:core:1.18.0` and `androidx.work:work-runtime:2.12.0` (2.12.0 of September 23, 2026, the latest stable release on Google Maven, read 24 November 2026). Core stays on 1.18.0: core 1.19.1 of the same day needs compile SDK 37 and Android Gradle Plugin 9.1, and the V3 base app builds with compile SDK 36 and AGP 8.9.1.
   </Tab>
 </Tabs>
 

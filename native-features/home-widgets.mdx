@@ -13,7 +13,9 @@ icon: "border-all"
 `widget://` registers a remote SVG endpoint as the source for your app's home screen widget on iOS and Android. The OS fetches the SVG at the interval you set, swaps the rendered widget contents, and shows the new state on the home screen even when your app is closed. Your backend personalizes the SVG per user by reading the request, looking up the data, and substituting tokens like `{NAME}` and `{SCORE}` before responding.
 
 <Info>
-  Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly. Android needs a build made after November 23, 2026 with Home Widget turned on. Older Android builds do not handle the call: nothing appears on the home screen.
+  Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly.
+
+  **Android is coming soon.** Android builds made today do not include the widget yet: on Android the `widget://` call does nothing and no widget appears. The Android sections of this page describe how it works once Android builds include it; the [changelog](/changelog) will say when.
 
   Tested side by side with one SVG: on a Pixel 8 phone (Android 17) and on an iPhone 17 Pro simulator (iOS 26.5), in light and dark mode, with a tap that calls `window.onWidgetOpen` on Android. On the Pixel 8 we also checked that a new `widget://` call redraws a widget already on the home screen, that a tap works after Android has closed the app, and that the widget recovers after an error.
 </Info>
@@ -57,7 +59,7 @@ Android needs no Google Play Console step. The same **App \> Targets \> Home Wid
     Open the Despia Editor, go to **App \> Targets \> Home Widget** and turn it on. The widget name, description, fallback image and refresh rate you set there are used on both platforms.
   </Step>
   <Step title="Rebuild your Android app">
-    Start a new Android build. The widget is compiled into the app, so it cannot be added over the air. After the update, users find your widget in the launcher's widget list and add it to the home screen. Apps with Home Widget turned off build exactly as before.
+    Once Android builds include the widget (coming soon), start a new Android build. The widget is compiled into the app, so it cannot be added over the air. After the update, users find your widget in the launcher's widget list and add it to the home screen. Apps with Home Widget turned off build exactly as before.
   </Step>
 </Steps>
 
@@ -206,7 +208,7 @@ How it behaves:
 </Note>
 
 <Info>
-  Requires an iOS build made after this feature shipped, or an Android build made after November 23, 2026. Older builds ignore `value` and open the app without calling `window.onWidgetOpen`.
+  Requires an iOS build made after this feature shipped, or, once Android support ships, an Android build that includes the widget. Older builds ignore `value` and open the app without calling `window.onWidgetOpen`.
 </Info>
 
 ---

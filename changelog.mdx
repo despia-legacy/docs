@@ -4,19 +4,19 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-<Update label="November 23, 2026" description="Major update: home-screen widgets, finally on Android: one widget for iOS and Android">
-  ## Home-screen widgets, finally on Android
+<Update label="November 23, 2026" description="Major update: home-screen widgets are coming to Android: one widget for iOS and Android">
+  ## Home-screen widgets, coming to Android
 
-  Home Widgets are now cross-platform: they run on Android as well as iOS. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
+  Home Widgets are becoming cross-platform. The Android widget is built and tested, and it reaches Android builds soon; Android builds made today do not include it yet. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
 
-  - **One setting:** the **Home Widget** setting in the Despia Editor now adds the widget to Android builds too. Apps with it turned off build exactly as before.
+  - **One setting:** the **Home Widget** setting in the Despia Editor will add the widget to Android builds too. Apps with it turned off build exactly as before.
   - **Same size as iOS:** the widget is 4 by 2 cells on Android, the size of the iOS medium widget, and comes in this one size on both platforms. Design one wide SVG, such as `360 × 169`, for both.
   - **Your SVG, drawn natively:** Despia draws your SVG to fill the widget's rounded tile edge to edge, with the launcher's own corner radius, as on iOS. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, as on iOS.
   - **Tap to open:** a tap opens your app and calls `window.onWidgetOpen` with the widget's `value`, even when the app was closed.
   - **Refresh:** Android refreshes in the background at most every 15 minutes. A `widget://` call from your app redraws the widget at once.
   - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode, including updates while the widget is on the home screen and taps with the app closed.
 
-  Start a new Android build to get it. See [Home Widgets](/native-features/home-widgets).
+  This entry will be updated when Android builds include the widget; then a new Android build gets it. See [Home Widgets](/native-features/home-widgets).
 </Update>
 
 <Update label="November 23, 2026" description="OneSignal: replace or group notifications from your backend">

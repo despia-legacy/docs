@@ -127,7 +127,7 @@ if (isDespia) {
 ```
 
 <Warning>
-  Use a publicly fetchable HTTPS URL that returns an SVG (`Content-Type: image/svg+xml`) or an image. The widget fetches it again on every refresh, outside your web page, so blob URLs and URLs that need your page's login cookies do not work. A `data:` URL works, but it cannot change between refreshes: send a new `widget://` call to change it.
+  Use a publicly fetchable HTTPS URL that returns an SVG (`Content-Type: image/svg+xml`) or an image. The widget fetches it again on every refresh, outside your web page, so blob URLs and URLs that need your page's login cookies do not work. A `data:` URL cannot be sent: `widget://data:…` is not a valid URL, so the web view refuses to open it. Serve the image from an HTTPS URL instead.
 </Warning>
 
 ---
@@ -309,7 +309,7 @@ Everything below is current behaviour, so nothing about the widget surprises you
 - **Before the first call:** the widget shows the fallback image set in the Despia Editor, or, if there is none, your app icon and name. On iOS the fallback is only known after the app has been opened once, so a widget added before the first launch shows your app icon and name.
 - **Widget gallery preview:** the list of widgets the user picks from shows a plain card with your widget's name and description (Android) or your app icon and name (iOS), not your image. The image appears once the widget is on the home screen.
 - **No scripts or animations:** scripts and animations in the SVG do not run, and the widget does not redraw between refreshes.
-- **Fonts:** both platforms draw with the phone's own fonts; web fonts are not loaded. On Android only the generic families work (`sans-serif`, `serif`, `monospace`): any named family, even one the phone has such as `Roboto`, is drawn in serif. Always end the list with a generic family, such as `font-family="Inter, sans-serif"`, or leave `font-family` out for the system sans-serif font.
+- **Fonts:** both platforms draw with the phone's own fonts; web fonts are not loaded. A named family the phone has, such as `Roboto` on Android or `Helvetica Neue` on iOS, is drawn in that family. A family the phone does not have is drawn in the system sans-serif font on both, and the widget does not try the next name in the list: `font-family="Inter, monospace"` draws in sans-serif on a phone without Inter. The two platforms ship different fonts, so for text that looks the same on both, use a generic family (`sans-serif`, `serif`, `monospace`) or leave `font-family` out.
 
 ### iOS only
 
@@ -321,7 +321,7 @@ Everything below is current behaviour, so nothing about the widget surprises you
 
 - **Android 7.0 or later:** the widget needs Android 7.0 (API 24) or later.
 - **Launchers differ:** the size of 4 by 2 cells depends on the phone and launcher. Despia draws the SVG at the size the launcher reports, so the tile may be slightly larger or smaller than on a Pixel.
-- **Rounded corners before Android 12:** Android 12 and later round the tile with the launcher's own radius. On earlier versions an SVG gets 16 dp rounded corners drawn in, and a photo keeps square corners.
+- **Rounded corners before Android 12:** Android 12 and later round the tile with the launcher's own radius. On earlier versions the widget draws 16 dp rounded corners into both SVGs and photos.
 - **Background refresh:** at most every 15 minutes, only while a widget is placed and the phone is online. Battery Saver and Doze can delay it further.
 - **Force stop and Clear data:** see [Android behavior](#android-behavior).
 

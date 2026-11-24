@@ -216,11 +216,11 @@ if (code) {
 
 ### Apple Sign In on iOS
 
-Apple Sign In on iOS is special. The Apple JS SDK with `usePopup: true` opens the native Face ID / Apple ID sheet directly inside WKWebView without needing the `oauth://` bridge. The `id_token` is returned to your JavaScript callback with no browser session opened or closed.
+Despia can present the native Apple sign-in sheet on iOS when the build includes the Sign in with Apple capability. The native bridge returns an Apple credential to the calling page, and your backend verifies it and creates the app session.
 
 On Android, Apple Sign In still uses the `oauth://` bridge.
 
-See the [Apple Sign In](/native-features/o-auth-2-0/apple-auth) page for full details.
+See the [Apple Auth guide](/native-features/oauth/apple) for setup and token validation.
 
 ### `response_mode=form_post`
 
@@ -310,7 +310,7 @@ Note that this also affects plain HTML pages inside a WebView. If the page was a
     Implicit flow via Supabase or PKCE with custom backend
   </Card>
 
-  <Card title="Apple Sign In" icon="apple" href="/native-features/auth/apple">
+  <Card title="Apple Sign In" icon="apple" href="/native-features/oauth/apple">
     Native Face ID on iOS, Chrome Custom Tabs on Android
   </Card>
 

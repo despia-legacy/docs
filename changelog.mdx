@@ -4,6 +4,31 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
+<Update label="November 23, 2026" description="Major update: Android home-screen widgets, matching iOS">
+  ## Android home-screen widgets, matching iOS
+
+  Home Widgets now run on Android as well as iOS. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
+
+  - **One setting:** the **Home Widget** setting in the Despia Editor now adds the widget to Android builds too. Apps with it turned off build exactly as before.
+  - **Your SVG, drawn natively:** Despia draws your SVG at the widget's size and draws it again when the user resizes the widget. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, as on iOS.
+  - **Tap to open:** a tap opens your app and calls `window.onWidgetOpen` with the widget's `value`, even when the app was closed.
+  - **Refresh:** Android refreshes in the background at most every 15 minutes. A `widget://` call from your app redraws the widget at once.
+  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode.
+
+  Start a new Android build to get it. See [Home Widgets](/native-features/home-widgets).
+</Update>
+
+<Update label="November 23, 2026" description="OneSignal: replace or group notifications from your backend">
+  ## Keep your notification list tidy with OneSignal
+
+  Despia apps have always supported OneSignal's `collapse_id`, `thread_id` and `android_group` fields. They are now documented.
+
+  - **Replace:** notifications that share a `collapse_id` replace each other, so the user sees only the latest update.
+  - **Group:** notifications that share a `thread_id` (iOS) and `android_group` (Android) stack into one group the user can expand or clear with one swipe.
+
+  Set them per send in the OneSignal dashboard or REST API. No app update or Despia setting is needed. Opening your app still resets the badge and leaves delivered notifications in place, as most apps do. See [Replacing and grouping notifications](/native-features/onesignal/reference#replacing-and-grouping-notifications).
+</Update>
+
 <Update label="November 21, 2026" description="V3 Extensions: experimental runtime, native source templates and authoring reference">
   ## V3 Extensions preview
 

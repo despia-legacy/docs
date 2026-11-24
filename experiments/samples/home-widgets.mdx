@@ -11,11 +11,13 @@ This extension puts data from your web app into native home-screen widgets. It i
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for build verification and rebuild requirements.
 
+**Tested on** the 21 November 2026 fixtures. The iOS simulator passed 8/8 scenarios. The TestingBot Pixel 11 passed 5/5 scenarios. The Android emulator passed 7/8 scenarios, with the tap in an already running app failing.
+
 ## Install
 
 1. Copy the files below into `public/despia/widgets/` in your web app, keeping their `ios/` and `android/` paths.
 2. Add `"widgets"` to the `extensions` array in `public/despia/extensions.json`, keeping any other extension names.
-3. For iOS, register the App Group `group.<your bundle id>.nx.widgets` and enable it on both the app and the widget extension App IDs. The widget extension bundle ID is `<your bundle id>.NXWidgets`. Regenerate both provisioning profiles.
+3. For iOS, register the App Group `group.<your bundle id>.nx.widgets` and enable it on both the app and the widget extension App IDs. The widget extension bundle ID is `<your bundle id>.NXWidgets`. Regenerate both provisioning profiles. See [Set up iOS App Groups](/experiments/v3-extensions#set-up-ios-app-groups) for the Apple Developer steps.
 4. Rebuild and install your native app with the extension compiled in. Changing native files requires fresh build verification and a new build.
 
 The manifest adds the `NXWidgets` WidgetKit target on iOS and a custom Glance module on Android. The build policy stays with the trusted build inputs, outside your served `public/despia/` folder. The Android module declares the widget receivers and its RemoteViews service.

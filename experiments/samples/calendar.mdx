@@ -98,8 +98,8 @@ Default outputs are `calendar<Route>Result` and `onCalendar<Route>Result`, with 
 | calendar_delete | id, optional entity | `calendarCalendarDeleteResult` | deleted: true |
 | events | start_ms and end_ms required; optional calendar_id, offset, limit 1..100 | `calendarEventsResult` | Event occurrences, next_offset, has_more |
 | event_get | id | `calendarEventGetResult` | Event fields, with platform metadata |
-| event_save | data object; optional span this or future | `calendarEventSaveResult` | id, saved: true |
-| event_delete | id; optional span | `calendarEventDeleteResult` | deleted: true for supported operations |
+| event_save | data object; optional span this or future; optional occurrence_ms | `calendarEventSaveResult` | id, saved: true; Android also series_id with occurrence_ms (this) or split_ms (future) for a recurring event |
+| event_delete | id; optional span this or future; optional occurrence_ms | `calendarEventDeleteResult` | deleted: true |
 | present | Optional id, data and mode view, edit or create | `calendarPresentResult` | presented: true, which does not mean saved |
 
 Event data supports id, calendar_id, title, start_ms, end_ms, all_day, timezone, location, notes and alarms. iOS also supports url. New Android events require calendar_id. An update preserves fields not supplied. EventKit requires a writable calendar. Android providers enforce their account and calendar rules.
@@ -108,7 +108,7 @@ Alarm writes use `{minutes: 15}` for a reminder 15 minutes before the event. iOS
 
 Recurrence writes use an array of objects with frequency 0 daily, 1 weekly, 2 monthly or 3 yearly, a positive interval, optional end_count or end_ms, days_of_week objects with day 1 Sunday through 7 Saturday and optional week ordinal, and optional days_of_month, months_of_year, weeks_of_year, days_of_year and set_positions. iOS accepts EventKit recurrence rules. Android accepts one RRULE through the shared writer and returns raw RRULE/RDATE/EXRULE/EXDATE under android metadata. For a recurring Android save, include start_ms and end_ms so duration can be formed.
 
-EventKit supports this-event and future-event mutations. Android future-series splitting and recurring-series deletion need explicit provider operations through android_table. The shared delete route returns unsupported rather than silently deleting a recurring series. This extension does not implement an atomic Android series-split helper. Use native code when the operation needs a transaction spanning multiple provider rows.
+For a recurring event, span this (the default) changes or deletes one occurrence, and span future that occurrence and every later one. occurrence_ms names the occurrence by its start in Unix milliseconds, as events returns it in start_ms; without it the span acts from the first occurrence, so a future delete without occurrence_ms deletes the whole series. An occurrence_ms that is not an occurrence of the event answers not_found. iOS uses EventKit's this-event and future-event spans. Android writes the same result through the Calendar Provider in one atomic batch: this inserts an exception (a changed or cancelled occurrence) for a series a sync account owns; the provider matches exceptions to their series by sync ID, so for a local calendar this adds the occurrence to the series EXDATE and, for a save, writes the changed occurrence as its own event, returned as id with the series as series_id. future ends the series before the occurrence with an RRULE UNTIL and, for a save, starts a new series there carrying the changes, the remaining COUNT and the alarms; the new series has its own id, returned as id with the old one as series_id.
 
 ## Platform methods and native UI
 

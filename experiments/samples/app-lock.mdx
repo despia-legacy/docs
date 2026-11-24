@@ -22,6 +22,18 @@ You maintain the native code you copy or customize. This extension is experiment
 4. Verify the build inputs, rebuild and install the native app. The iOS targets require iOS 16.6 or later.
 5. Install the SDK with `npm install despia-native` in your web project. Website changes alone do not add native code to an installed app.
 
+## Family Controls distribution approval
+
+Check this before your first iOS distribution build. Apple grants the Family Controls entitlement (`com.apple.developer.family-controls`) for distribution only on request, and per bundle ID. App Lock declares it on four bundles: the app, `<app bundle id>.NXLockMonitor`, `<app bundle id>.NXLockShield` and `<app bundle id>.NXLockAction`.
+
+1. The Account Holder submits the [Family Controls distribution request](https://developer.apple.com/contact/request/family-controls-distribution) for the app, and the same request for each of the three extensions.
+2. When Apple approves a request, Certificates, Identifiers & Profiles shows Family Controls as Assigned for that App ID. Open its info button and check that Provisioning Support lists every distribution method you use.
+3. Create or regenerate the distribution provisioning profiles of all four bundle IDs, so each carries Family Controls and the App Group `group.<app bundle id>.nx.applock`.
+
+Until all four are approved, a distribution build stops at signing: `NX-S011` when a profile does not grant the entitlement, `NX-S010` when a bundle has no profile. A failed authorization request reports its reason in the `authorization` event as `error_code`: `unauthorized`, `restricted`, `unavailable`, `invalid_account_type`, `invalid_argument`, `authorization_conflict`, `authorization_canceled`, `network_error` or `authentication_method_unavailable` (Apple's `FamilyControlsError` cases).
+
+Source: Apple, [Requesting the Family Controls entitlement](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement), read 24 November 2026 (page updated 19 November 2026).
+
 ## Create and select a group
 
 Call `despia` from browser events and await requests sharing an output variable sequentially. Authorization and selection can answer before the person finishes the native UI. Read authorization again, and wait for a saved selection before applying the group.

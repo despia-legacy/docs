@@ -1,0 +1,72 @@
+---
+title: "Base44 OAuth"
+description: "Preview of native Google and Facebook sign-in for Base44 apps in Despia V3."
+icon: "key"
+---
+
+<Warning>
+  In development. The signed app pilot will verify provider sign-in and the resulting Base44 session inside the WebView.
+</Warning>
+
+The planned core runtime flow opens a system authentication browser and returns the user to their Base44 app. It keeps the provider's browser session separate from the WebView until the app completes its supported return flow.
+
+The integration is planned for the Despia V3 runtime. The pilot will determine whether a Base44 app needs any setup beyond domain linking.
+
+## JavaScript SDK
+
+Use the first-party Despia npm package from client code in your Base44 app.
+
+```bash
+npm install despia-native
+```
+
+```javascript
+import despia from 'despia-native'
+```
+
+Use `despia(...)` for the native commands in the Despia API reference. Supported setup and any integration calls will be documented after the pilot.
+
+## Platform availability
+
+The planned Google flow uses the existing HTTPS authentication callback. On iOS, that callback requires iOS 17.4 or later and the runtime's `despia.httpsAuthCallback` capability. Check the OS version using `getosversion://` once that API is released; do not interpret an OS version alone as proof that authentication is available.
+
+On Android, read `despia.httpsAuthCallback` because browser support, verified App Links and the user's link-handling settings affect the return path independently of the Android version. A capability result does not establish a completed provider or Base44 session.
+
+Show only providers enabled for the Base44 app. Google and Facebook support, cancellation, return navigation and session persistence remain subject to the signed-app pilot. Do not show an unavailable provider solely because the device passes an OS check.
+
+For the pilot, run the following check in client code before showing the Google button in the Despia app. Combine the result with the provider settings in your Base44 app.
+
+```javascript
+async function canUseHttpsAuthReturn() {
+  if (despia.httpsAuthCallback !== true) return false
+
+  const { osVersion } = await despia('getosversion://', ['osVersion'])
+  if (osVersion?.platform === 'android') return true
+  if (osVersion?.platform !== 'ios') return false
+
+  const [major, minor = 0] = osVersion.version.split('.').map(Number)
+  return major > 17 || (major === 17 && minor >= 4)
+}
+```
+
+## Configure the app's domain
+
+Follow [Easy OAuth](/native-features/oauth/easy-login-flow) and [Deeplinking](/native-features/deeplinking) for the existing V3 setup.
+
+1. In the Despia Editor, set the app's deep-link domain to the exact HTTPS hostname the app loads, including any `www` prefix.
+2. Enable **Web App Synchronization** under **Add-ons**, **Hardcoded**, for the platforms you ship. This is the existing domain-link capability, not extension enrollment.
+3. Enable **Associated Domains** on the main iOS Bundle ID. Serve `/.well-known/apple-app-site-association` on the exact app host, with `applinks` for universal links and `webcredentials` for the HTTPS authentication session. Use the app's Team ID and Bundle ID.
+4. Serve `/.well-known/assetlinks.json` on that same host, with the Android package name and the installed app's signing certificate SHA-256 fingerprint. For Play installs, use the **App signing key certificate** from Play Console. A directly installed test artifact also needs its actual signing certificate fingerprint.
+5. Serve both files over HTTPS as JSON, without redirects, and rebuild the native app with the matching configuration. Domain files alone cannot add capabilities to an installed binary. Raise the version and deploy the new native build to reach store users.
+
+If the web host cannot serve these association files, resolve that hosting requirement before relying on the HTTPS return path. A different hostname or an unverified redirect does not inherit the app host's association.
+
+## Base44 return flow
+
+The existing generic `oauth://` HTTPS flow expects an authorization URL outside the app's own host. An own-host entry URL is declined because the callback watches that host. Base44's own-host login start therefore needs the dedicated, reviewed core handoff; do not substitute it into the generic example and assume it has the same result.
+
+The pilot covers the Base44 session inside the WebView, including the return to an already-open app and persistence after relaunch. Cancellation, an unexpected return origin and a failed exchange must leave the app signed out.
+
+## Sign in with Apple
+
+Keep [Sign in with Apple](/native-features/oauth/apple) separate from this Google/Facebook flow and from the iOS 17.4 Google check. The existing Apple bridge obtains an Apple credential for backend validation; it does not by itself create a Base44 session. A Base44 Apple option needs a supported, verified token exchange and matching audience/nonce handling before it is presented as available.

@@ -73,6 +73,7 @@ async function reportLead(hasAnalyticsConsent) {
 | `purchase` | Required `amount`, uppercase three-letter `currency`, `transaction_id`; optional JSON string `properties` | `googleadsPurchaseResult` | `accepted: true` |
 | `user` | Optional `id`; omit to clear | `googleadsUserResult` | `accepted: true` |
 | `property` | Required `name`; optional `value`; omit to clear | `googleadsPropertyResult` | `accepted: true` |
+| `conversion_measurement` | Exactly one of `email`, `phone` (E.164, such as `+14155550123`), `hashed_email` or `hashed_phone` (SHA-256 of the normalized value, as 64 hex characters) | `googleadsConversionMeasurementResult` | `accepted: true` (iOS) |
 | `reset` | None | `googleadsResetResult` | `accepted: true` |
 
 Results use the V3 bridge envelope. `status.sdk` is `13.2.0` on iOS and `BOM35.2.0` on Android. `accepted` means the call was handed to the SDK. It does not confirm event ingestion, attribution or a recorded conversion.
@@ -81,13 +82,15 @@ Results use the V3 bridge envelope. `status.sdk` is `13.2.0` on iOS and `BOM35.2
 
 `purchase` submits Firebase's `purchase` event. Explicit `amount`, `currency` and `transaction_id` override `value`, `currency` and `transaction_id` in `properties`. The amount must be finite; the transaction ID has a 128-character bridge limit.
 
+`conversion_measurement` starts Google Ads on-device conversion measurement with Firebase's `Analytics.initiateOnDeviceConversionMeasurement`, which matches the person's sign-in email or phone on the device. It needs `consent` with `enabled=true` first, and the app must be linked to Google Ads. Firebase asks you to call it right after the person signs in or registers, and for signed-in users at least once per app version. Normalize the email or phone as [Firebase's guide](https://firebase.google.com/docs/tutorials/ads-ios-on-device-measurement/step-3) describes before you hash it (read 24 November 2026); the extension turns the 64 hex characters into the 32 bytes Firebase expects. On Android it answers `platform_limit`: Google offers on-device conversion measurement for iOS App campaigns only ([Google Ads Help](https://support.google.com/google-ads/answer/12119136), read 24 November 2026).
+
 Clearing a user ID or property and resetting Analytics data remain available after adapter collection is disabled. `reset` affects the shared Analytics instance. It does not delete historical server records or change consent.
 
-Errors include `not_configured`, `configuration_conflict`, `consent_required` and `bad_request`. Android can also return `sdk_error` when Firebase cannot use the app configuration.
+Errors include `not_configured`, `configuration_conflict`, `consent_required` and `bad_request`, and `platform_limit` for `conversion_measurement` on Android. Android can also return `sdk_error` when Firebase cannot use the app configuration.
 
 ## Platform limits
 
-Both platforms require Firebase configuration for the distributed app's own bundle ID or package. Android's module requires API 24 or later and compile SDK 36. On iOS the V3 base app links the same `firebase-ios-sdk` 13.2.0 package for push, so the extension uses that version and adds only the `FirebaseCore` and `FirebaseAnalytics` products. It needs a V3 runtime that ships Firebase 13 as a Swift package. The on-device conversion measurement calls (`Analytics.initiateOnDeviceConversionMeasurement`) are not exposed as routes.
+Both platforms require Firebase configuration for the distributed app's own bundle ID or package. Android's module requires API 24 or later and compile SDK 36. On iOS the V3 base app links the same `firebase-ios-sdk` 13.2.0 package for push, so the extension uses that version and adds only the `FirebaseCore` and `FirebaseAnalytics` products. It needs a V3 runtime that ships Firebase 13 as a Swift package. On-device conversion measurement is iOS only (see `conversion_measurement`).
 
 Google Ads linkage, event eligibility, consent and campaign attribution depend on the app's account configuration. A successful bridge answer is not evidence of a conversion.
 
@@ -117,14 +120,15 @@ Version 1.0.0. Call a route as `extension://googleads/<route>`. The answer is wr
 | `purchase` | `amount`: string, max 32, **required**<br/>`currency`: string, max 3, **required**<br/>`transaction_id`: string, max 128, **required**<br/>`properties`: string, max 4096 | `googleadsPurchaseResult` | `onGoogleadsPurchaseResult` |
 | `user` | `id`: string, max 256 | `googleadsUserResult` | `onGoogleadsUserResult` |
 | `property` | `name`: string, max 24, **required**<br/>`value`: string, max 36 | `googleadsPropertyResult` | `onGoogleadsPropertyResult` |
+| `conversion_measurement` | `email`: string, max 254<br/>`phone`: string, max 16<br/>`hashed_email`: string, max 64<br/>`hashed_phone`: string, max 64 | `googleadsConversionMeasurementResult` | `onGoogleadsConversionMeasurementResult` |
 | `reset` | none | `googleadsResetResult` | `onGoogleadsResetResult` |
 
 ### Native requirements
 
 | Platform | What the build adds |
 | --- | --- |
-| iOS | CocoaPod `Firebase/CoreOnly` 10.29.0 |
-| iOS | CocoaPod `FirebaseAnalytics` 10.29.0 |
+| iOS | Swift package `firebase-ios-sdk` (https://github.com/firebase/firebase-ios-sdk) pinned at `efad2b784dfae43404dc1fcfdf272981b235e71f`, products `FirebaseCore` and `FirebaseAnalytics` |
+| Android | Module `googleads` (Firebase BOM 35.2.0, `firebase-analytics`) |
 
 ## License
 

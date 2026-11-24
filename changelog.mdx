@@ -11,10 +11,10 @@ icon: "clock-rotate-left"
 
   - **One setting:** the **Home Widget** setting in the Despia Editor will add the widget to Android builds too. Apps with it turned off build exactly as before.
   - **Same size as iOS:** the widget is 4 by 2 cells on Android, the size of the iOS medium widget, and comes in this one size on both platforms. Design one wide SVG, such as `360 × 169`, for both.
-  - **Your SVG, drawn natively:** Despia draws your SVG to fill the widget's rounded tile edge to edge, with the launcher's own corner radius, as on iOS. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, as on iOS.
+  - **Your SVG, drawn natively:** Despia draws your SVG to fill the widget's rounded tile edge to edge, with the launcher's own corner radius, as on iOS. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, and a named font the phone has, such as `Roboto`, draws in that font, as on iOS.
   - **Tap to open:** a tap opens your app and calls `window.onWidgetOpen` with the widget's `value`, even when the app was closed.
   - **Refresh:** Android refreshes in the background at most every 15 minutes. A `widget://` call from your app redraws the widget at once.
-  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode, including updates while the widget is on the home screen and taps with the app closed.
+  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode, including updates while the widget is on the home screen and taps with the app closed. Also tested on a Galaxy S21 with Android 11, where photos and SVGs get the tile's rounded corners too.
 
   This entry will be updated when Android builds include the widget; then a new Android build gets it. See [Home Widgets](/native-features/home-widgets).
 </Update>

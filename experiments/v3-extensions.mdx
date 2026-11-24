@@ -643,6 +643,11 @@ Use an App Group when your iOS app and an embedded target, such as a widget, nee
 3. Assign the group to the main App ID and to every participating extension App ID on the same Apple Developer team. A generated target's bundle ID is the main bundle ID followed by a dot and the target's `bundle_suffix`. If the manifest omits `bundle_suffix`, the build uses the target name. In this example, assign the group to `com.example.myapp` and `com.example.myapp.NXWidgets`. Register a separate App ID for a new target before assigning its group.
 4. Regenerate the provisioning profiles for the app and all participating targets. Use those profiles for the next native build, then install it on an iPhone to check that both processes can access the shared data.
 
+For a new iOS target, prefer `"bundle_suffix": "extension.widgets"` so the full bundle ID is
+`com.example.myapp.extension.widgets`. Set the suffix inside the target in `ios.targets`.
+Register that full ID in Apple Developer. For a target you've already provisioned, use its
+existing bundle ID. The App Group for this example is still `group.com.example.myapp.nx.widgets`.
+
 The manifest requests the entitlement. Apple provisioning grants it. If you see `NX-S010`, check that the build has a profile for the reported bundle ID. If you see `NX-S011` for `com.apple.security.application-groups`, check that the reported bundle's profile grants the exact group ID.
 
 These steps are for extensions declared in your V3 manifest. Use the separate setup guides for the built-in [Home Widgets](/native-features/home-widgets) and [Share Extension](/native-features/share-extension).

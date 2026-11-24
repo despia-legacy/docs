@@ -165,20 +165,225 @@ Every element has `type`, and may have `id`, `class`, `style`, `if` (a formula; 
 
 A colour is `#RRGGBB`, `#RRGGBBAA` or a token: `primary`, `secondary`, `tertiary`, `accent`, `background`, `red`, `orange`, `yellow`, `green`, `mint`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `pink`, `brown`, `gray`, `white`, `black`, `clear`.
 
-### Formulas
+---
 
-Any field the platform can compute is a value or a formula: an object with one operator and its arguments, such as `{ "+": [{ "var": "state.a" }, 1] }`. `var` reads `state.*`, `attrs.*` (an activity's fixed attributes), `env.*`, `now` (seconds), and inside a `list` template the item (named by `as`) and `index`. `env` holds `platform`, `os`, `family`, `width`, `height`, `colorScheme`, `renderingMode`, `locale`, `timeZone`, `isStale`, `isLuminanceReduced`, `showsBackground` and `renderer`. A layout's `when` reads only `env` and `now`.
+## Formulas
 
-| Group | Operators |
-| --- | --- |
-| Values | `var`, `lit`, `has`, `len`, `at`, `default` |
-| Logic | `if`, `and`, `or`, `!`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `in` |
-| Numbers | `+`, `-`, `*`, `/`, `%`, `min`, `max`, `abs`, `round`, `floor`, `ceil`, `clamp` |
-| Text | `cat`, `upper`, `lower`, `trim`, `substr`, `split`, `pad`, `join` |
-| Lists | `map`, `filter`, `some`, `all`, `count`, `sum`, `slice`, `first`, `last`, `sort` |
-| Formatting | `number`, `percent`, `currency`, `compact`, `datetime`, `duration`, `plural` |
+Any value in a document can be a formula, computed from the state each time the widget is drawn. A layout's `when` reads only `env` and `now`; a `list`'s `max` reads only `env`. These rules are the same on iOS and Android.
 
-A formula never reads the network or the clock beyond `now`, and stops after 20000 steps.
+### Where formulas are allowed
+
+A formula may stand anywhere a document takes a value:
+
+- every element field except the structural ones (`type`, `id`, `class`, `only`, `children`, `template`, `empty`, `as`);
+- an element's `if`;
+- a layout's `when`, `widgetUrl`, `background` and `margins`;
+- a `list`'s `items` and `max`;
+- every style value;
+- every `summary` field of an activity.
+
+### Values
+
+A value is one of six types: null, boolean, number (an IEEE 754 double), text (a string), array, or object.
+
+- No value is ever converted to another type. `{"==": [1, "1"]}` is false, and `{"+": ["1", 2]}` is an error. Use `cat` to join text.
+- Only `false` and `null` count as false (for `if`, `and`, `or`, `!`, `filter`, `some`, `all`, `count`, a layout's `when` and an element's `if`). `0`, `""`, `[]` and `{}` count as true.
+- Equality (`==`, `!=`, `in` on an array) is deep. Two values are equal only when they have the same type and the same content. Object key order does not matter. `0` equals `-0`.
+- Text is compared and measured in Unicode code points, never in UTF-16 units. `len`, `substr`, `pad`, `trim`, `split` with `""`, `<` on text and `sort` on text all work on code points.
+- A number becomes text in one canonical way, used by `cat`, `join`, `pad`, `plural` and the `#` of `plural`:
+  - an integer below 10^15 in size is written as plain digits;
+  - any other number is written with 15 significant digits, rounded half away from zero on its exact value, in plain notation (never `1e21`), with trailing zeros removed.
+- No operator returns NaN or an infinity. A result that would be one is the error `non_finite`. A result of `-0` is returned as `0`.
+
+### The formula form
+
+A formula is one of three things:
+
+- A **literal**: null, a boolean, a number, or text. It stands for itself.
+- An **array**: each item is evaluated as a formula, and the result is the array of results.
+- An **object**:
+  - With exactly one key, the key is the operator and its value is the argument list: `{"op": [a, b]}`. A single argument may be written without the list: `{"abs": -3}` is `{"abs": [-3]}`.
+  - With any other number of keys (none, or two and more), it is a literal object and is not evaluated.
+  - A literal object with one key must be written with `lit`: `{"lit": {"decimals": 2}}`. Without `lit`, `{"decimals": 2}` would be read as an unknown operator `decimals`.
+
+Arguments are evaluated only when the operator needs them. `if`, `and`, `or`, `default` and `var` stop as soon as they have their answer.
+
+### Scopes and paths
+
+`var` and `has` take a path: text made of names separated by dots, such as `state.items.0.name`. The first name is the scope:
+
+| Scope | What it holds |
+|---|---|
+| `state` | The document's state: its default `state`, then every `set` and `update` call and every push (merged by RFC 7396). |
+| `attrs` | Activities only: the attributes given when the activity started. They do not change. |
+| `env` | Facts about this render (below). |
+| `now` | The time of this render in epoch seconds: the timeline entry's date in a widget, the render time in an activity. It does not tick; a live clock is the `timer` element's job. |
+| `item` | Inside `map`, `filter`, `some`, `all`, `count` and `sum`: the current array item. Inside a `list` template: the current row, under the name given by the list's `as` (`item` when `as` is not set). |
+| `index` | The position of `item`, from 0. |
+
+The `env` keys are:
+
+| Key | Type | What it holds |
+|---|---|---|
+| `platform` | text | `"ios"` or `"android"`. |
+| `os` | number | The major OS version. |
+| `family` | text | The family being drawn, such as `small`, `accessoryCircular`, `island.compactLeading` or `lockScreen`. |
+| `width` | number | Width of this instance, in points (iOS) or dp (Android). |
+| `height` | number | Height of this instance, in points or dp. |
+| `colorScheme` | text | `"light"` or `"dark"`. |
+| `renderingMode` | text | `"fullColor"`, `"accented"` or `"vibrant"`. |
+| `locale` | text | The locale used by the formatting operators, such as `"en-US"`. When it is not set, `en-US` is used. |
+| `timeZone` | text | The time zone used by `datetime`, such as `"Europe/Berlin"`. |
+| `isStale` | boolean | Activities: the activity is past its `staleAfter`. |
+| `isLuminanceReduced` | boolean | iOS Always-On display. |
+| `showsBackground` | boolean | False where the system removes the widget background (iOS StandBy and tinted modes). |
+| `renderer` | text | The renderer version, `"1.0"`. |
+
+Path rules:
+
+- A path that leads nowhere gives `null`. This covers a missing key, an index past the end, and a step into a non-container.
+- An array step is a decimal index with no leading zero (`0`, `1`, `12`).
+- A key that holds a dot cannot be reached by a path. Use `at` for it: `{"at": [{"var": "state"}, "a.b"]}`.
+- A first name that is not a scope is the error `unknown_scope`.
+
+### Formula errors
+
+An error inside a formula never stops a render. The formula that failed gives `null`, and one diagnostic records the error code and the JSON path of the formula. A field whose formula gives `null` takes its default, and a `text` whose text is `null` shows nothing. The error codes are:
+
+| Code | When |
+|---|---|
+| `type_error` | An argument has the wrong type, such as `+` on text or `upper` on a number. |
+| `non_finite` | A result would be NaN or an infinity. |
+| `division_by_zero` | `/` or `%` with a divisor of 0. |
+| `out_of_range` | An argument is outside its allowed values, such as `round` decimals above 10, a `clamp` low above high, a currency code that is not three capital letters, or a `duration` style that is not `positional` or `abbrev`. |
+| `array_too_long` | `map` or `split` would make an array longer than the array cap (256). |
+| `bad_formula` | Wrong number of arguments, a `var` path that is not text, or a `plural` with no matching form. |
+| `unknown_operator` | A one-key object whose key is not an operator. |
+| `unknown_scope` | A path whose first name is not a scope. |
+| `too_deep` | Formulas nested deeper than 32. |
+| `budget_exceeded` | The render used up its step budget (below). |
+
+### The budget
+
+A widget extension that uses too much memory or time is killed by the system and shows nothing. The budget makes every render finish, and it fails in the same place on every device and in the validator.
+
+- Each operator evaluation costs one step, and so does each `lit`.
+- `map`, `filter`, `some`, `all`, `count` with a predicate, and `sum` cost one more step per item they visit. `sort` costs one step per item.
+- One render (one layout with one state) has 20 000 steps.
+- Past the budget, every later formula in that render gives `null` with the diagnostic `budget_exceeded`.
+- Formulas nest at most 32 deep. No array made by a formula may have more than 256 items.
+
+The language has no loop, recursion, assignment, user function, or `reduce` with a free accumulator. Each array operator walks its array once.
+
+### Operators
+
+Notes on the table:
+
+- Min and max are the counts of arguments; `n` means no upper bound.
+- The arguments column gives each argument's type in order. Square brackets mark an optional argument. "Formula" means an argument evaluated once per item, with `item` and `index` set.
+- Each example is evaluated with the example state and env below, and gives the result shown.
+
+Example state:
+
+```json
+{"title": "Order 42", "eta": 1700003600, "price": 12.4, "count": 3, "done": false, "code": "  ab  ",
+ "tags": ["new", "hot"],
+ "items": [{"name": "Tea", "qty": 2, "price": 3.5}, {"name": "Cake", "qty": 1, "price": 4.25}]}
+```
+
+Example env:
+
+```json
+{"platform": "ios", "family": "small", "locale": "en-US", "timeZone": "UTC", "now": 1700000000}
+```
+
+#### Data
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `var` | 1 | 2 | path (text; may itself be a formula), [default (any; evaluated only when the path gives null)] | The value at the path, else the default, else null. | `{"var": ["state.nickname", "Guest"]}` | `"Guest"` |
+| `lit` | 1 | 1 | value (any; never evaluated) | The value as written. | `{"lit": {"decimals": 2}}` | `{"decimals": 2}` |
+| `has` | 1 | 1 | path (text) | Boolean: the path leads to a value that is not null. | `{"has": "state.items"}` | `true` |
+| `len` | 1 | 1 | text or array | Number: code points in the text, or items in the array. | `{"len": "héllo"}` | `5` |
+| `at` | 2 | 2 | array and index (integer), or object and key (text) | The item or the key's value. Null when it is missing, the index is negative or past the end, or the container is null. | `{"at": [{"var": "state.tags"}, 1]}` | `"hot"` |
+| `default` | 1 | n | any, ... | The first argument that is not null, else null. | `{"default": [{"var": "state.nickname"}, "Guest"]}` | `"Guest"` |
+
+#### Logic
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `if` | 1 | n | condition, then, [condition, then, ...], [else] | The `then` of the first condition that counts as true. Otherwise the last argument when the count is odd, else null. One argument gives that argument. | `{"if": [{"var": "state.done"}, "Done", "Pending"]}` | `"Pending"` |
+| `and` | 0 | n | any, ... | Boolean: true when every argument counts as true (also when there are none). Stops at the first false one. | `{"and": [true, 0, ""]}` | `true` |
+| `or` | 0 | n | any, ... | Boolean: true when any argument counts as true. Stops at the first true one. False when there are none. | `{"or": [null, false]}` | `false` |
+| `!` | 1 | 1 | any | Boolean: true when the argument counts as false. | `{"!": {"var": "state.done"}}` | `true` |
+| `==` | 2 | 2 | any, any | Boolean: deep equality, with no conversion. | `{"==": [1, "1"]}` | `false` |
+| `!=` | 2 | 2 | any, any | Boolean: not `==`. | `{"!=": [[1, 2], [1, 2]]}` | `false` |
+| `<` | 2 | 3 | number, number, [number]; or text, text, [text] | Boolean. With three arguments, `a < b < c`. All arguments must have the same type. Text compares by code point. | `{"<": [0, {"var": "state.count"}, 5]}` | `true` |
+| `<=` | 2 | 3 | number, number, [number]; or text, text, [text] | Boolean, like `<` with `<=`. | `{"<=": ["apple", "apple"]}` | `true` |
+| `>` | 2 | 2 | number, number; or text, text | Boolean. | `{">": [{"var": "state.price"}, 10]}` | `true` |
+| `>=` | 2 | 2 | number, number; or text, text | Boolean. | `{">=": [2, 3]}` | `false` |
+| `in` | 2 | 2 | needle (any), haystack (array); or needle (text), haystack (text) | Boolean: the needle is deep-equal to an item of the array, or is a part of the text. | `{"in": ["hot", {"var": "state.tags"}]}` | `true` |
+
+#### Numbers
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `+` | 1 | n | number, ... | The sum. | `{"+": [1, 2, 3.5]}` | `6.5` |
+| `-` | 1 | 2 | number, [number] | With one argument, the negation. With two, the difference. | `{"-": [10, 4]}` | `6` |
+| `*` | 1 | n | number, ... | The product. | `{"*": [{"var": "state.price"}, 2]}` | `24.8` |
+| `/` | 2 | 2 | number, number | The quotient. A divisor of 0 is `division_by_zero`. | `{"/": [7, 2]}` | `3.5` |
+| `%` | 2 | 2 | number, number | The remainder of truncated division, with the sign of the first argument. A divisor of 0 is `division_by_zero`. | `{"%": [-7, 3]}` | `-1` |
+| `min` | 1 | n | number, ... | The smallest. | `{"min": [4, 2, 9]}` | `2` |
+| `max` | 1 | n | number, ... | The largest. | `{"max": [4, 2, 9]}` | `9` |
+| `abs` | 1 | 1 | number | The absolute value. | `{"abs": -3}` | `3` |
+| `round` | 1 | 2 | number, [decimals (integer 0 to 10; default 0)] | Rounded half away from zero, on the exact value of the double. 2.345 is stored as 2.34499..., so it rounds to 2.34. A number of 2^53 or more in size is returned unchanged. | `{"round": [-2.5]}` | `-3` |
+| `floor` | 1 | 1 | number | The largest integer not above it. | `{"floor": -1.5}` | `-2` |
+| `ceil` | 1 | 1 | number | The smallest integer not below it. | `{"ceil": 1.2}` | `2` |
+| `clamp` | 3 | 3 | value (number), low (number), high (number) | The value held between low and high. Low above high is `out_of_range`. | `{"clamp": [12, 0, 10]}` | `10` |
+
+#### Text
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `cat` | 0 | n | text or number, ... | Text: the arguments joined, numbers in canonical form. Null and booleans are `type_error`. | `{"cat": ["Total ", {"var": "state.price"}]}` | `"Total 12.4"` |
+| `upper` | 1 | 1 | text | Text in upper case (Unicode default mapping, not locale dependent). | `{"upper": "Tea"}` | `"TEA"` |
+| `lower` | 1 | 1 | text | Text in lower case (Unicode default mapping, not locale dependent). | `{"lower": "TEA"}` | `"tea"` |
+| `trim` | 1 | 1 | text | Text without leading and trailing white space. White space is the code points U+0009 to U+000D, U+0020, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F, U+3000 and U+FEFF. | `{"trim": {"var": "state.code"}}` | `"ab"` |
+| `substr` | 2 | 3 | text, start (integer), [length (integer)] | Text: the code points from start. A negative start counts from the end. Without a length, the rest. A negative length leaves that many code points off the end. | `{"substr": ["Despia", -3]}` | `"pia"` |
+| `split` | 2 | 2 | text, separator (text) | Array of text. An empty separator splits into code points. More than 256 parts is `array_too_long`. | `{"split": ["a,b,c", ","]}` | `["a", "b", "c"]` |
+| `pad` | 2 | 4 | text or number, width (integer up to 256), [fill (text of one code point; default space)], [side (`"start"` or `"end"`; default `"start"`)] | Text filled to the width in code points. Text already that long is returned unchanged. | `{"pad": [7, 3, "0"]}` | `"007"` |
+
+#### Arrays
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `map` | 2 | 2 | array, formula | Array of the formula's result for each item. | `{"map": [{"var": "state.items"}, {"var": "item.name"}]}` | `["Tea", "Cake"]` |
+| `filter` | 2 | 2 | array, formula | Array of the items for which the formula counts as true. | `{"filter": [{"var": "state.items"}, {">": [{"var": "item.qty"}, 1]}]}` | `[{"name": "Tea", "qty": 2, "price": 3.5}]` |
+| `some` | 2 | 2 | array, formula | Boolean: the formula counts as true for at least one item. Stops at the first. | `{"some": [{"var": "state.items"}, {"==": [{"var": "item.name"}, "Cake"]}]}` | `true` |
+| `all` | 2 | 2 | array, formula | Boolean: the formula counts as true for every item (also for an empty array). Stops at the first false one. | `{"all": [{"var": "state.items"}, {">": [{"var": "item.qty"}, 0]}]}` | `true` |
+| `count` | 1 | 2 | array, [formula] | Number: the items, or the items for which the formula counts as true. | `{"count": [{"var": "state.items"}, {"==": [{"var": "item.qty"}, 1]}]}` | `1` |
+| `sum` | 1 | 2 | array, [formula] | Number: the sum of the items, or of the formula's result for each item. Every summed value must be a number. | `{"sum": [{"var": "state.items"}, {"*": [{"var": "item.qty"}, {"var": "item.price"}]}]}` | `11.25` |
+| `slice` | 2 | 3 | array, start (integer), [end (integer)] | Array of the items from start up to but not including end. Negative positions count from the end. Without an end, to the end. | `{"slice": [[1, 2, 3, 4], 1, -1]}` | `[2, 3]` |
+| `first` | 1 | 1 | array | The first item, or null when the array is empty. | `{"first": {"var": "state.tags"}}` | `"new"` |
+| `last` | 1 | 1 | array | The last item, or null when the array is empty. | `{"last": {"var": "state.tags"}}` | `"hot"` |
+| `sort` | 1 | 3 | array, [key (a path inside each item, as text; `""` or null sorts the items themselves)], [direction (`"asc"` or `"desc"`; default `"asc"`)] | Array, sorted. The sort is stable. All keys must be numbers, or all must be text (compared by code point). | `{"sort": [{"var": "state.items"}, "price", "desc"]}` | `[{"name": "Cake", "qty": 1, "price": 4.25}, {"name": "Tea", "qty": 2, "price": 3.5}]` |
+| `join` | 2 | 2 | array of text or numbers, separator (text) | Text: the items joined, numbers in canonical form. | `{"join": [{"var": "state.tags"}, ", "]}` | `"new, hot"` |
+
+#### Formatting
+
+These operators use the platform's own formatters (`NumberFormatter` and `Date.FormatStyle` on iOS, `android.icu` on Android) with `env.locale`. Spacing and symbols can differ by platform for some locales, because the platforms ship different locale data. The vectors pin the `en-US` results. `compact`, `duration` and `plural` do not depend on the locale.
+
+| Operator | Min | Max | Arguments | Result | Example | Gives |
+|---|---|---|---|---|---|---|
+| `number` | 1 | 2 | number, [options (object): `decimals` (integer 0 to 10; without it, up to 6 fraction digits), `grouping` (boolean; default true)] | Text: the number in the locale's form. | `{"number": [1234.5, {"lit": {"decimals": 2}}]}` | `"1,234.50"` |
+| `percent` | 1 | 2 | fraction (number; 0.42 means 42%), [options: `decimals` (integer 0 to 10; default 0)] | Text: the percentage in the locale's form. | `{"percent": 0.425}` | `"43%"` |
+| `currency` | 2 | 3 | amount (number), code (ISO 4217 text: three capital letters), [options: `decimals` (integer 0 to 10; default 2)] | Text: the amount with the currency in the locale's form. | `{"currency": [{"var": "state.price"}, "USD"]}` | `"$12.40"` |
+| `compact` | 1 | 1 | number | Text: the number shortened with `K`, `M`, `B` or `T`. One decimal is kept below 100 of a unit; a result that rounds up to 1000 moves to the next unit. | `{"compact": 12400}` | `"12.4K"` |
+| `datetime` | 1 | 2 | epoch seconds (number), [options: `date` and `time`, each `"none"`, `"short"`, `"medium"` or `"long"`; `date` defaults to `"medium"`, `time` to `"none"`, and null means the default] | Text in `env.locale` and `env.timeZone`. Both `"none"` gives `""`. | `{"datetime": [{"var": "state.eta"}, {"lit": {"date": "long"}}]}` | `"November 14, 2023"` |
+| `duration` | 1 | 2 | seconds (number), [style: `"positional"` (default) or `"abbrev"`] | Text. The seconds are rounded to a whole number first. `positional` gives `m:ss`, or `h:mm:ss` from one hour. `abbrev` gives `1h 2m 5s` and leaves out zero parts. A negative duration starts with `-`. | `{"duration": [3725, "abbrev"]}` | `"1h 2m 5s"` |
+| `plural` | 2 | 2 | count (number), forms (object of text: `"=N"` for an exact count, `zero`, `one`, `other`) | Text: the first form that applies, in this order: `"=N"` for the exact count, `zero` for 0, `one` for 1, then `other`. Every `#` is replaced by the count in canonical form. No form that applies is `bad_formula`. | `{"plural": [{"var": "state.count"}, {"one": "# item", "other": "# items"}]}` | `"3 items"` |
+
+`plural` picks a form by the count only. It does not apply a language's plural rules: write the forms for the language the text is in. A language with more forms (such as Arabic or Polish) can use `"=N"` keys and `if`.
 
 ---
 

@@ -92,7 +92,7 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 | `not_found` | No value for this key |
 | `auth_cancelled` / `auth_failed` | The user cancelled or failed the biometric / passcode prompt. A value is never asked for twice in one call: if the screen lock was confirmed and the key still stays locked, the answer is `auth_failed` |
 | `lock_unavailable` | No biometrics enrolled, no passcode set, or the app was built without biometrics |
-| `key_invalidated` | The device's biometrics changed, so a `biometric` value was erased. Ask the user to sign in again |
+| `key_invalidated` | The device's biometrics changed, so a `biometric` value was erased, or (Android) the screen lock was removed, so every locked value was erased. Ask the user to sign in again. On iOS, turning the passcode off deletes locked values with it ([Apple](https://developer.apple.com/documentation/security/ksecattraccessiblewhenpasscodesetthisdeviceonly), read 24 November 2026), and a read then answers `not_found` |
 | `platform_limit` | The platform cannot store this combination (see the table below), or `lock=passcode` on Android 10 and older with a fingerprint or face enrolled |
 | `quota_exceeded` | Android Block Store: at most 16 values of 4094 bytes (UTF-8) each; elsewhere 64 KB per value |
 | `invalid_argument` | A key, option or command is not valid |

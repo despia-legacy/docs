@@ -1,0 +1,160 @@
+---
+title: "SQLite"
+description: "A real SQLite database on the device: your own SQL with bound parameters, transactions and migrations, plus a small record store with revisions. Works offline."
+icon: "database"
+---
+
+```javascript
+import despia from 'despia-native';
+
+await despia('extension://sqlite/migrate?migrations=' + encodeURIComponent(JSON.stringify([
+  { version: 1, sql: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, title TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)' }
+])), ['sqliteMigrate']);
+
+await despia('extension://sqlite/execute?sql=' + encodeURIComponent('INSERT INTO notes (title) VALUES (?)') +
+  '&params=' + encodeURIComponent(JSON.stringify(['First note'])), ['sqliteExecute']);
+
+const { sqliteQuery: answer } = await despia('extension://sqlite/query?sql=' +
+  encodeURIComponent('SELECT id, title FROM notes WHERE done = ?') +
+  '&params=' + encodeURIComponent(JSON.stringify([0])), ['sqliteQuery']);
+if (answer?.ok) console.log(answer.data.rows); // [{ id: 1, title: 'First note' }]
+```
+
+SQLite is built into the app: there is nothing to install or turn on. An app built before it was added needs a new build. Nothing is created on the device until your page makes its first SQLite call.
+
+<Info>
+  Media Picker, SQLite and Background Upload were extensions before they were built in. A page written for those extensions keeps working: the routes, parameters, answer variables and callbacks are the same.
+</Info>
+
+---
+
+## Calling a route
+
+Every call is `extension://sqlite/<route>?<parameters>` through `despia()`, and you wait for the route's answer variable. Encode each value with `encodeURIComponent`. JSON parameters (`params`, `statements`, `migrations`, `operations`) are JSON text, encoded the same way.
+
+```javascript
+const { sqliteExecute: answer } = await despia(command, ['sqliteExecute']);
+if (answer === undefined) { /* no answer within 30 seconds */ }
+else if (!answer.ok) console.error(answer.code, answer.error);
+else console.log(answer.data);
+```
+
+Each answer is `{ ok, data, code, error, ... }`. A native error does not reject the promise. The answer is also passed to the route's callback, for example `window.onSqliteExecute(answer)`, if you define it.
+
+SQL routes may run for up to 60 seconds. `despia()` stops waiting after 30 seconds; a longer statement still answers on the variable and the callback.
+
+Calls are answered only for the top-level page of your app's own origin.
+
+---
+
+## SQL routes
+
+| Route | Parameters | Answer `data` | Variable |
+| --- | --- | --- | --- |
+| `execute` | `sql` (one statement), optional `params`, `db` | `changes`, `lastInsertRowId`, `inTransaction`, and `columns` and `rows` when the statement returns rows | `sqliteExecute` |
+| `query` | `sql` (one statement), optional `params`, `rows` (`objects` or `arrays`, default `objects`), `db` | `columns`, `rows`, `changes`, `lastInsertRowId`, `inTransaction` | `sqliteQuery` |
+| `execute_script` | `sql` (several statements, no parameters), optional `db` | `changes`, `inTransaction` | `sqliteExecuteScript` |
+| `transaction` | `statements`, optional `mode` (`deferred`, `immediate`, `exclusive`; default `deferred`), `db` | `results`: one answer per statement | `sqliteTransaction` |
+| `migrate` | `migrations`, optional `db` | `from`, `to`, `applied` | `sqliteMigrate` |
+| `databases` | none | `databases`: the names that exist | `sqliteDatabases` |
+| `close` | optional `db` | `closed` | `sqliteClose` |
+| `remove_database` | optional `db` | `removed` | `sqliteRemoveDatabase` |
+
+Every SQL answer also carries `db`, the database it used.
+
+### Databases
+
+`db` names the database: 1 to 64 characters of `A-Z a-z 0-9 _ . -`, not starting with a dot. The default is `main`. A database file exists only after the first call that opens it, and each database keeps its own connection, so calls to one database run one at a time, in order.
+
+### Parameters
+
+`params` is a JSON array for positional placeholders (`?`, `?1`) or a JSON object for named ones (`:name`, `@name`, `$name`; write the key with or without the prefix). The number of values must match the placeholders.
+
+| JavaScript value | Stored as |
+| --- | --- |
+| `null` | NULL |
+| `true` / `false` | 1 / 0 |
+| a number | INTEGER, or REAL when it has a fraction or is beyond ±9e15 |
+| a string | TEXT |
+| `{ "$blob": "<base64>" }` | BLOB |
+| `{ "$bigint": "<decimal>" }` | INTEGER beyond JavaScript's safe range |
+
+Values in `rows` come back the same way: a BLOB as `{ "$blob": "<base64>" }`, and an integer beyond ±9007199254740991 as `{ "$bigint": "<decimal>" }`.
+
+`execute` and `query` run exactly one statement. More than one answers `bad_request`; use `execute_script` (no parameters) or `transaction`.
+
+### Transactions
+
+`transaction` runs all its statements or none: `statements` is a JSON array of `{ "sql": "...", "params": [...] }` objects or plain SQL strings, 1 to 10000 of them. The first failure rolls everything back, and the error names the statement's index.
+
+```javascript
+const statements = [
+  { sql: 'UPDATE accounts SET balance = balance - ? WHERE id = ?', params: [10, 1] },
+  { sql: 'UPDATE accounts SET balance = balance + ? WHERE id = ?', params: [10, 2] }
+];
+await despia('extension://sqlite/transaction?statements=' + encodeURIComponent(JSON.stringify(statements)), ['sqliteTransaction']);
+```
+
+You can also run `BEGIN`, `SAVEPOINT` and `COMMIT` yourself across several `execute` calls on the same database. `inTransaction` in each answer tells you whether one is open. `transaction` and `migrate` refuse to start while one is open.
+
+### Migrations
+
+`migrations` is a JSON array of `{ "version": <positive integer>, "sql": "..." | ["...", "..."] }` in strictly ascending order. Each migration above the database's `PRAGMA user_version` runs in its own transaction that also sets `user_version`. The answer says the version it started at (`from`), the one it reached (`to`) and the versions it `applied`. A failing migration is rolled back and the ones after it do not run. Call `migrate` with your full list on every start.
+
+---
+
+## Record routes
+
+A small key-value store with revisions, so you never overwrite an edit you have not read. It is separate from your SQL databases.
+
+| Route | Parameters | Answer `data` | Variable |
+| --- | --- | --- | --- |
+| `status` | none | `records`, `max_records`, `max_value_bytes` | `sqliteStatus` |
+| `get` | `bucket`, `key` | `found`, and `record` when found | `sqliteGet` |
+| `put` | `bucket`, `key`, `value`, optional `if_revision` | `record` | `sqlitePut` |
+| `delete` | `bucket`, `key`, optional `if_revision` | `removed` | `sqliteDelete` |
+| `list` | `bucket`, optional `after`, `limit` (1 to 50, default 20) | `rows` (`key`, `revision`), and `next` when there are more | `sqliteList` |
+| `batch` | `operations`: a JSON array of 1 to 12 `put` and `delete` objects, each with `op` | `changes`, in order | `sqliteBatch` |
+
+A record is `{ bucket, key, value, revision }`. Store JSON as text in `value`.
+
+- `if_revision=absent`: write only if the record does not exist.
+- `if_revision=<revision>`: write only if the record is still that revision; otherwise the answer is `conflict`.
+- Without `if_revision` the write always happens. Every `put` makes a new revision.
+- A `batch` runs as one transaction: any failure, including a stale revision, rolls all of it back.
+
+| Limit | Value |
+| --- | --- |
+| Records | 512 in total |
+| Value | 2048 bytes of UTF-8 text |
+| Bucket | 1 to 48 characters of `A-Z a-z 0-9 . _ -` |
+| Key | 1 to 80 characters, the same characters |
+| Batch | 12 operations, 3072 bytes of JSON |
+
+---
+
+## Error codes
+
+| Code | Meaning |
+| --- | --- |
+| `bad_request` | A parameter, a name, the JSON or the number of statements or bound values is not valid |
+| `sql_error` | SQLite refused the statement (the message has SQLite's text and code) |
+| `constraint` | A constraint failed (unique, not null, foreign key, check) |
+| `conflict` | Record routes: the revision does not match |
+| `busy` | The database is locked or too many record calls are waiting |
+| `storage_full` | The device is full, or the record store holds 512 records |
+| `timeout` | The call ran past its time; a running statement is interrupted |
+| `storage_unavailable` | The database file could not be opened, read or written |
+
+If no answer arrives, read before you retry a write: the write may have finished.
+
+---
+
+## Where the data lives
+
+| | iOS | Android |
+| --- | --- | --- |
+| SQL databases | Application Support `nativeext/sqlite/databases/<name>.sqlite3` | the app's files `nativeext/sqlite/databases/<name>.sqlite3` |
+| Record store | Application Support `nativeext/sqlite/records.sqlite3` | the app's files `nativeext/sqlite/records.sqlite3` |
+
+The files are private to your app and follow the app's backup settings. They are not synced between devices and not encrypted by SQLite. For tokens and secrets, use Identity Vault. `remove_database` deletes a database file and its journal files.

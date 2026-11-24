@@ -336,6 +336,7 @@
           "native-features/share-extension",
           "native-features/quick-actions",
           "native-features/simple-storage",
+          "native-features/sqlite",
           "native-features/print-documents",
           "native-features/screenshot",
           "native-features/notification-sounds",

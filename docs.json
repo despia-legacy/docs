@@ -285,6 +285,7 @@
           "native-features/paywalls",
           "native-features/restore-purchase",
           "native-features/storage-vault",
+          "native-features/identity-vault",
           "native-features/service-workers",
           "native-features/url-scheme",
           "native-features/file-picker",

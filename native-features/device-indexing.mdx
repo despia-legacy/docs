@@ -86,7 +86,7 @@ These two features sound similar but solve different problems. Pick based on wha
 | Persist subscription state, paid unlocks, account recovery hooks, anti-abuse | [Storage Vault](/native-features/storage-vault) | Yes | Yes (same Apple ID / Google account) |
 | Anonymous device fingerprinting for fraud detection | `despia.uuid` plus a hashed Storage Vault entry | Yes (Vault half) | Yes (Vault half) |
 
-Reach for `despia.uuid` when "the device the user is currently on" is the question. Reach for Storage Vault when "the same person, regardless of which device they are on" needs to remain identifiable, since Vault values sync via iCloud Key Value Store and Android Key/Value Backup automatically.
+Reach for `despia.uuid` when "the device the user is currently on" is the question. Reach for Storage Vault when "the same person, regardless of which device they are on" needs to remain identifiable, since Vault values sync through iCloud Key-Value Store on iOS and come back from the user's Google backup (Android Auto Backup) when the app is installed again.
 
 ---
 

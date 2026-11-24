@@ -1,13 +1,20 @@
 ---
 title: "Storage Vault"
-description: "Encrypted persistent storage backed by iCloud Key Value Store on iOS and Android Key/Value Backup on Android. Survives uninstall and reinstall."
+description: "Small key-value storage that follows the user: iCloud Key-Value Store on iOS and Android Auto Backup on Android. Not encrypted by Despia; for tokens and secrets use Identity Vault."
 icon: "vault"
 ---
 
-Encrypted key-value storage fully bridged to your web layer. Data survives app restarts, updates, and full uninstall/reinstall cycles. Lock any value behind Face ID or Touch ID by setting `locked=true`, reading it back triggers the biometric prompt.
+Small key-value storage bridged to your web layer. Values survive app restarts and updates, and can come back after an uninstall and reinstall when the user's iCloud (iOS) or Google backup (Android) carries them. Set `locked=true` to ask for Face ID, Touch ID, fingerprint or the device passcode before a value is read back.
+
+<Warning>
+  **Storage Vault is not encrypted by Despia.** Values are saved as plain text in the app's own storage: iCloud Key-Value Store on iOS, the app's private preferences file on Android. The operating system keeps other apps out and encrypts the device's disk, but anyone who can read the app's data or its backup can read the values. `locked=true` is a prompt before the value is handed to your page; the value itself is stored the same way. For session tokens, refresh tokens and other secrets, use [Identity Vault](/native-features/identity-vault), which keeps them in the iOS Keychain and the Android Keystore.
+</Warning>
 
 <Info>
-  Storage Vault uses iCloud Key Value Store on iOS and Android Key/Value Backup on Android. Data syncs automatically across all devices sharing the same Apple ID or Google account.
+  **Where the values live**
+
+  - **iOS:** iCloud Key-Value Store. With the app's iCloud capability on and the user signed in to iCloud, values sync to the user's other devices on the same Apple ID and come back after a reinstall. Without iCloud the values stay on this device only and are deleted with the app, so `readvault://` answers `null` after a reinstall. Apple's limits: at most 1024 keys and 1 MB for all values together ([Apple, NSUbiquitousKeyValueStore](https://developer.apple.com/documentation/foundation/nsubiquitouskeyvaluestore), read 24 November 2026).
+  - **Android:** Android Auto Backup to the user's Google Drive. This is a backup, not a live sync: values come back when the app is installed again (or set up on a new phone from the backup), and only what the last backup held. Android backs up at most once every 24 hours, only when backup is on in the device settings, the device is idle and on Wi-Fi (unless the user allowed mobile data). A value written after the last backup is not restored. The backup is end-to-end encrypted only on Android 9 or higher with a screen lock set ([Android, Back up user data with Auto Backup](https://developer.android.com/identity/data/autobackup), read 24 November 2026).
 </Info>
 
 ---
@@ -57,7 +64,7 @@ Encrypted key-value storage fully bridged to your web layer. Data survives app r
 
 ## How it works
 
-Call `setvault://` to store a value and `readvault://` to read it back. If the key does not exist, `readvault://` throws, wrap in try/catch to handle first-time users.
+Call `setvault://` to store a value and `readvault://` to read it back. `readvault://` never throws: when the key does not exist it answers `null`, so check for `null` to handle first-time users.
 
 ```javascript
 // Store
@@ -65,18 +72,18 @@ await despia('setvault://?key=userId&value=user123&locked=false')
 
 // Read
 const data   = await despia('readvault://?key=userId', ['userId'])
-const userId = data.userId
+const userId = data.userId   // null when nothing is stored under this key
 ```
 
-Set `locked=true` to require biometric authentication before a value can be read:
+Set `locked=true` to ask for Face ID, Touch ID or the device passcode on iOS, or a strong biometric (fingerprint or face) on Android, before a value is read:
 
 ```javascript
-// Store, reading this key will require Face ID / Touch ID
+// Store, reading this key will ask for Face ID / Touch ID first
 await despia('setvault://?key=sessionToken&value=abc123&locked=true')
 
-// Read, triggers biometric prompt
+// Read, triggers the prompt
 const data  = await despia('readvault://?key=sessionToken', ['sessionToken'])
-const token = data.sessionToken  // only returned after biometric success
+const token = data.sessionToken  // null when the user cancels or the prompt fails
 ```
 
 ---
@@ -85,52 +92,42 @@ const token = data.sessionToken  // only returned after biometric success
 
 ### Prevent free trial abuse
 
-Data survives uninstall and reinstall, so you can identify users who have already used a trial even after they delete and re-download the app.
+When the user's iCloud (iOS) or Google backup (Android) carries the value, it comes back after a delete and re-download, so you can recognise users who already used a trial. It is a best-effort signal: without iCloud, with backup off, or before Android's next backup has run, a reinstall starts empty. Keep the real check on your server.
 
 ```javascript
 async function checkTrialEligibility() {
-    try {
-        const data = await despia('readvault://?key=hasUsedTrial', ['hasUsedTrial'])
-        return data.hasUsedTrial !== 'yes'
-    } catch {
-        // Key not found, first time user
-        await despia('setvault://?key=hasUsedTrial&value=yes&locked=false')
-        return true
-    }
+    const data = await despia('readvault://?key=hasUsedTrial', ['hasUsedTrial'])
+    if (data.hasUsedTrial === 'yes') return false
+    // Not found: first time on this account or device
+    await despia('setvault://?key=hasUsedTrial&value=yes&locked=false')
+    return true
 }
 ```
 
-### Persist a login session
+### Remember a non-secret preference
+
+Keep login tokens in [Identity Vault](/native-features/identity-vault). Storage Vault suits small values that are fine to store unencrypted and should follow the user:
 
 ```javascript
-// On login
-await despia(`setvault://?key=loginToken&value=${token}&locked=false`)
+// Save
+await despia(`setvault://?key=preferredRegion&value=${encodeURIComponent(region)}&locked=false`)
 
 // On app load
-async function restoreSession() {
-    try {
-        const data = await despia('readvault://?key=loginToken', ['loginToken'])
-        return data.loginToken
-    } catch {
-        return null
-    }
-}
+const data   = await despia('readvault://?key=preferredRegion', ['preferredRegion'])
+const region = data.preferredRegion ?? 'default'
 ```
 
-### Protect a sensitive action with Face ID
+### Ask for Face ID before a sensitive action
 
 ```javascript
 async function confirmWithBiometrics() {
     await despia('setvault://?key=confirm&value=yes&locked=true')
-    try {
-        const data = await despia('readvault://?key=confirm', ['confirm'])
-        if (data.confirm === 'yes') {
-            await performSensitiveAction()
-            await despia('setvault://?key=confirm&value=&locked=false')
-        }
-    } catch {
-        // user cancelled or biometric failed
+    const data = await despia('readvault://?key=confirm', ['confirm'])
+    if (data.confirm === 'yes') {
+        await performSensitiveAction()
+        await despia('setvault://?key=confirm&value=&locked=false')
     }
+    // null: the user cancelled or the prompt failed
 }
 ```
 

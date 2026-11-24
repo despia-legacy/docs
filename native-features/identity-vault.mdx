@@ -1,0 +1,174 @@
+---
+title: "Identity Vault"
+description: "Encrypted storage for auth tokens and secrets in the iOS Keychain and the Android Keystore, with optional Face ID / fingerprint or passcode lock, iCloud Keychain sync and Google Block Store backup."
+icon: "key"
+---
+
+Identity Vault keeps small secrets such as session and refresh tokens encrypted by the operating system:
+the **Keychain** on iOS and the **Android Keystore** on Android. Each value can be kept on this device only,
+or synced through the cloud, and can be locked behind biometrics or the device passcode.
+
+<Info>
+  Use Identity Vault for tokens and secrets. [Storage Vault](/native-features/storage-vault) stays the right
+  tool for small, non-secret values that should follow the user (for example a "trial used" flag): it is
+  synced and backed up, but not encrypted on the device.
+</Info>
+
+---
+
+## Installation
+
+<Tabs>
+  <Tab title="Bundle">
+    ```bash npm
+    npm install despia-native
+    ```
+    ```javascript
+    import despia from 'despia-native';
+    ```
+  </Tab>
+  <Tab title="CDN">
+    ```html
+    <script src="https://cdn.jsdelivr.net/npm/despia-native/index.min.js"></script>
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## How it works
+
+Every call is one `identityvault://` command. The answer arrives on `window.identityVault`, which is what
+you pass to `despia()` to wait for, and is also passed to `window.onIdentityVaultResult(result)` if you
+define it. Always `encodeURIComponent` the value.
+
+```javascript
+// Store a token on this device
+const saved = await despia(
+  `identityvault://set?key=session&value=${encodeURIComponent(token)}`,
+  ['identityVault']
+)
+
+// Read it back
+const { identityVault: r } = await despia('identityvault://get?key=session', ['identityVault'])
+if (r.ok) useToken(r.value)
+else if (r.error.code === 'not_found') showLogin()
+```
+
+### Commands
+
+| Command | Does |
+| :-- | :-- |
+| `identityvault://set?key=…&value=…[&sync=…][&lock=…][&survivesReinstall=…]` | Stores or replaces a value |
+| `identityvault://get?key=…[&prompt=…]` | Reads a value; shows the system prompt first when the value is locked |
+| `identityvault://remove?key=…` | Deletes one value |
+| `identityvault://keys` | Lists the stored keys (never prompts) |
+| `identityvault://clear` | Deletes every Identity Vault value of the app |
+
+Add `id=…` to any command to get it back on the answer, so you can match answers to calls.
+Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
+
+### Options for `set`
+
+| Option | Values | Default | Meaning |
+| :-- | :-- | :-- | :-- |
+| `sync` | `device`, `cloud` | `device` | `cloud` shares the value with the user's other devices (see below) |
+| `lock` | `none`, `biometric`, `passcode` | `none` | `biometric`: Face ID / Touch ID / fingerprint only. `passcode`: biometrics or the device passcode, PIN or pattern |
+| `survivesReinstall` | `true`, `false` | `false` (`true` with `sync=cloud`) | Keep the value when the app is deleted and installed again |
+
+### Answers
+
+```javascript
+{ id: "1", op: "get", ok: true, key: "session", value: "…", sync: "device", lock: "none", survivesReinstall: false }
+{ id: "2", op: "keys", ok: true, keys: ["refresh", "session"] }
+{ id: "3", op: "get", ok: false, key: "session", error: { code: "auth_cancelled", message: "…" } }
+```
+
+| Error code | Meaning |
+| :-- | :-- |
+| `not_found` | No value for this key |
+| `auth_cancelled` / `auth_failed` | The user cancelled or failed the biometric / passcode prompt |
+| `lock_unavailable` | No biometrics enrolled, no passcode set, or the app was built without biometrics |
+| `key_invalidated` | The device's biometrics changed, so a `biometric` value was erased. Ask the user to sign in again |
+| `platform_limit` | The platform cannot store this combination (see the table below) |
+| `quota_exceeded` | Android Block Store: at most 16 values of 4094 bytes (UTF-8) each; elsewhere 64 KB per value |
+| `invalid_argument` | A key, option or command is not valid |
+| `storage_error` | The system store reported an error |
+
+---
+
+## What each option does on each platform
+
+| | iOS | Android |
+| :-- | :-- | :-- |
+| Encryption | Keychain | Android Keystore AES-256-GCM key; Block Store values are encrypted by Google Play services |
+| `sync=cloud` | iCloud Keychain: live sync to the user's devices when iCloud Keychain is on | Google Block Store cloud backup: restored when the user sets up a new device from backup. Only when the backup is end-to-end encrypted (Android 9+ with a screen lock); otherwise the value is kept on the device and the answer says `cloudBackup: false`. `get` of a cloud value repeats `sync: "cloud"` with the same `cloudBackup` |
+| `survivesReinstall=true` | Kept by current iOS; Apple does not guarantee it | Kept by Google Block Store when the user's Google Backup is on |
+| `lock` | No prompt when saving; prompt when reading | Prompt when saving and when reading (the Keystore key must be unlocked to encrypt) |
+| `lock` with `sync=cloud` | `platform_limit`: the Keychain does not sync an item that needs Face ID or the passcode | `platform_limit`: a locked value stays on this device |
+| `lock` with `survivesReinstall=true` | Kept like any other Keychain item (same caveat as above) | `platform_limit`: a locked value is gone after a reinstall |
+
+<Warning>
+  **Reinstall on iOS.** Keychain items have outlived app deletion on every public iOS release so far, but
+  Apple has said this was never part of the API contract and should not be relied on. Treat
+  `survivesReinstall=true` on iOS as "very likely", not guaranteed, and always have a sign-in fallback.
+</Warning>
+
+<Note>
+  **Locked values on Android.** A locked value is encrypted with a Keystore key that needs the user's
+  biometric or screen lock. Android never lets such a key leave the device and deletes it with the app, so a
+  locked value cannot be synced or survive a reinstall. Store a long-lived refresh token unlocked with
+  `survivesReinstall=true` if you need it back after a reinstall, and gate its *use* with a locked value.
+</Note>
+
+---
+
+## Common patterns
+
+### Keep the user signed in across reinstalls
+
+```javascript
+await despia(`identityvault://set?key=refresh&value=${encodeURIComponent(refreshToken)}&survivesReinstall=true`, ['identityVault'])
+```
+
+### Sign-in shared with the user's other devices
+
+```javascript
+await despia(`identityvault://set?key=refresh&value=${encodeURIComponent(refreshToken)}&sync=cloud`, ['identityVault'])
+```
+
+### Require Face ID / fingerprint before using a token
+
+```javascript
+await despia(`identityvault://set?key=session&value=${encodeURIComponent(token)}&lock=biometric`, ['identityVault'])
+
+const { identityVault: r } = await despia(
+  'identityvault://get?key=session&prompt=' + encodeURIComponent('Unlock your account'),
+  ['identityVault']
+)
+if (!r.ok && r.error.code === 'key_invalidated') showLogin()
+```
+
+### Sign out
+
+```javascript
+await despia('identityvault://clear', ['identityVault'])
+```
+
+---
+
+## Requirements
+
+- Biometric locks need the Face ID usage text (iOS) / biometric permission (Android) in your app's
+  permissions. Without it, `lock=biometric` answers `lock_unavailable`; `lock=passcode` still works.
+- `sync=cloud` on Android needs Google Play services; values are restored on a new device only through
+  Google's backup and restore during device setup.
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card icon="npm" href="https://www.npmjs.com/package/despia-native" title="NPM Package">despia-native</Card>
+  <Card icon="vault" href="/native-features/storage-vault" title="Storage Vault">Synced, non-secret values</Card>
+</CardGroup>

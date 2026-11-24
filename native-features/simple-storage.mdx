@@ -7,7 +7,8 @@ icon: "database"
 <Danger>
   **Simple Storage is a legacy feature!** New apps should use one of the modern alternatives instead:
 
-  - [**Storage Vault**](/native-features/storage-vault) for small encrypted values that need to survive uninstall and sync across devices on the same Apple ID or Google account. Backed by iCloud Key Value Store on iOS and Android Key/Value Backup on Android, with optional biometric gating.
+  - [**Identity Vault**](/native-features/identity-vault) for tokens and secrets, encrypted in the iOS Keychain and the Android Keystore, with optional biometric or passcode lock, iCloud Keychain sync and Google Block Store backup.
+  - [**Storage Vault**](/native-features/storage-vault) for small non-secret values that should follow the user: iCloud Key-Value Store on iOS (synced on the same Apple ID) and Android Auto Backup on Android (restored on reinstall from the last Google backup), with an optional biometric prompt. Not encrypted by Despia.
   - [**IndexedDB**](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) (built into the WebView, no Despia SDK needed) for general-purpose structured local storage with multiple object stores, indexes, and transactions. Works in any browser and inside the Despia runtime.
 
   Simple Storage only stores a single string slot per app and has no encryption, no sync, and no structure. The schemes below remain supported for apps already using them, but anything new is better served by one of the alternatives above.

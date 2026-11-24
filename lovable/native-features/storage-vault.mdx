@@ -55,7 +55,7 @@ icon: "vault"
 
 Storage Vault keeps small values where the user's account can carry them:
 
-- **iPhone**: iCloud Key-Value Store. With the app's iCloud capability on and the user signed in to iCloud, values sync to the user's other devices on the same Apple ID and come back after a reinstall. Without the app's iCloud capability, iOS does not keep the values (`readvault://` answers `null`); without an iCloud account, nothing comes back after a reinstall.
+- **iPhone**: iCloud Key-Value Store. With the app's iCloud capability on and the user signed in to iCloud, values sync to the user's other devices on the same Apple ID and come back after a reinstall. Without iCloud, do not count on the values: an app signed without the iCloud capability read back `null` right after saving on a test iPhone, and without an iCloud account nothing comes back after a reinstall.
 - **Android**: Android Auto Backup to the user's Google Drive. It is a backup, not a live sync: Android backs up at most once every 24 hours (backup on, device idle, on Wi-Fi), and a reinstall gets back only what the last backup held. The backup is end-to-end encrypted only on Android 9 or higher with a screen lock.
 
 **Storage Vault is not encrypted by Despia.** Values are saved as plain text in the app's own storage. When `locked` is set to `true`, the user must pass Face ID, Touch ID or the passcode (iPhone) or a fingerprint or face check (Android) before the value is handed to your page; the stored value itself is not encrypted by the lock. For login tokens and other secrets use Identity Vault (`identityvault://`), which uses the iOS Keychain and the Android Keystore.

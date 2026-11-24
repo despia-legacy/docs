@@ -20,24 +20,33 @@ icon: "clock-rotate-left"
   Start with the [V3 Extensions guide](/experiments/v3-extensions) and [troubleshooting](/experiments/extension-troubleshooting).
 </Update>
 
-<Update label="November 23, 2026" description="Major update: Android home-screen widgets, matching iOS">
-  ## Android home-screen widgets, matching iOS
+<Update label="November 24, 2026" description="Android builds keep portrait and landscape optional">
+  ## Android orientation compatibility
 
-  Home Widgets now run on Android as well as iOS. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
+  The standard Despia V3 Android build now declares portrait and landscape screen features as optional, which helps apps meet Google Play's orientation compatibility requirements. Your phone and tablet orientation settings are preserved.
 
-  - **One setting:** the **Home Widget** setting in the Despia Editor now adds the widget to Android builds too. Apps with it turned off build exactly as before.
-  - **Your SVG, drawn natively:** Despia draws your SVG at the widget's size and draws it again when the user resizes the widget. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, as on iOS.
+  Generate a new Android build to include the change. Existing AAB files are not modified.
+</Update>
+
+<Update label="November 23, 2026" description="Major update: home-screen widgets are coming to Android: one widget for iOS and Android">
+  ## Home-screen widgets, coming to Android
+
+  Home Widgets are becoming cross-platform. The Android widget is built and tested, and it reaches Android builds soon; Android builds made today do not include it yet. Your app's live SVG widget sits on the Android home screen with the same `widget://` call, the same `refresh` and `value` parameters, and the same `window.onWidgetOpen` handler when the user taps it. One web app serves both platforms, with no Android-specific code.
+
+  - **One setting:** the **Home Widget** setting in the Despia Editor will add the widget to Android builds too. Apps with it turned off build exactly as before.
+  - **Same size as iOS:** the widget is 4 by 2 cells on Android, the size of the iOS medium widget, and comes in this one size on both platforms. Design one wide SVG, such as `360 × 169`, for both.
+  - **Your SVG, drawn natively:** Despia draws your SVG to fill the widget's rounded tile edge to edge, with the launcher's own corner radius, as on iOS. PNG, JPEG and WebP responses work too. Text with no font set uses the system sans-serif font, and a named font the phone has, such as `Roboto`, draws in that font, as on iOS.
   - **Tap to open:** a tap opens your app and calls `window.onWidgetOpen` with the widget's `value`, even when the app was closed.
   - **Refresh:** Android refreshes in the background at most every 15 minutes. A `widget://` call from your app redraws the widget at once.
-  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode.
+  - **Tested side by side:** the same SVG on a Pixel 8 phone and on iOS, in light and dark mode, including updates while the widget is on the home screen and taps with the app closed. Also tested on a Galaxy S21 with Android 11, where photos and SVGs get the tile's rounded corners too.
 
-  Start a new Android build to get it. See [Home Widgets](/native-features/home-widgets).
+  This entry will be updated when Android builds include the widget; then a new Android build gets it. See [Home Widgets](/native-features/home-widgets).
 </Update>
 
 <Update label="November 23, 2026" description="OneSignal: replace or group notifications from your backend">
   ## Keep your notification list tidy with OneSignal
 
-  Despia apps have always supported OneSignal's `collapse_id`, `thread_id` and `android_group` fields. They are now documented.
+  `collapse_id`, `thread_id` and `android_group` are standard OneSignal send fields. Despia apps use the OneSignal SDK, so these fields are applied by OneSignal and the device's notification system, and Despia adds no handling of its own. They are now documented.
 
   - **Replace:** notifications that share a `collapse_id` replace each other, so the user sees only the latest update.
   - **Group:** notifications that share a `thread_id` (iOS) and `android_group` (Android) stack into one group the user can expand or clear with one swipe.
@@ -449,7 +458,7 @@ icon: "clock-rotate-left"
 <Update label="July 26, 2026" description="V4 - core runtime being open sourced under MIT">
   ## Open sourcing the Despia V4 runtime
 
-  Ahead of the V4 release, the core runtime is being prepared for publication as open source under the MIT license. The editor follows later this year.
+  Ahead of the V4 release, the core runtime is being prepared for publication as open source under the MIT license.
 
   The V4 runtime is a dynamic kernel. Every capability above it - WebView, native UI, web UI, backend - is a package that the kernel loads at runtime. What gets open sourced is the kernel, the brain of the system. The packages stay in a closed source folder and are not part of the release.
 
@@ -1241,7 +1250,7 @@ icon: "clock-rotate-left"
   - **User identification.** `set_user_id`, `set_email`, and `set_phone` are all supported. Emails and phone numbers are hashed with SHA256 automatically before transmission.
   - **GDPR consent.** `set_consent` accepts `is_gdpr` and `has_consent` params and passes them directly to the AppsFlyer SDK consent API.
   - **On-demand data retrieval.** Both `get_uid` and `get_attribution` support an await pattern - `await despia("appsflyer://get_uid", ["appsFlyerUID"])` - for cases where you need the value immediately in the same execution flow.
-  - **Ad revenue tracking.** Coming soon - `despia("appsflyer://log_ad_revenue?...")` will allow impression-level revenue reporting back to AppsFlyer from Meta, TikTok, and AdMob to enable LTV and ROAS reporting per acquisition channel.
+  - **Ad revenue tracking.** `despia("appsflyer://log_ad_revenue?...")` reports impression-level revenue back to AppsFlyer from Meta, TikTok, and AdMob to enable LTV and ROAS reporting per acquisition channel. See [Ad revenue](/analytics/appsflyer/ad-revenue).
 
   Configuration is handled entirely in the Despia dashboard with no native code changes required. Go to **Despia > App > Settings > Integrations > AppsFlyer** to enter your dev key, Apple App ID, OneLink URLs, and ad platform credentials. Despia configures Universal Links on iOS and App Links on Android automatically from the values you enter.
 

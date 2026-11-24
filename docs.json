@@ -99,6 +99,7 @@
           {
             "group": "Local Intelligence",
             "icon": "sparkle",
+            "hidden": true,
             "pages": [
               "local-intelligence/Introduction",
               "local-intelligence/reference"

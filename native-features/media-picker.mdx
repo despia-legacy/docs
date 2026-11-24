@@ -1,0 +1,157 @@
+---
+title: "Media Picker"
+description: "The platform's own photo, video, file and camera pickers, local URLs your page can show and play at once, native video transcoding and uploads that keep going in the background."
+icon: "photo-film"
+---
+
+```javascript
+import despia from 'despia-native';
+
+window.onMediaPickerFileEvent = (file) => {
+  if (file.state === 'ready') document.querySelector('img').src = file.url; // shown at once, no upload needed
+};
+
+const { mediaPickerPick: answer } = await despia(
+  'extension://mediapicker/pick?types=image,video&multiple=true&limit=10',
+  ['mediaPickerPick']
+);
+if (answer?.ok) console.log('picker open', answer.data.pickId);
+```
+
+Media Picker is built into the app: there is nothing to install or turn on. An app built before it was added needs a new build. Nothing is created on the device until your page makes its first call.
+
+The picked files never pass through the bridge. Each one is copied into the app's private storage and gets a local URL (`http://127.0.0.1:<port>/f/...`) that `<img>`, `<video>`, `<audio>` and `fetch()` read directly, with byte ranges for seeking.
+
+---
+
+## How a pick works
+
+Routes answer at once. What happens next arrives as events and can be read again at any time:
+
+1. `pick` opens the picker and answers `{ pickId, state: "presenting", source, limit, limitLowered }`.
+2. When the user is done, `window.onMediaPickerPickEvent(pick)` gets `state: "loading"` (files are being copied), then `done`; or `cancelled`, or `failed` with a `reason`.
+3. Each file arrives on `window.onMediaPickerFileEvent(file)`, first `loading` (with `progress`), then `ready` with its `url`, or `failed` with a `reason`.
+4. `result?pick=<pickId>` returns the pick with all its files; `files` lists every file.
+
+Encode every parameter value with `encodeURIComponent`.
+
+```javascript
+{
+  fileId, pickId, origin,        // origin: pick, camera or transcode
+  state,                         // loading, ready, failed, released
+  name, mime, kind, bytes,       // kind: image, video, audio, document
+  url,                           // when ready
+  width, height, durationMs,     // when known
+  assetId,                       // iOS library items, when available
+  progress, reason
+}
+```
+
+---
+
+## Routes
+
+| Route | Parameters | Answers |
+| --- | --- | --- |
+| `pick` | the options below | the pick |
+| `result` | `pick` | the pick and its files |
+| `files` | optional `id` | one file, or `files` and the server `base` |
+| `release` | `id`, or `all=true` | `released`: the file ids deleted |
+| `transcode` | `id` and the options below | the transcode job |
+| `upload` | `id`, `url` and the options below | the upload job |
+| `jobs` | optional `id` | one job, or `jobs` |
+| `cancel` | `id` (a job) | the job |
+
+The answer variable is `mediaPicker` plus the route (`mediaPickerPick`, `mediaPickerUpload`), and the callback `onMediaPicker` plus the route. Each answer is `{ ok, data, code, error, ... }`; a native error does not reject the promise. `pick` may wait up to 120 seconds for a camera permission prompt, `transcode` 30 seconds, the others 10.
+
+### Pick options
+
+| Option | Values | Default |
+| --- | --- | --- |
+| `types` | comma list of `image`, `video`, `audio`, `document`, `any` and MIME types such as `application/pdf` or `image/*`, up to 32 | `any` |
+| `source` | `auto`, `library`, `camera`, `files` | `auto` |
+| `multiple` | `true`, `false` | `false` |
+| `limit` | the most files; `0` is the platform's own maximum | `0` |
+| `max_file_mb`, `max_total_mb` | a size limit per file and for the whole pick; `0` is none | `0` |
+| `camera` | `photo`, `video`, `both` | `both` |
+| `camera_quality` | `low`, `medium`, `high` | `high` |
+| `max_duration_s` | the longest video the camera records | none |
+| `image_format` | `current`, `jpeg`, `heic`, `png` | `current` |
+| `representation` | `current`, `compatible`, `automatic` | `current` |
+| `ordered` | show the selection order | `false` |
+| `accent_color` | `#RRGGBB` | the system colour |
+| `tab` | `photos`, `albums` (Android) | `photos` |
+| `preselected` | iOS library asset ids to show as selected | none |
+
+`source=auto` shows the photo library for images and videos only, the file browser for other types, and a native choice of library, camera and files otherwise. A file above `max_file_mb` fails with `too_large`, one past `max_total_mb` with `total_exceeded`, and files past `limit` with `limit_exceeded`.
+
+### Video transcoding
+
+`transcode` makes a new MP4 from a ready video and answers a job: `{ jobId, kind: "transcode", state, progress, fileId, outputFileId, width, height, bitrateKbps, codec }`. Progress arrives on `window.onMediaPickerJobEvent(job)`, and the output file on the file event.
+
+| Option | Values | Default |
+| --- | --- | --- |
+| `preset` | `480p`, `540p`, `720p`, `1080p`, `1440p`, `2160p`, `source` (the short side) | `720p` |
+| `codec` | `h264`, `hevc` | `h264` |
+| `bitrate_kbps` | 100 to 400000 | from the size, at most the source's |
+| `frame_rate` | frames per second | the source's |
+| `audio` | `keep`, `remove` | `keep` |
+| `audio_bitrate_kbps` | up to 320 | 128 |
+
+It never upscales. A device that cannot encode the codec at that size answers `not_supported_on_device`. One transcode runs at a time; the rest wait as `queued`.
+
+### Upload
+
+`upload` sends a ready file to your `https://` endpoint as a native transfer that keeps going in the background, and answers a job with `kind: "upload"`, `state`, `sentBytes`, `totalBytes`, `progress`, `attempts`, and later `httpStatus`, `response` (at most 64 KiB), `responseType`, `reason`.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `url` | required | Your `https://` endpoint |
+| `method` | `PUT`, or `POST` with `form_field` | `PUT` or `POST` |
+| `form_field` | none | Send multipart with the file under this name; without it the body is the file bytes |
+| `fields` | none | A JSON object of extra text parts (needs `form_field`) |
+| `headers` | none | A JSON object of string values, for example `Authorization` |
+| `content_type` | the file's type | The file's `Content-Type` |
+| `release_after` | `false` | Delete the file once the upload succeeds |
+
+Every request carries an `Idempotency-Key` header with the job id; deduplicate by it. `408`, `425`, `429` and `5xx` answers and network errors are retried with a growing wait. When `outcomeUnknown` is `true`, an earlier attempt may already be stored. The browser's cookies are not sent: authenticate with a header.
+
+### Releasing files
+
+Files stay until you `release` them, an upload with `release_after` succeeds, or the next app launch. A file a running transcode or an unfinished upload needs is kept (`busy`).
+
+### The local server
+
+`window.onMediaPickerServerEvent({ running, base })` tells you when the local server starts or stops, for example after the app was in the background. File URLs change with `base`; read `files` again for the current ones.
+
+---
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Library | The system photo picker (no photo permission) | The system Photo Picker (no media permission) |
+| Files | The document picker | The system file picker |
+| Camera | The system camera, with the app's camera permission | The system camera app |
+| `limit` | Any | Lowered to the Photo Picker's maximum on Android 13 and later (`limitLowered: true`) |
+| `image_format=heic` | Converted | Kept as picked: Android has no HEIC encoder |
+| `preselected` | Applied when the app's photo library setting is on | Not available (`preselectedApplied: false`) |
+| `tab` | Not available (`tabApplied: false`) | Applied |
+| Long transcodes | Continue briefly in the background | Run while the app's process lives, unless the build's long-running mode is on |
+
+The camera follows your app's camera setting: a build without it answers `camera_unavailable` for `source=camera` and leaves the camera out of the choice. Without the microphone setting, the camera takes photos only.
+
+## Error codes
+
+| Code | Meaning |
+| --- | --- |
+| `bad_value` | An option is not valid, or does not fit the file or the source |
+| `busy` | A picker is already open, or the file is still in use |
+| `unavailable` | The app is not in the foreground |
+| `camera_unavailable` | No camera on the device, or the app's camera setting is off |
+| `permission_denied` | Camera access was denied |
+| `not_found` | No pick, file or job with that id |
+| `not_supported_on_device` | The device cannot encode that video |
+| `unreadable` | The video's tracks cannot be read |
+| `storage_failed` | The upload record could not be saved; nothing was queued |
+| `release_failed` | A file could not be deleted; the next launch deletes it |

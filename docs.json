@@ -323,6 +323,7 @@
           "native-features/in-app-rating",
           "native-features/action-sheet",
           "native-features/camera-roll",
+          "native-features/media-picker",
           "native-features/offline-push",
           "native-features/app-settings",
           "native-features/file-viewer",

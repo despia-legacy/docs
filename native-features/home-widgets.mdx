@@ -15,7 +15,7 @@ icon: "border-all"
 <Info>
   Home Widgets works on iOS and Android with the same `widget://` call, so one web app serves both. Android draws your SVG into the widget itself, because Android widgets cannot show SVG directly. Android needs a build made after November 23, 2026 with Home Widget turned on. Older Android builds do not handle the call: nothing appears on the home screen.
 
-  Tested side by side with one SVG: on a Pixel 8 phone (Android 17) and on an iPhone 17 Pro simulator (iOS 26.5), in light and dark mode, with a tap that calls `window.onWidgetOpen` on Android.
+  Tested side by side with one SVG: on a Pixel 8 phone (Android 17) and on an iPhone 17 Pro simulator (iOS 26.5), in light and dark mode, with a tap that calls `window.onWidgetOpen` on Android. On the Pixel 8 we also checked that a new `widget://` call redraws a widget already on the home screen, that a tap works after Android has closed the app, and that the widget recovers after an error.
 </Info>
 
 ---
@@ -282,6 +282,7 @@ Aim for the longest interval that feels acceptable. Shorter intervals do not alw
 - **Images:** a PNG, JPEG or WebP response fills the widget. An SVG is fitted inside it.
 - **Errors:** when the endpoint fails, the widget shows the error until the next refresh, as on iOS. Before the first image loads, it shows your app icon and name.
 - **Background work:** refreshes run only while at least one widget is on the home screen and the device is online.
+- **Force stop:** on Android 15 QPR1 and later, when the user taps **Force stop** in the app's settings, Android grays out the app's widgets until the user opens the app again. This is Android's own rule ([Android 15 behavior changes](https://developer.android.com/about/versions/15/behavior-changes-all)). Swiping the app away, or Android closing it to free memory, does not affect the widget.
 - **Storage:** the widget URL lives in the app's storage. Clearing the app's data in Android settings resets it to the fallback image until your app calls `widget://` again.
 - **Text:** text with no `font-family` is drawn in the system sans-serif font, as on iOS. iOS draws all SVG text at regular weight, while Android uses the `font-weight` you set. For text that looks the same on both, use regular weight.
 - **SVG features:** Android renders SVG with its own engine. Shapes, paths, gradients and text work, and so do images embedded as `data:` URIs. Images linked by URL inside the SVG and web fonts loaded with CSS `@import` are not loaded; Android uses its system fonts instead.

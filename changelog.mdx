@@ -22,7 +22,7 @@ icon: "clock-rotate-left"
 <Update label="November 23, 2026" description="OneSignal: replace or group notifications from your backend">
   ## Keep your notification list tidy with OneSignal
 
-  Despia apps have always supported OneSignal's `collapse_id`, `thread_id` and `android_group` fields. They are now documented.
+  `collapse_id`, `thread_id` and `android_group` are standard OneSignal send fields. Despia apps use the OneSignal SDK, so these fields are applied by OneSignal and the device's notification system, and Despia adds no handling of its own. They are now documented.
 
   - **Replace:** notifications that share a `collapse_id` replace each other, so the user sees only the latest update.
   - **Group:** notifications that share a `thread_id` (iOS) and `android_group` (Android) stack into one group the user can expand or clear with one swipe.

@@ -295,6 +295,7 @@
             "group": "AdMob",
             "icon": "clapperboard-play",
             "pages": [
+              "native-features/admob/banner-ads",
               "native-features/admob/Iinterstitial",
               "native-features/admob/inline-ads",
               "native-features/admob/rewarded-ads"

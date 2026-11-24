@@ -1,0 +1,179 @@
+---
+title: "Banner Ads"
+description: "Show a native AdMob banner at the bottom or top of your app, with the page laid out around it, events for every ad state and consent handled before the first request."
+icon: "rectangle-ad"
+---
+
+```javascript
+import despia from 'despia-native';
+
+despia('admob://banner?adunit=' + encodeURIComponent('ca-app-pub-xxxxxxxxxxxxxxxx/nnnnnnnnnn'));
+```
+
+That shows a native Google AdMob banner at the bottom of the app. By default the web page gets smaller, so the banner covers nothing and your CSS needs no change.
+
+<Warning>
+  Banner ads need AdMob in your app: the AdMob integration on in the Despia Editor under **App \> Integrations \> AdMob**, with your iOS and Android App IDs, and a new build that has the banner. In a build without AdMob, `admob://` calls do nothing: the console shows `admob:// is not included in this build` and a `despia-feature-not-included` event fires on `window` with `detail.scheme` set to `admob`.
+</Warning>
+
+---
+
+## Set it up
+
+<Steps>
+  <Step title="Create a Banner ad unit per platform">
+    In AdMob, open **Apps \> \[your app\] \> Ad units \> Create ad unit**, choose **Banner**, and copy its ID (with `/`). Do this for the iOS app and the Android app.
+  </Step>
+  <Step title="Pass the unit from your page">
+    Give the unit with `adunit`, choosing it by platform:
+
+    ```javascript
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const adunit = ios ? 'ca-app-pub-xxx/ios-banner' : 'ca-app-pub-xxx/android-banner';
+    despia('admob://banner?adunit=' + encodeURIComponent(adunit));
+    ```
+
+    When your app's settings carry a banner ad unit, `adunit` can be left out. When they also switch banner ads on, the banner shows at launch with no page code.
+  </Step>
+</Steps>
+
+There is no built-in test unit. With no unit in the settings and none passed, the banner answers `failed` with `no-ad-unit`. Use [Google's sample banner unit IDs](https://developers.google.com/admob/ios/test-ads) while you test.
+
+---
+
+## Calls
+
+| Call | Does |
+| --- | --- |
+| `admob://banner?<parameters>` | Shows the banner, creating it on first use. Parameters are merged into the current ones; a parameter with an empty value (`gap=`) goes back to its default. A new `adunit`, `size` or `collapsible` requests a new ad; any other change only moves it. |
+| `admob://banner/hide` | Hides the banner and gives its space back. The loaded ad is kept, so `admob://banner` shows it again without a new request. |
+| `admob://banner/reload` | Requests a new ad now. Google serves a collapsible banner only on a request that asks for one, and automatic refreshes never collapse, so call this for another collapsible ad. |
+| `admob://privacyoptions` | Shows Google's privacy options form, for every AdMob format |
+
+Calls count only from your page's top document; a call from a frame (an ad or an embed) is ignored.
+
+```javascript
+const query = new URLSearchParams({ position: 'top', size: 'adaptive' });
+despia(`admob://banner?${query}`);
+despia('admob://banner/hide');
+```
+
+## Parameters
+
+| Parameter | Values | Default |
+| --- | --- | --- |
+| `position` | `bottom`, `top` | the position in your app's settings, else `bottom` |
+| `layout` | `resize` (the page gets smaller), `overlay` (the banner floats over the page) | `resize` |
+| `adunit` | an AdMob banner ad unit ID | the unit in your app's settings for this platform |
+| `size` | `adaptive`, or `<width>x<height>` in points (iOS) or dp (Android), such as `320x50`, `300x250` or `728x90` | `adaptive`: Google's large anchored adaptive banner for the available width |
+| `collapsible` | `false`, `true` (anchored at the banner's own edge), `top`, `bottom` | `false` |
+| `gap` | CSS pixels, `0` or more, between the banner and what is next to it | the platform's spacing (below) |
+| `background` | `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()` or `transparent`, for the strip behind the banner | the app's own background |
+
+An unknown parameter or value is ignored with a console warning (`[despia] admob://banner ignored: ...`); the call still works. The refresh interval is the one set for the ad unit in the AdMob console.
+
+---
+
+## Placement
+
+The banner sits in a native strip along the top or bottom edge. The strip runs edge to edge and behind the home indicator, navigation bar, status bar or cut-out in `background`; the banner is centred inside the side safe areas and never sits under the home indicator or the system bars.
+
+| | Bottom | Bottom, above a native tab bar | Top |
+| --- | --- | --- | --- |
+| iOS 26 and later | On the safe area's bottom edge | The system spacing above the floating tab bar | On the safe area's top edge, or right under a native top bar |
+| iOS before 26 | On the safe area's bottom edge | On the tab bar's top edge | Same |
+| Android | On top of the navigation bar (gesture or three buttons) | On the tab bar's top edge | Under the status bar and cut-out, or right under a native top bar |
+
+`gap` replaces the platform's spacing. Google asks that banners are not placed next to interactive buttons, such as a custom app menu bar ([Banner ad guidance](https://support.google.com/admob/answer/6128877), read 24 November 2026): add a `gap` when your own controls sit at the banner's edge.
+
+The keyboard covers a bottom banner; it is never lifted above the keyboard.
+
+### Resize or overlay
+
+- `resize`: the web view ends at the banner strip. Nothing is covered.
+- `overlay`: the web view keeps its full size and the strip floats over it. Keep your content clear of it with the CSS variables below. Google asks that banners do not float over app content ([Discouraged banner implementations](https://support.google.com/admob/answer/6275345), read 24 November 2026), so use `overlay` only for space you reserve yourself.
+
+## CSS variables
+
+| Variable | Meaning |
+| --- | --- |
+| `--safe-area-top`, `--safe-area-bottom` | Already in every Despia app. Under `overlay` they include the banner; under `resize` the banner is outside the page and adds nothing. |
+| `--ad-banner-inset-top`, `--ad-banner-inset-bottom` | The banner's own share: its height plus its spacing. `0px` under `resize`, on the other edge, while hidden, and at the bottom while the keyboard covers it. |
+| `--ad-banner-height` | The ad's height; `0px` when no banner shows |
+
+```css
+.footer   { padding-bottom: calc(0.5rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px))); }
+.composer { margin-bottom: var(--ad-banner-inset-bottom, 0px); }
+```
+
+---
+
+## Events
+
+Every banner event calls `window.onAdBannerEvent(e)`:
+
+```javascript
+window.onAdBannerEvent = (e) => {
+  if (e.type === 'loaded') console.log('banner', e.width, e.height, e.collapsible);
+  if (e.type === 'failed') console.warn('no banner', e.code, e.message);
+  if (e.type === 'paid') analytics.track('ad_revenue', { value: e.value, currency: e.currencyCode });
+};
+```
+
+| `e.type` | Fields |
+| --- | --- |
+| `loaded` | `width`, `height`, `collapsible` (what Google served), `adunit` |
+| `failed` | `code`, `message`: Google's numeric error code, or one of the codes below |
+| `impression` | |
+| `clicked` | |
+| `opened` | the ad opened a full-screen view |
+| `closed` | that view closed |
+| `paid` | `value` (in currency units), `valueMicros`, `currencyCode` (ISO 4217), `precision` (`unknown`, `estimated`, `publisherProvided`, `precise`): Google's impression-level ad revenue |
+
+| `failed` code | Meaning |
+| --- | --- |
+| `no-ad-unit` | No banner unit in the settings for this platform, and none passed |
+| `consent` | The user's consent does not allow ad requests |
+| `removed` | Ads are turned off for this user, for example by a remove-ads purchase |
+| `att-denied` | iOS: your app shows ads only with tracking allowed, and the user denied it |
+
+### State
+
+`window.despiaAdBanner` holds the current state, and the `despiaadbannerchange` event fires on `window` when it changes:
+
+```javascript
+if (window.despiaAdBanner?.supported) {
+  window.addEventListener('despiaadbannerchange', (e) => {
+    const { visible, loaded, position, layout, width, height, insetTop, insetBottom, collapsible } = e.detail;
+  });
+}
+```
+
+`window.despiaAdBanner` exists only in an app built with AdMob; use `supported` as the feature test. `visible` is `false` while the banner is hidden for any reason: your page hid it, a video or other element is in full screen, or the app shows a screen without your page (offline, splash).
+
+---
+
+## Consent
+
+Every AdMob format follows one order: Google's consent (UMP) update, with its form when required; on iOS, the launch tracking prompt when your app asks at launch; then the Mobile Ads SDK starts; then the waiting ad requests run. The first request already carries the final consent and tracking answers.
+
+Show a privacy link where Google requires one:
+
+```javascript
+if (window.despiaAds?.privacyOptionsRequired) {
+  privacyLink.hidden = false;
+  privacyLink.onclick = () => despia('admob://privacyoptions');
+}
+```
+
+`window.despiaAds.privacyOptionsRequired` follows UMP after every consent update. Debug builds act as if the user is in the EEA so you can see the consent form; release builds use the user's real location.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Nothing shows, `failed` with `no-ad-unit` | Pass `adunit`, or put a banner unit in your app's settings |
+| Nothing shows, no event | The build has AdMob (`window.despiaAdBanner` exists) and the call runs in the top document |
+| `failed` with a number | Google's error: often no fill yet for a new unit; test with Google's sample unit |
+| Content hidden under the banner | Use `layout=resize`, or pad with `--ad-banner-inset-bottom` under `overlay` |
+| The collapsible banner stays collapsed after a refresh | Refreshes never collapse; call `admob://banner/reload` |

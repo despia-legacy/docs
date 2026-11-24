@@ -1,0 +1,52 @@
+---
+title: "OS Version"
+description: "Read the native operating system version in a Despia V3 app."
+icon: "mobile"
+---
+
+<Warning>
+  This API is in preview and requires an upcoming V3 runtime build.
+</Warning>
+
+Read the device's operating system from native code. Call the API from a client event or client lifecycle after your page is running inside Despia.
+
+## Installation
+
+```bash
+npm install despia-native
+```
+
+```javascript
+import despia from 'despia-native'
+
+const isDespia = navigator.userAgent.toLowerCase().includes('despia')
+
+if (isDespia) {
+  const reply = await despia('getosversion://', ['osVersion'])
+  const os = reply.osVersion
+
+  if (os) {
+    console.log(os.platform, os.version)
+  }
+}
+```
+
+## Result
+
+Read the result from `reply.osVersion`. This command returns the version object directly, without an extension result envelope.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `platform` | string | `ios` or `android`. |
+| `version` | string | The operating system's release string. Treat it as text, not a decimal number. |
+| `apiLevel` | number | Android API level. Omitted on iOS. |
+
+Use the exact command `getosversion://`, without a host, path or query string. No permission prompt or network request is required to read the version.
+
+Await calls that watch `osVersion` sequentially. The published npm SDK watches one shared variable and resolves `reply.osVersion` to `undefined` after 30 seconds without an answer.
+
+## Version and capability checks
+
+For HTTPS authentication callbacks, check `despia.httpsAuthCallback` and follow the [Easy OAuth setup](/native-features/oauth/easy-login-flow). That flow requires iOS 17.4 or later on iOS. Browser support and domain verification also affect availability on Android.
+
+Rebuild and install the native app after this API is released.

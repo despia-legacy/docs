@@ -289,6 +289,42 @@ Aim for the longest interval that feels acceptable. Shorter intervals do not alw
 
 ---
 
+## Limits and differences to know
+
+Everything below is current behaviour, so nothing about the widget surprises you or your users.
+
+### On both platforms
+
+- **One widget, one size:** each app has one widget, in the medium size only (iOS `systemMedium`, Android 4 by 2 cells). There is no small, large or lock-screen widget. Sizes are compiled into the app, so adding one later needs a new build.
+- **Every copy shows the same image:** a user who adds the widget twice sees the same image in both, because the app holds one widget URL. A new `widget://` call changes every copy.
+- **Design for the medium shape:** the iOS medium widget is about 2.13 times as wide as it is tall (for example 349.67 × 164.33 points on an iPhone 17 Pro); its exact size varies by device. Use the same shape, such as `360 × 169`. An SVG of another shape is fitted inside the tile: iOS fills the space left over with the tile colour (white, or black in dark mode), and Android shrinks the tile to the SVG's shape.
+- **Photos are cropped:** a PNG, JPEG or WebP response fills the whole tile and is cropped to it. Keep important content away from the edges.
+- **The same image in light and dark mode:** the request does not tell your endpoint which mode the phone is in, so design one image that reads well on both.
+- **The request is plain:** the widget sends a simple `GET` with no cookies or login from your web page and no custom headers. On iOS, cookies your endpoint itself sets may be sent back on later refreshes; Android sends no cookies at all. Its user agent is the system's HTTP client, not your app's web view, so the `despia` user-agent check does not apply. Put everything your endpoint needs, such as the user ID or a signed token, in the URL.
+- **Keep the endpoint fast:** iOS gives the widget roughly 30 seconds to fetch and draw, and Android gives up after 15 seconds to connect or 30 seconds to read. Answer in well under a second where you can. Android also refuses responses larger than 10 MB. Redirects are followed, except that Android does not follow a redirect between `http` and `https`.
+- **An error replaces the last image:** when a refresh fails (for example an HTTP 404 or 500, or an SVG that cannot be parsed), the widget shows the error text instead of the previous image until a refresh succeeds. To keep a widget looking right during an outage, return a valid fallback SVG with status `200`.
+- **Offline:** iOS still tries to refresh and shows the connection error. Android waits until the phone is online, so the last image stays; a widget added while offline shows your app icon and name until the phone is online.
+- **Before the first call:** the widget shows the fallback image set in the Despia Editor, or, if there is none, your app icon and name. On iOS the fallback is only known after the app has been opened once, so a widget added before the first launch shows your app icon and name.
+- **Widget gallery preview:** the list of widgets the user picks from shows a plain card with your widget's name and description (Android) or your app icon and name (iOS), not your image. The image appears once the widget is on the home screen.
+- **No scripts or animations:** scripts and animations in the SVG do not run, and the widget does not redraw between refreshes.
+- **Fonts:** both platforms draw with the phone's own fonts; web fonts are not loaded. On Android only the generic families work (`sans-serif`, `serif`, `monospace`): any named family, even one the phone has such as `Roboto`, is drawn in serif. Always end the list with a generic family, such as `font-family="Inter, sans-serif"`, or leave `font-family` out for the system sans-serif font.
+
+### iOS only
+
+- **Bold text:** iOS draws all SVG text at regular weight, whatever `font-weight` you set.
+- **Dark, tinted and clear home screens:** iOS dims widgets in dark mode and recolours every widget when the user picks a tinted or clear home-screen style. Your image is shown the way iOS shows any widget there.
+- **Refresh budget:** iOS decides when refreshes really run. See [Refresh interval guidance](#refresh-interval-guidance).
+
+### Android only
+
+- **Android 7.0 or later:** the widget needs Android 7.0 (API 24) or later.
+- **Launchers differ:** the size of 4 by 2 cells depends on the phone and launcher. Despia draws the SVG at the size the launcher reports, so the tile may be slightly larger or smaller than on a Pixel.
+- **Rounded corners before Android 12:** Android 12 and later round the tile with the launcher's own radius. On earlier versions an SVG gets 16 dp rounded corners drawn in, and a photo keeps square corners.
+- **Background refresh:** at most every 15 minutes, only while a widget is placed and the phone is online. Battery Saver and Doze can delay it further.
+- **Force stop and Clear data:** see [Android behavior](#android-behavior).
+
+---
+
 ## Resources
 
 <CardGroup cols={2}>

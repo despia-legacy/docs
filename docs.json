@@ -319,6 +319,7 @@
           "native-features/speech-recognition",
           "native-features/app-privacy",
           "native-features/safe-areas",
+          "native-features/navigation",
           "native-features/screen-radius",
           "native-features/in-app-rating",
           "native-features/action-sheet",

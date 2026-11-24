@@ -1,0 +1,281 @@
+---
+title: "Widget JSON"
+description: "Describe home screen widgets and Live Activities in JSON, set them from your web app, and update them from the page, a timeline, a refresh URL or a push."
+icon: "brackets-curly"
+---
+
+```javascript
+import despia from 'despia-native';
+
+const doc = {
+  widgetJson: 1,
+  kind: 'widget',
+  id: 'steps',
+  state: { steps: 0, goal: 10000 },
+  layouts: [{
+    root: { type: 'stack', dir: 'v', gap: 6, children: [
+      { type: 'text', text: { var: 'state.steps' }, style: { font: 'largeTitle', 'font-weight': 700 } },
+      { type: 'progress', shape: 'linear', value: { var: 'state.steps' }, to: { var: 'state.goal' } }
+    ] }
+  }]
+};
+
+window.onWidgetJsonResult = (r) => console.log(r.call, r.ok ? r.data : r.code);
+despia('widgetjson://widget/set?id=steps&doc=' + encodeURIComponent(JSON.stringify(doc)));
+despia('widgetjson://widget/state?id=steps&patch=' + encodeURIComponent(JSON.stringify({ steps: 4200 })));
+```
+
+Widget JSON draws real native widgets from a JSON document: SwiftUI in WidgetKit on iOS, Glance on Android. The document holds the layout and its state; formulas in the layout read the state, so an update sends only new state, never a new picture. One document format serves home screen widgets, lock screen widgets, and Live Activities on iOS and Live Updates on Android.
+
+It is built into the app. An app built before it was added needs a new build. On iOS the widget uses the same widget target as [Home Widgets](/native-features/home-widgets), so follow its [iOS setup](/native-features/home-widgets#ios-setup-apple-developer-and-despia) once. On Android the app's widget appears in the launcher's widget list only after your page first sets a widget document.
+
+---
+
+## Calls and answers
+
+Every call is `widgetjson://<route>?<parameters>`. Encode every value with `encodeURIComponent`; documents, state and patches are JSON text.
+
+Every call answers on `window.onWidgetJsonResult(result)`, and the last answer stays in `window.widgetJsonResult`:
+
+```javascript
+{ rid, call, ok, data }              // success
+{ rid, call, ok: false, code, error, path }  // failure; path points into the document
+```
+
+Pass your own `rid` to match an answer to its call. Some answers carry `notes`, such as `android_inexact_alarms`.
+
+| Route | Parameters | Does |
+| --- | --- | --- |
+| `capabilities` | | What this device supports: `platform`, `os`, `families`, `features`, `widgets`, `activities`, `interactive`, `pushToStart`, `push`, and on Android `pin` and `liveUpdates` |
+| `validate` | a document (below), optional `state`, `attrs` | `{ ok, errors }` for this platform, without storing anything |
+| `widget/set` | `id`, a document, optional `state`, `default` | Stores a widget document and redraws |
+| `widget/state` | `id`, `state` (replace) or `patch` (merge) | Changes the state and redraws |
+| `widget/timeline` | `id`, `entries` | Schedules state patches (below) |
+| `widget/refresh` | `id`, `url`, `every` (minutes, at least 15) | Fetches state from your server in the background; without `url` it stops |
+| `widget/get` | `id` | The stored document and state |
+| `widget/clear` | `id` | Deletes the document and its state |
+| `widget/reload` | | Redraws every widget |
+| `widget/installed` | | The widgets on the home screen and the stored document ids |
+| `widget/pin` | | Android: asks the launcher to add the widget |
+| `activity/start` | `id`, a document, `attrs`, `state`, optional `name`, `staleAfter`, `relevance` | Starts a Live Activity or Live Update |
+| `activity/update` | `id`, `state` or `patch`, optional `alert`, `staleAt` | Updates it |
+| `activity/end` | `id`, optional `state`, `dismissal` | Ends it |
+| `activity/list` | | The running activities |
+| `tokens` | | The push tokens (below) |
+| `token-sink` | `url`, optional `bearer`; or `clear=1` | Sends every push token to your server |
+| `events` | optional `ack` | Taps and changes queued while no page was open |
+| `permission` | | `notifications` (`granted`, `denied`, `prompt`) and `activities` |
+| `settings` | | Opens the app's notification settings |
+
+A document is passed one of three ways: `doc` (the JSON document, or `{"name": "..."}` for a stored one, or `{"z": "..."}` for raw DEFLATE in base64), `name`, or `src` (an `https://` URL the app fetches). An `id` is 1 to 64 letters, digits, `_`, `.` or `-`.
+
+The home screen shows one widget for your app. It draws the document set with `default=1`, else the first one stored.
+
+### Order of updates
+
+Every local call is stamped with the device clock in milliseconds, unless you pass `seq`. An update older than the last one for the same widget or activity answers `stale` (or `duplicate`) and is dropped, so a late push never overwrites newer state.
+
+---
+
+## The document
+
+```json
+{
+  "widgetJson": 1,
+  "kind": "widget",
+  "id": "habit",
+  "state": { "streak": 4, "doneToday": false },
+  "actions": { "markToday": { "set": { "doneToday": { "!": { "var": "state.doneToday" } } } } },
+  "layouts": [
+    { "for": ["small"], "widgetUrl": "/habits", "root": { "type": "text", "text": { "var": "state.streak" } } },
+    { "root": { "type": "toggle", "value": { "var": "state.doneToday" }, "action": "markToday", "label": "Today" } }
+  ],
+  "styles": { "secondary": { "font": "subheadline", "color": "secondary" } }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `widgetJson` | `1` |
+| `kind` | `widget` or `activity` |
+| `id` | The document's own name |
+| `state` | The starting state; formulas read it as `state.*` |
+| `layouts` | A list of `{ for, when, root, widgetUrl, background, margins }`. The first layout whose `for` lists the current family and whose `when` is true is drawn; a layout without `for` serves every family |
+| `styles` | Named styles, used by an element's `class` |
+| `actions` | Named actions for buttons, toggles and taps |
+| `summary` | Activities: `icon`, `largeIcon`, `title`, `text`, `subText`, `progress`, `countdownTo`, `countUpFrom`, `chip`, `actions`, `open`. Android draws its Live Update from this |
+| `staleAfter`, `relevance`, `dismissal`, `tint`, `android` | Activities: when it goes stale, its rank, how it leaves, its colours and Android options |
+| `requires`, `meta` | The renderer version the document needs, and your own data |
+
+### Families
+
+| Kind | Families |
+| --- | --- |
+| `widget` | `small`, `medium`, `large`, `extraLarge`; iOS also `accessoryCircular`, `accessoryRectangular`, `accessoryInline` (lock screen) |
+| `activity` | `lockScreen`, `island.compactLeading`, `island.compactTrailing`, `island.minimal`; iOS also `island.expanded.leading`, `island.expanded.trailing`, `island.expanded.center`, `island.expanded.bottom`, `supplemental.small` |
+
+`small`, the accessory families and the compact and minimal island families have one tap target: use the layout's `widgetUrl`, not a `link`.
+
+### Elements
+
+Every element has `type`, and may have `id`, `class`, `style`, `if` (a formula; the element shows only when it is true), `only` (`ios` or `android`) and `fallback`.
+
+| `type` | Fields |
+| --- | --- |
+| `text` | `text`, `format` |
+| `image` | `symbol` (`{ "ios": "<SF Symbol>", "android": "<Material Symbol>" }`), `src`, `svg`, `asset`, `fit` (`cover`, `contain`, `fill`), `rendering`, `label` |
+| `stack` | `dir` (`h`, `v`, `z`), `children`, `align`, `gap` |
+| `spacer` | `size` |
+| `divider` | |
+| `progress` | `shape` (`linear`, `circular`), `value`, `from`, `to`, `label` |
+| `gauge` | `value`, `min`, `max`, `label`, `current`, `shape`, `capacity` |
+| `timer` | `to`, `from`, `display` (`timer`, `relative`, `offset`), `showsHours` |
+| `date` | `value`, `display` (`time`, `date`) |
+| `link` | `to`, `children` |
+| `button` | `action`, `label`, `children` |
+| `toggle` | `value`, `action`, `label` |
+| `list` | `items`, `max` (required), `as`, `template`, `empty`, `scroll`, `dir`, `gap` |
+
+`align` is one of `start`, `center`, `end`, `top`, `bottom`, `topStart`, `topEnd`, `bottomStart`, `bottomEnd`.
+
+### Styles
+
+| Property | Values |
+| --- | --- |
+| `padding`, `padding-x`, `padding-y`, `padding-top`, `padding-bottom`, `padding-start`, `padding-end`, `gap` | numbers |
+| `width`, `height` | a number, `fill` or `hug` |
+| `min-width`, `max-width`, `min-height`, `max-height` | numbers (iOS) |
+| `grow` | `true`, `false` |
+| `align`, `self-align` | the `align` values |
+| `color` | a colour |
+| `background` | a colour, `{ gradient }` or `{ image }` |
+| `corner-radius` | a number or `container` |
+| `border` | `{ width, color }` |
+| `opacity` | a number |
+| `font` | `largeTitle`, `title`, `title2`, `title3`, `headline`, `subheadline`, `body`, `callout`, `footnote`, `caption`, `caption2` |
+| `font-size` | a number |
+| `font-weight` | 100 to 900 in hundreds, or `ultraLight`, `thin`, `light`, `regular`, `medium`, `semibold`, `bold`, `heavy`, `black` |
+| `font-design` | `default`, `rounded`, `serif`, `monospaced` |
+| `font-style` | `normal`, `italic` |
+| `text-align` | `start`, `center`, `end` |
+| `max-lines` | a number |
+| `text-decoration` | `none`, `underline`, `line-through` |
+| `min-scale`, `letter-spacing`, `tabular-numbers`, `numeric-transition`, `shadow` | iOS only |
+| `accentable`, `redact-when-stale`, `privacy` (`sensitive`) | iOS only: `privacy: sensitive` is hidden while the device is locked, `redact-when-stale` is redacted once the activity is stale |
+
+A colour is `#RRGGBB`, `#RRGGBBAA` or a token: `primary`, `secondary`, `tertiary`, `accent`, `background`, `red`, `orange`, `yellow`, `green`, `mint`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `pink`, `brown`, `gray`, `white`, `black`, `clear`.
+
+### Formulas
+
+Any field the platform can compute is a value or a formula: an object with one operator and its arguments, such as `{ "+": [{ "var": "state.a" }, 1] }`. `var` reads `state.*`, `attrs.*` (an activity's fixed attributes), `env.*`, `now` (seconds), and inside a `list` template the item (named by `as`) and `index`. `env` holds `platform`, `os`, `family`, `width`, `height`, `colorScheme`, `renderingMode`, `locale`, `timeZone`, `isStale`, `isLuminanceReduced`, `showsBackground` and `renderer`. A layout's `when` reads only `env` and `now`.
+
+| Group | Operators |
+| --- | --- |
+| Values | `var`, `lit`, `has`, `len`, `at`, `default` |
+| Logic | `if`, `and`, `or`, `!`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `in` |
+| Numbers | `+`, `-`, `*`, `/`, `%`, `min`, `max`, `abs`, `round`, `floor`, `ceil`, `clamp` |
+| Text | `cat`, `upper`, `lower`, `trim`, `substr`, `split`, `pad`, `join` |
+| Lists | `map`, `filter`, `some`, `all`, `count`, `sum`, `slice`, `first`, `last`, `sort` |
+| Formatting | `number`, `percent`, `currency`, `compact`, `datetime`, `duration`, `plural` |
+
+A formula never reads the network or the clock beyond `now`, and stops after 20000 steps.
+
+---
+
+## Actions and taps
+
+An action is `{ open, set, value }`. `set` changes state without opening the app: each key is a state path, each value a formula over the state before the action. `open` opens the app at a path on your site.
+
+```json
+"actions": {
+  "markToday": { "set": { "doneToday": { "!": { "var": "state.doneToday" } } } },
+  "details": { "open": "/habits/today" }
+}
+```
+
+Every tap reaches your page on `window.onWidgetJsonAction(event)` as `{ target, id, action, kind, at, state }`. A tap while no page is loaded is queued: read it with `events`, then pass the last `seq` you handled as `ack`.
+
+On iOS, buttons and toggles that only `set` run without opening the app on iOS 17 and later; below that they show as plain content.
+
+## Timeline and refresh
+
+`widget/timeline` takes up to 64 entries `[{ at, patch }]` (`at` in seconds), at least 300 seconds apart, so the widget changes on time with the app closed. On Android the times are inexact.
+
+`widget/refresh` fetches `url` every `every` minutes (15 at least) in the background. The answer is a JSON state object, the same as `state` in `widget/state`, and replaces the widget's state.
+
+## Live Activities and Live Updates
+
+A document with `kind: "activity"` runs as a Live Activity on iOS 16.2 and later (lock screen, Dynamic Island) and as an ongoing notification on Android, promoted to a Live Update on Android 16 and later when your app's Live Updates setting is on.
+
+```javascript
+despia('widgetjson://activity/start?id=match-42'
+  + '&src=' + encodeURIComponent('https://example.com/widgets/score-activity.json')
+  + '&attrs=' + encodeURIComponent(JSON.stringify({ homeName: 'Lions', awayName: 'Hawks' }))
+  + '&state=' + encodeURIComponent(JSON.stringify({ home: 0, away: 0, period: '1st' })));
+```
+
+`window.onWidgetJsonActivity({ id, state, origin })` reports each change of an activity's state. Android draws the activity from `summary`, so an activity document needs `summary.title` unless `android.style` is `custom`. `relevance` is iOS only. An activity's attributes and state together are at most 4 KB.
+
+## Push updates
+
+Widgets and activities also update from a push, with the app closed. Put an envelope under the push's `widgetjson` key (or `data.widgetjson`), as an object or as JSON text:
+
+```json
+{ "v": 1, "target": "widget", "id": "steps", "event": "patch", "patch": { "steps": 5100 }, "seq": 1732450000000 }
+```
+
+| Field | Values |
+| --- | --- |
+| `target` | `widget`, `activity` |
+| `event` | `state`, `patch`, `doc`, `timeline`, `reload`, `clear`, `start`, `update`, `end` |
+| `state`, `patch`, `doc`, `attrs`, `entries`, `alert` | as in the calls |
+| `staleAt`, `dismissAt`, `relevance` | activity timing |
+| `seq`, `ts` | ordering; older updates are dropped |
+
+The envelope works through APNs and OneSignal on iOS, and through Firebase Cloud Messaging and OneSignal on Android. On iOS, Live Activities have their own push tokens: `tokens` lists them as `{ kind, id, token, environment }`, where `kind` is `activity_start` (push to start, iOS 17.2 and later), `activity_update` (one per running activity) or `widget`. `window.onWidgetJsonToken(token)` reports each new token, and `token-sink` posts each one to your server (an `https://` URL on your page's own site, with an optional bearer token).
+
+---
+
+## Limits
+
+| Limit | Value |
+| --- | --- |
+| Document | 64 KB |
+| State | 64 KB |
+| Activity attributes and state | 4 KB |
+| Elements | 512, nested at most 24 deep |
+| Formula | 20000 steps, nested at most 32 deep |
+| List length | 256 |
+| Timeline | 64 entries, 300 seconds apart |
+| Queued events | 32 |
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Renderer | SwiftUI in WidgetKit | Glance |
+| Lock screen widgets | `accessory*` families | Not available |
+| Activities | Live Activities, iOS 16.2 and later | Ongoing notification; Live Update on Android 16 and later with the setting on |
+| Push to start | iOS 17.2 and later | Not available |
+| Adding the widget | The user adds it from the widget gallery (`widget/pin` answers `platform_limit`) | `widget/pin` asks the launcher, Android 8.0 and later |
+| Icons | SF Symbols | Material Symbols when the build bundles them; `svg` always works |
+| Image `rendering` | Every value | `original` and `template` |
+| iOS-only styles | | Ignored |
+
+Run `validate` on each platform: its errors and notes say exactly what a document does there.
+
+## Error codes
+
+| Code | Meaning |
+| --- | --- |
+| `bad_value`, `missing_field`, `unknown_property` | A field is wrong or missing; `path` points to it |
+| `unknown_element`, `unknown_operator`, `unknown_family`, `unknown_class`, `unknown_action` | A name the format does not have |
+| `bad_formula`, `too_deep`, `too_large`, `too_many_elements`, `too_large_activity` | A formula or document breaks a limit |
+| `list_without_max`, `link_needs_widget_url`, `summary_required` | A rule of the format (see above) |
+| `requires_newer_renderer`, `unknown_version` | The document needs a newer app |
+| `stale`, `duplicate` | An older update than the last one |
+| `too_many` | Too many timeline entries |
+| `bad_url` | A URL is not `https://` (or not on your site, for `token-sink`) |
+| `unreachable` | `src` could not be fetched |
+| `platform_limit` | The platform cannot do this |
+| `storage` | The document could not be saved |

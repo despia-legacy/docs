@@ -64,6 +64,7 @@ else if (r.error.code === 'not_found') showLogin()
 | `identityvault://remove?key=…` | Deletes one value |
 | `identityvault://keys` | Lists the stored keys (never prompts) |
 | `identityvault://clear` | Deletes every Identity Vault value of the app |
+| `identityvault://capabilities` | Says which biometrics the device has, whether they and a passcode are set up, and which `lock` a `set` can use (never prompts) |
 
 Add `id=…` to any command to get it back on the answer, so you can match answers to calls.
 Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
@@ -73,7 +74,7 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 | Option | Values | Default | Meaning |
 | :-- | :-- | :-- | :-- |
 | `sync` | `device`, `cloud` | `device` | `cloud` shares the value with the user's other devices (see below) |
-| `lock` | `none`, `biometric`, `passcode` | `none` | `biometric`: Face ID / Touch ID / fingerprint only. `passcode`: biometrics or the device passcode, PIN or pattern |
+| `lock` | `none`, `biometric`, `passcode` | `none` | `biometric`: the enrolled Face ID, Touch ID or fingerprint only. `passcode`: the device passcode, PIN, pattern or password only; no biometric is offered |
 | `survivesReinstall` | `true`, `false` | `false` (`true` with `sync=cloud`) | Keep the value when the app is deleted and installed again |
 
 ### Answers
@@ -82,15 +83,17 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 { id: "1", op: "get", ok: true, key: "session", value: "…", sync: "device", lock: "none", survivesReinstall: false }
 { id: "2", op: "keys", ok: true, keys: ["refresh", "session"] }
 { id: "3", op: "get", ok: false, key: "session", error: { code: "auth_cancelled", message: "…" } }
+{ id: "4", op: "capabilities", ok: true, biometryTypes: ["face"], biometricEnrolled: true,
+  deviceCredentialSet: true, locks: { none: true, biometric: true, passcode: true } }
 ```
 
 | Error code | Meaning |
 | :-- | :-- |
 | `not_found` | No value for this key |
-| `auth_cancelled` / `auth_failed` | The user cancelled or failed the biometric / passcode prompt |
+| `auth_cancelled` / `auth_failed` | The user cancelled or failed the biometric / passcode prompt. A value is never asked for twice in one call: if the screen lock was confirmed and the key still stays locked, the answer is `auth_failed` |
 | `lock_unavailable` | No biometrics enrolled, no passcode set, or the app was built without biometrics |
 | `key_invalidated` | The device's biometrics changed, so a `biometric` value was erased. Ask the user to sign in again |
-| `platform_limit` | The platform cannot store this combination (see the table below) |
+| `platform_limit` | The platform cannot store this combination (see the table below), or `lock=passcode` on Android 10 and older with a fingerprint or face enrolled |
 | `quota_exceeded` | Android Block Store: at most 16 values of 4094 bytes (UTF-8) each; elsewhere 64 KB per value |
 | `invalid_argument` | A key, option or command is not valid |
 | `storage_error` | The system store reported an error |
@@ -106,6 +109,7 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 | `survivesReinstall=true` | Kept by current iOS; Apple does not guarantee it | Kept by Google Block Store when the user's Google Backup is on |
 | `lock` | No prompt when saving; prompt when reading | Prompt when saving and when reading (the Keystore key must be unlocked to encrypt) |
 | `lock` with `sync=cloud` | `platform_limit`: the Keychain does not sync an item that needs Face ID or the passcode | `platform_limit`: a locked value stays on this device |
+| `lock=passcode` | Device passcode only (`.devicePasscode`) | Device PIN, pattern or password only. Android 11+: the system credential prompt. Android 10 and older: the screen-lock confirmation, offered only when no fingerprint or face is enrolled, because those versions cannot ask for the screen lock without also accepting an enrolled biometric ([Android, BiometricManager.Authenticators](https://developer.android.com/reference/androidx/biometric/BiometricManager.Authenticators), read 24 November 2026); otherwise `platform_limit` |
 | `lock` with `survivesReinstall=true` | Kept like any other Keychain item (same caveat as above) | `platform_limit`: a locked value is gone after a reinstall |
 
 <Warning>
@@ -148,6 +152,18 @@ const { identityVault: r } = await despia(
 )
 if (!r.ok && r.error.code === 'key_invalidated') showLogin()
 ```
+
+### Pick a lock the device supports
+
+```javascript
+const { identityVault: cap } = await despia('identityvault://capabilities', ['identityVault'])
+// cap.biometryTypes: "face", "fingerprint" and/or "iris" this app can use on the device (enrolled or not)
+// cap.biometricEnrolled, cap.deviceCredentialSet: what the user has set up
+const lock = cap.locks.biometric ? 'biometric' : cap.locks.passcode ? 'passcode' : 'none'
+await despia(`identityvault://set?key=session&value=${encodeURIComponent(token)}&lock=${lock}`, ['identityVault'])
+```
+
+`locks` already accounts for the app's build: an app built without biometrics answers `biometryTypes: []` and `locks.biometric: false`.
 
 ### Sign out
 

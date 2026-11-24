@@ -21,6 +21,14 @@ The page only ever sees a recording id and its state. The audio never crosses th
 
 Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Automatic discovery of hosted `/despia/extensions.json` during a normal rebuild is under review and is not yet confirmed in deployed builds. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
+## Recording and upload boundaries
+
+Recorder contains its own audio-file uploader. It sends raw `PUT` requests with `Content-Type: audio/mp4` and `X-Recording-Id`; it does not send multipart form data or arbitrary JSON metadata. Your endpoint must implement that contract. An `uploading` state is not server-confirmed completion.
+
+On iOS the uploader uses an in-process ephemeral URLSession and opportunistic background processing. It is not a background URLSession daemon transfer. On Android it uses a regular WorkManager worker. An interrupted attempt can restart from byte zero; scheduling does not guarantee immediate or indefinite execution. Start recording in the foreground after microphone consent, then recover through the native status state rather than relying on a page event.
+
+A general file-picker or multipart background-upload extension is a separate capability. Recorder's documented tests do not prove that separate capability or a combined Recorder-to-uploader workflow. Verify the actual pairing, backend protocol and termination/recovery cases before promising them.
+
 ## Files
 
 Copy every file to the path in its title. Paths are under `public/despia/recorder/` in your web app, except `extensions.json`, which goes in `public/despia/`.

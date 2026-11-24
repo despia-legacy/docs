@@ -4,12 +4,25 @@ description: "New features, improvements, and fixes across the Despia platform."
 icon: "clock-rotate-left"
 ---
 
-<Update label="November 21, 2026" description="Android orientation compatibility improvement in preparation">
+<<<<<<< HEAD
+<Update label="November 24, 2026" description="Android builds keep portrait and landscape optional">
   ## Android orientation compatibility
 
-  An improvement is being prepared for Despia V3 Android builds to help apps meet Google Play's orientation compatibility requirements. The build will declare portrait and landscape screen features optional while preserving your phone and tablet orientation settings.
+  The standard Despia V3 Android build now declares portrait and landscape screen features as optional, which helps apps meet Google Play's orientation compatibility requirements. Your phone and tablet orientation settings are preserved.
 
-  Once the update is available, generate a new Android build to include the change. Existing AAB files will not be modified.
+  Generate a new Android build to include the change. Existing AAB files are not modified.
+</Update>
+
+<Update label="November 23, 2026" description="OneSignal: replace or group notifications from your backend">
+  ## Keep your notification list tidy with OneSignal
+
+  Despia apps have always supported OneSignal's `collapse_id`, `thread_id` and `android_group` fields. They are now documented.
+
+  - **Replace:** notifications that share a `collapse_id` replace each other, so the user sees only the latest update.
+  - **Group:** notifications that share a `thread_id` (iOS) and `android_group` (Android) stack into one group the user can expand or clear with one swipe.
+
+  Set them per send in the OneSignal dashboard or REST API. No app update or Despia setting is needed. Opening your app still resets the badge and leaves delivered notifications in place, as most apps do. See [Replacing and grouping notifications](/native-features/onesignal/reference#replacing-and-grouping-notifications).
+>>>>>>> origin/main
 </Update>
 
 <Update label="November 21, 2026" description="V3 Extensions: experimental runtime, native source templates and authoring reference">

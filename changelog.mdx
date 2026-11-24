@@ -1216,7 +1216,7 @@ icon: "clock-rotate-left"
   - **User identification.** `set_user_id`, `set_email`, and `set_phone` are all supported. Emails and phone numbers are hashed with SHA256 automatically before transmission.
   - **GDPR consent.** `set_consent` accepts `is_gdpr` and `has_consent` params and passes them directly to the AppsFlyer SDK consent API.
   - **On-demand data retrieval.** Both `get_uid` and `get_attribution` support an await pattern - `await despia("appsflyer://get_uid", ["appsFlyerUID"])` - for cases where you need the value immediately in the same execution flow.
-  - **Ad revenue tracking.** Coming soon - `despia("appsflyer://log_ad_revenue?...")` will allow impression-level revenue reporting back to AppsFlyer from Meta, TikTok, and AdMob to enable LTV and ROAS reporting per acquisition channel.
+  - **Ad revenue tracking.** `despia("appsflyer://log_ad_revenue?...")` reports impression-level revenue back to AppsFlyer from Meta, TikTok, and AdMob to enable LTV and ROAS reporting per acquisition channel. See [Ad revenue](/analytics/appsflyer/ad-revenue).
 
   Configuration is handled entirely in the Despia dashboard with no native code changes required. Go to **Despia > App > Settings > Integrations > AppsFlyer** to enter your dev key, Apple App ID, OneLink URLs, and ad platform credentials. Despia configures Universal Links on iOS and App Links on Android automatically from the values you enter.
 

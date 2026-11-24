@@ -11,8 +11,6 @@ This extension starts, updates, ends and lists native activities from your web a
 
 It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/experiments/v3-extensions) for build verification and rebuild requirements.
 
-**Tested on** the 21 November 2026 fixtures. The iOS simulator passed 7/7 scenarios. The Android emulator passed 44/44 steps. The TestingBot Galaxy A12 passed 5/5 scenarios using ordinary notifications.
-
 ## Install
 
 1. Copy the files below into `public/despia/liveactivity/` in your web app, keeping their `ios/` and `android/` paths.
@@ -106,7 +104,7 @@ The [extension skill](https://github.com/despia-legacy/extension-skill) includes
 
 ## Files
 
-Copy each file to its title's path. The `extensions.json` block is an example for a new app; merge the extension name into your existing file rather than replacing its app identity.
+Copy each file to its title's path. The `extensions.json` block is an example for a new app; merge the extension name into the `extensions` list of your existing file.
 
 <Tabs>
 <Tab title="Manifest">
@@ -1301,7 +1299,7 @@ private struct ScoreLockScreen: View {
             }
             HStack {
                 ScoreTeam(name: context.attributes.homeTeam, score: context.state.homeScore, leading: true)
-                Text(":").font(.title2).foregroundStyle(.secondary)
+                Text("–").font(.title2).foregroundStyle(.secondary)
                 ScoreTeam(name: context.attributes.awayTeam, score: context.state.awayScore, leading: false)
             }
         }
@@ -2926,7 +2924,7 @@ public final class ScoreTemplate implements LiveTemplate {
         String period = state.optString("period", "");
         String status = isFinal ? "Final" : (clock.isEmpty() ? period : period + " · " + clock);
 
-        b.setContentTitle(attributes.optString("homeTeam", "") + "  " + home + " : " + away + "  "
+        b.setContentTitle(attributes.optString("homeTeam", "") + "  " + home + " – " + away + "  "
                 + attributes.optString("awayTeam", ""));
         b.setContentText(status);
         b.setSubText(attributes.optString("league", ""));

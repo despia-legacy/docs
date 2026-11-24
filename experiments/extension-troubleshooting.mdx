@@ -7,9 +7,9 @@ Start with the stage that failed. Preserve the exact native build, extension sou
 
 ## Hosted files exist, but the installed app has no feature
 
-Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Automatic discovery of hosted `/despia/extensions.json` during normal rebuilds is under review and is not confirmed deployed. Inspect the selected build inputs, compilation and installed artifact. Do not invent a per-app enrollment switch or human source-approval requirement.
+Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Extension builds are not yet open to every app. An app that serves `/despia/extensions.json` today gets a clear build error rather than a build without its extensions. The standard build of an app with no index is unchanged. There is no per-app enrollment switch. Inspect the selected build inputs, compilation and installed artifact. Do not invent a human source-approval requirement.
 
-Check each response body at its exact public path. A status-200 HTML fallback is not an index, manifest or native source file. Serve the extension tree before the SPA fallback, and accept the build fetcher's `despia-nx-fetch/1` user agent. A valid index alone does not prove all referenced files are served or selected.
+Check each response body at its exact public path. A status-200 HTML fallback is not an index, manifest or native source file. Serve the extension tree before the SPA fallback, and do not block the build's automated fetcher with bot protection or sign-in. A valid index alone does not prove all referenced files are served or selected.
 
 See [Build inclusion and release checks](/experiments/v3-extensions#build-inclusion-and-release-checks) for the difference between source verification, compilation and installed behavior.
 
@@ -31,7 +31,7 @@ Keep commands in browser lifecycle hooks or click handlers inside the installed 
 
 ## The manifest is JSON, but validation fails
 
-Use the current runtime's contract. The index accepts `app` and `extensions`; it has no `manifest_version`. It requires real app identity and 1 to 8 distinct extension folder names. The folder's `manifest.json` uses `version` and must not repeat the folder id in an `id` field.
+Use the current runtime's contract. The index requires `extensions`, a list of 0 to 8 unique folder names, and has no `manifest_version`. An optional legacy `app` block is accepted only when it matches the build. The folder's `manifest.json` uses `version` and must not repeat the folder id in an `id` field.
 
 Put route `timeout_ms` beside `name`, `params` and `output`, not inside `params`. Omit `params` or use an empty object for a route without parameters. Declare types, required values, enum choices, string bounds and HTTPS hosts explicitly. Unknown fields and undeclared query parameters are rejected.
 
@@ -59,7 +59,7 @@ On the current iOS contract, configure purpose descriptions through Despia's per
 
 ## A dependency or compiler check fails
 
-A Git commit pin alone is not a complete SwiftPM graph. Remote packages also require `ios.package_resolved` naming the complete `Package.resolved` inside the extension's `ios/` directory; missing it produces `NX-M100`. CocoaPods needs the declared pods, lock and measured closure. Custom Android modules must resolve against the allowed repositories and verified dependency graph. Changed dependencies need fresh verification.
+A Git commit pin alone is not a complete SwiftPM graph. Remote packages also require `ios.package_resolved` naming the complete `Package.resolved` inside the extension's `ios/` directory; a build without it is refused. CocoaPods needs the declared pods, lock and measured closure. Custom Android modules must resolve against the allowed repositories and verified dependency graph. Changed dependencies need fresh verification.
 
 Use the real host toolchain and pinned SDK API. The current V3 iOS project uses Swift language mode 5.0, which is distinct from the installed compiler version. The current Android project uses compileSdk 36. A dependency minimum OS cannot be bypassed by an extension route availability guard. Standalone compilation does not prove host integration.
 

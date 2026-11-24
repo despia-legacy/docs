@@ -19,7 +19,7 @@ The page only ever sees a recording id and its state. The audio never crosses th
 
 ## Before installing the extension
 
-Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Automatic discovery of hosted `/despia/extensions.json` during a normal rebuild is under review and is not yet confirmed in deployed builds. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
+Extension files must be compiled into a rebuilt native app. Uploading files does not change an installed binary. Extension builds are not yet open to every app. An app that serves `/despia/extensions.json` today gets a clear build error rather than a build without its extensions. The standard build of an app with no index is unchanged. There is no per-app enrollment switch. See [Troubleshooting extension builds](/experiments/extension-troubleshooting).
 
 ## Recording and upload boundaries
 
@@ -1519,7 +1519,7 @@ struct RecorderSessionLease {
 import Foundation
 
 /// Shared by the app and the lock-screen widget through the App Group the build provisions
-/// (logical name "nativeext", expanded into NXAppGroups in each bundle's Info.plist).
+/// (logical name "nativeext", expanded into DESPIA_NX_APP_GROUPS in each bundle's Info.plist).
 struct RecorderStatus: Codable, Equatable {
     var recordingId: String?
     var state: String
@@ -1530,7 +1530,7 @@ struct RecorderStatus: Codable, Equatable {
     static let defaultsKey = "nx.recorder.status"
 
     static func groupIdentifier() -> String? {
-        (Bundle.main.object(forInfoDictionaryKey: "NXAppGroups") as? [String: String])?["nativeext"]
+        (Bundle.main.object(forInfoDictionaryKey: "DESPIA_NX_APP_GROUPS") as? [String: String])?["nativeext"]
     }
 
     static func load() -> RecorderStatus {

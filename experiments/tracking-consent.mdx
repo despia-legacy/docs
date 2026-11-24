@@ -15,42 +15,49 @@ It does not guarantee access to an advertising identifier or an attribution resu
 Enable tracking support in Despia. Supply `NSUserTrackingUsageDescription` through the app's existing configuration, or use an approved nonempty `ios.app.info_plist` fallback with `ios.app.custom_keys: true` after the prepared runtime change reaches the build. Nonempty app-configured text wins. This purpose text does not enable tracking support or choose the automatic-prompt behavior. Rebuild after native configuration changes.
 
 The prepared V3 settings have separate controls for tracking support and an
-automatic prompt at launch. Disable the automatic prompt to request from your
-page at a suitable moment. The backing setting is
-`DESPIA_NX_ATT_AUTOMATIC_PROMPT`. An absent or null value keeps the previous
-automatic behavior. False selects manual timing. Tracking support must remain
-enabled for a manual request. AppsFlyer enablement is a separate choice.
-
-The backend schema, settings save/export path and editor publish must all carry
-this setting before the switch changes a generated app. Updating a web page
-alone does not change launch behavior in an installed binary.
+automatic prompt at launch. Apps that do not change them keep the automatic
+prompt. Turn the automatic prompt off to request from your page at a suitable
+moment. Tracking support must remain enabled for a manual request. AppsFlyer
+enablement is a separate choice. Updating a web page alone does not change
+launch behavior in an installed binary.
 
 ## Request and read status
 
-Use the Despia JS SDK from a browser click handler. This command has a fixed output variable, so serialize status and request calls, including calls from other components. A status call does not show the prompt.
+Use the Despia JS SDK from a browser click handler. This command has a fixed output variable, so await each call before starting another, including calls from other components. A status call does not show the prompt.
 
 ```javascript
 import despia from 'despia-native';
 
-async function trackingConsent(action) {
+// Reads the status. This does not show the prompt.
+async function readTrackingStatus() {
   const requestId = crypto.randomUUID();
   const responses = await despia(
-    'trackingconsent://' + action + '?request_id=' + encodeURIComponent(requestId),
+    'trackingconsent://status?request_id=' + encodeURIComponent(requestId),
     ['despiaTrackingConsent']
   );
   const answer = responses.despiaTrackingConsent;
-  if (answer === undefined) throw new Error('No tracking answer within 30 seconds');
-  if (answer.request_id !== requestId) throw new Error('A different tracking request answered');
-  if (!answer.ok) throw new Error(JSON.stringify(answer));
-  return answer;
+  if (answer === undefined) { console.error('No tracking answer within 30 seconds'); return; }
+  if (answer.request_id !== requestId) { console.error('A different tracking request answered'); return; }
+  if (!answer.ok) { console.error(JSON.stringify(answer)); return; }
+  console.log(answer.status);
 }
 
-// In separate client events, await each call before starting another:
-// await trackingConsent('status');
-// await trackingConsent('request');
+// Asks iOS to show the tracking prompt when the person chooses.
+async function askForTracking() {
+  const requestId = crypto.randomUUID();
+  const responses = await despia(
+    'trackingconsent://request?request_id=' + encodeURIComponent(requestId),
+    ['despiaTrackingConsent']
+  );
+  const answer = responses.despiaTrackingConsent;
+  if (answer === undefined) { console.error('No tracking answer within 30 seconds'); return; }
+  if (answer.request_id !== requestId) { console.error('A different tracking request answered'); return; }
+  if (!answer.ok) { console.error(JSON.stringify(answer)); return; }
+  console.log(answer.status);
+}
 ```
 
-The legacy `trackingconsent://` form still requests permission. Read the latest stored answer through `despia.despiaTrackingConsent` when needed. A native failure resolves in the SDK; the local function above checks `ok` and throws explicitly.
+The legacy `trackingconsent://` form still requests permission. Read the latest stored answer through `despia.despiaTrackingConsent` when needed. A native failure resolves in the SDK; the handlers above check `ok` and report the failure.
 
 The answer is a flat object, separate from the extension result envelope:
 

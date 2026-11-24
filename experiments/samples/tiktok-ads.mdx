@@ -29,7 +29,7 @@ app. A browser preview alone does not provide native extension features.
 ## Install
 
 1. Copy manifest.json, ios/ and android/ into public/despia/tiktokads/ in your web app.
-2. Add "tiktokads" to public/despia/extensions.json: `{ "extensions": ["tiktokads"] }`. This minimal index requires the no-app-identity runtime change in the build; legacy indexes remain compatible.
+2. Add "tiktokads" to public/despia/extensions.json: `{ "extensions": ["tiktokads"] }`.
 3. Replace the native configuration placeholders in TikTokAdsExtension.swift and TikTokAdsExtension.java with the app SDK configuration provided by TikTok. Never embed a server-side Marketing API credential. Do not log this configuration or put it in a page URL.
 4. Verify the source and complete pinned dependency graph, then rebuild and install the native app.
 

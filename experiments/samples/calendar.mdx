@@ -29,8 +29,8 @@ app. A browser preview alone does not provide native extension features.
 ## Rebuild and install
 
 1. Copy manifest.json, ios/ and android/ to public/despia/calendar/ in your web app.
-2. Add calendar to public/despia/extensions.json. The prepared minimal index is `{ "extensions": ["calendar"] }`; use it only after the no-app-identity runtime reaches your build. Existing matching legacy identity blocks remain compatible. Do not add manifest_version to the index.
-3. Supply purpose text for the five keys in `ios.app.requires.usage_descriptions`: `NSCalendarsUsageDescription`, `NSCalendarsFullAccessUsageDescription`, `NSCalendarsWriteOnlyAccessUsageDescription`, `NSRemindersUsageDescription` and `NSRemindersFullAccessUsageDescription`. Existing app configuration may provide them. With the prepared runtime change, add approved nonempty fallback values under `ios.app.info_plist` and set `ios.app.custom_keys: true`. Nonempty app-configured text wins. No new dashboard or Xano field is needed for these framework purpose strings.
+2. Add calendar to public/despia/extensions.json. The index is `{ "extensions": ["calendar"] }`. Do not add manifest_version to it.
+3. Supply purpose text for the five keys in `ios.app.requires.usage_descriptions`: `NSCalendarsUsageDescription`, `NSCalendarsFullAccessUsageDescription`, `NSCalendarsWriteOnlyAccessUsageDescription`, `NSRemindersUsageDescription` and `NSRemindersFullAccessUsageDescription`. Existing app configuration may provide them. With the prepared runtime change, add approved nonempty fallback values under `ios.app.info_plist` and set `ios.app.custom_keys: true`. Nonempty app-configured text wins.
 4. Keep calendar.policy.json with the trusted build inputs. It declares the Android READ_CALENDAR and WRITE_CALENDAR permission additions. These declarations are separate from the user's runtime consent. The policy file is not served from your site.
 5. Verify the build inputs, rebuild the native app and install that artifact.
 
@@ -83,7 +83,7 @@ async function saveAppointment(selectedCalendarId) {
 }
 ```
 
-The permission request may answer with pending state before the system dialog finishes. Read `permissions` again or handle the declared `onCalendarPermission` event before making dependent calls. Register event handlers with browser lifecycle cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
+The permission request may answer with pending state before the system dialog finishes. Read `permissions` again or handle `onCalendarPermission` before making dependent calls. The extension also calls `onCalendarChanged`, a signal to refresh, and `onCalendarEditor`, which reports the native editor result. Register event handlers with browser lifecycle cleanup as described in [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk).
 
 Default outputs are `calendar<Route>Result` and `onCalendar<Route>Result`, with the route converted to PascalCase and underscores removed. For example, event_save returns calendarEventSaveResult through onCalendarEventSaveResult. IDs are opaque strings, not portable identifiers between platforms or accounts. Dates use Unix milliseconds. The route's data parameter is a JSON object encoded into a string of at most 4096 characters.
 

@@ -7,15 +7,15 @@ An extension is native code compiled into a new Despia V3 app build. Your websit
 
 `public/despia/extensions.json` selects the extension folders. Each folder's `manifest.json` declares the routes, answers, events and native work. Your browser code queues a declared route through the Despia JS SDK, for example `despia('extension://laser/state')`. Use [Calling a route](/experiments/v3-extensions#calling-a-route-with-the-despia-js-sdk) to await an answer safely.
 
-## App identity
+## The extension index
 
-Use an index containing only the folders you want:
+List only the folders you want:
 
 ```json public/despia/extensions.json
 { "extensions": ["laser"] }
 ```
 
-Despia reads the client id, bundle id and Android package from the app's build configuration. You do not need to find a client id in the editor. An optional legacy `app` block must still match the build. The signed build lock remains bound to the actual app being built.
+`extensions` is the only required key: 0 to 8 unique folder names, each matching `[a-z][a-z0-9]{1,23}`. An empty list builds without extensions. Despia reads the client id, bundle id and Android package from the build, so you add none of them. A legacy `app` block is optional and is accepted only when it matches the build.
 
 ## Compiler settings
 

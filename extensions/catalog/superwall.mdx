@@ -1,0 +1,127 @@
+---
+title: "Superwall"
+description: "Show Superwall paywalls from your web app. Superwall runs the native purchase and restore flow."
+icon: "credit-card"
+---
+
+```bash
+npx despia-extensions add superwall --set iosApiKey=pk_xxxxxxxxxxxx --set androidApiKey=pk_xxxxxxxxxxxx
+```
+
+```js
+import despia from 'despia-native';
+
+const { despiaSuperwallConfigure: configuration } = await despia(
+  'extension://superwall/configure', ['despiaSuperwallConfigure']
+);
+if (!configuration?.ok) throw new Error(configuration?.error ?? 'Superwall is unavailable');
+
+const { despiaSuperwallRegister: registration } = await despia(
+  'extension://superwall/register?placement=premium_feature', ['despiaSuperwallRegister']
+);
+```
+
+Superwall decides whether to show a paywall for a placement. Purchases and restores run through Superwall's own native pipeline. Your page never grants access by itself.
+
+<Warning>
+  Source preview. Native compile and a test paywall passed on the Android API 37 emulator. On the iOS simulator the SDK started but its remote configuration stayed pending. Store purchases, restore and hosted builds are not tested yet.
+</Warning>
+
+## Install
+
+| Setting | Platform | What it is |
+| --- | --- | --- |
+| `iosApiKey` (required) | iOS | Superwall's **public** iOS API key (`pk_...`) |
+| `androidApiKey` (required) | Android | Superwall's **public** Android API key |
+
+These are the public app SDK keys. They ship in your app. Never put a Superwall server key in your web project.
+
+Then rebuild the native app, and set up products, entitlements and placement campaigns in your Superwall project.
+
+## Use it
+
+1. Call `configure` once.
+2. Read `status` until `configuration_status` is `configured`.
+3. Call `register` with a placement from the button that opens the paywall.
+4. Read `events` to learn what happened.
+
+```js
+let cursor = 0;
+async function readEvents() {
+  const { despiaSuperwallEvents: events } = await despia(
+    `extension://superwall/events?after=${cursor}`, ['despiaSuperwallEvents']
+  );
+  if (!events?.ok) return;
+  cursor = events.data.last_sequence;
+  for (const event of events.data.events) console.log(event.type, event.outcome);
+}
+```
+
+Encode dynamic values with `encodeURIComponent`. Await each call before the next. The optional `web/superwall.mjs` helper queues calls when several components call Superwall.
+
+## Routes
+
+| Route | Parameters | Answer |
+| --- | --- | --- |
+| `configure` | none | Starts the SDK with the native key. Repeats reuse the same instance; another SDK owner answers `already_configured`. |
+| `status` | none | `configured`, `configuration_status` (`not_initialized`, `pending`, `configured`, `failed`), `subscription_status` (`unknown`, `inactive`, `active`), `active_entitlement_ids` |
+| `identify` | `user_id` | `accepted`. Links the SDK to your user. It is not sign-in. |
+| `attributes` | `attributes_json` | `accepted`. Flat JSON of strings, booleans, numbers; `null` removes one. Keys starting with `$` are Superwall's. |
+| `register` | `placement`, optional `params_json` | `accepted` and `request_id` |
+| `restore` | none | `accepted` and `request_id`; the result arrives in `events` |
+| `dismiss` | none | `accepted`. Does not cancel a store transaction. |
+| `reset` | none | `accepted`. Logs the SDK out and clears this extension's event journal. |
+| `events` | optional `after` | `events`, `last_sequence`, `oldest_sequence` |
+
+Answer variables are `despiaSuperwall<Route>`, for example `despiaSuperwallStatus`.
+
+Event types: `presented`, `dismissed` (with `purchased`, `restored` or `declined`), `skipped`, `presentation_failed`, `feature_allowed`, `restore_finished` (`restored` or `failed`).
+
+## Access is decided by subscription status
+
+- `feature_allowed` is a paywall decision, not a receipt. A holdout or a non-gated campaign allows a feature without a purchase.
+- A successful restore does not prove an active subscription.
+- Read `subscription_status` and `active_entitlement_ids`, and check access on your own server where your product needs it.
+
+## Platform limits and what was tested
+
+- JSON parameters are at most 4096 characters. Arrays and nested objects are refused because Superwall's attribute APIs drop them.
+- The event journal holds at most 128 events in memory and is lost when the app process ends. If `oldest_sequence` is greater than your cursor plus 1, events were dropped; read `status` again.
+- iOS: Superwall iOS 4.19.1, iOS 15 or later (the app targets iOS 16.6). Android: Superwall 2.10.2, minSdk 24. Superwall's own Android manifest adds permissions and activities; check your merged manifest before release.
+- Starting the SDK contacts Superwall's servers.
+- Tested: native compile on both platforms; a test paywall opened and returned its dismissal on the Android API 37 emulator. Not tested: store purchases, restore, iOS remote configuration, hosted builds.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://superwall/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Settings
+
+| Setting | Type | Required | Platforms | Environment variable |
+| --- | --- | --- | --- | --- |
+| `iosApiKey` | string (public) | yes | ios | `DESPIA_EXT_SUPERWALL_IOS_API_KEY` |
+| `androidApiKey` | string (public) | yes | android | `DESPIA_EXT_SUPERWALL_ANDROID_API_KEY` |
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `configure` | none | `despiaSuperwallConfigure` | `onDespiaSuperwallConfigure` |
+| `status` | none | `despiaSuperwallStatus` | `onDespiaSuperwallStatus` |
+| `identify` | `user_id`: string, max 1024, **required** | `despiaSuperwallIdentify` | `onDespiaSuperwallIdentify` |
+| `attributes` | `attributes_json`: string, max 4096, **required** | `despiaSuperwallAttributes` | `onDespiaSuperwallAttributes` |
+| `register` | `placement`: string, max 1024, **required**<br/>`params_json`: string, max 4096 | `despiaSuperwallRegister` | `onDespiaSuperwallRegister` |
+| `restore` | none | `despiaSuperwallRestore` | `onDespiaSuperwallRestore` |
+| `dismiss` | none | `despiaSuperwallDismiss` | `onDespiaSuperwallDismiss` |
+| `reset` | none | `despiaSuperwallReset` | `onDespiaSuperwallReset` |
+| `events` | `after`: int, min 0, max 2147483647 | `despiaSuperwallEvents` | `onDespiaSuperwallEvents` |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | Swift package `superwall-ios` (https://github.com/superwall/Superwall-iOS) pinned at `035d7d093b4f7ae837ae9b80b4ab9fd2b72f1e92` |
+
+## License
+
+Read the [LICENSE](https://github.com/despia-legacy/superwall/blob/main/LICENSE) before you use or change the extension. Keep its copyright and license notices in copies you share.

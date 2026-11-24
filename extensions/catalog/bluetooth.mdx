@@ -1,0 +1,122 @@
+---
+title: "Bluetooth"
+description: "Scan, connect and talk to Bluetooth Low Energy devices, and advertise as a peripheral, on iOS and Android."
+icon: "bluetooth"
+---
+
+```bash
+npx despia-extensions add bluetooth
+```
+
+```js
+import despia from 'despia-native';
+
+globalThis.onBleDevice = event => {
+  event.devices.forEach(device => console.log(device.id, device.name, device.rssi));
+};
+
+const radio = (await despia(`extension://ble/state?prompt=${encodeURIComponent(true)}`, ['bleState'])).bleState;
+if (!radio?.ok || radio.data.state !== 'on') throw new Error(radio?.code ?? 'no answer');
+
+const scan = (await despia(
+  `extension://ble/scan_start?services=${encodeURIComponent('180d')}&seconds=${encodeURIComponent(10)}`,
+  ['bleScanStart']
+)).bleScanStart;
+```
+
+The extension id is `ble`. Every route answers in `ble<Route>` and `onBle<Route>`, for example `bleScanStart`. Set event callbacks before you call a route.
+
+<Warning>
+  Source preview. Bluetooth needs a physical device; it does not run in the iOS simulator. Central mode is waiting for device validation.
+</Warning>
+
+## Install
+
+No values to set. Before you build, give the app its Bluetooth purpose text (`NSBluetoothAlwaysUsageDescription`) in your existing Despia purpose-string settings. The extension asks Android for the permissions each route needs, one at a time.
+
+| Platform | The extension declares |
+| --- | --- |
+| iOS | `NSBluetoothAlwaysUsageDescription`; background modes `bluetooth-central` and `bluetooth-peripheral`; state restoration with the central id `main` |
+| Android | `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`, `ACCESS_FINE_LOCATION`; `BLUETOOTH` and `BLUETOOTH_ADMIN` up to API 30; a `connectedDevice` foreground service for `keep_alive` |
+
+`state` shows the iOS prompt only with `prompt=true`.
+
+## Routes
+
+| Group | Routes |
+| --- | --- |
+| Radio | `state(prompt)`, `events(after, max)`, `keep_alive(enabled)` |
+| Central | `scan_start(services, seconds, duplicates, mode)`, `scan_stop`, `devices`, `connect(id, auto, seconds)`, `disconnect(id)`, `links`, `discover(id)`, `read`, `write(hex or b64, response)`, `subscribe`, `unsubscribe`, `rssi(id)`, `mtu(id, size)` |
+| Peripheral | `service_add(uuid, primary, chars)`, `service_remove`, `services`, `value_set`, `notify`, `advertise_start(...)`, `advertise_stop`, `centrals`, `central_drop(central)` |
+
+Events: `onBleAdapter`, `onBleRestored`, `onBleDevice`, `onBleScanEnd`, `onBleLink`, `onBleValue`, `onBleGattChanged`, `onBleCentral`, `onBleRequest`, `onBleAdvertiseEnd`.
+
+`scan_start` only starts the scan. Wait for `onBleScanEnd` or poll `state` until `scanning` is false, then read `devices`.
+
+## Platform limits
+
+- **Both.** One GATT operation runs at a time per link; up to 64 wait. Each has a 10-second timeout that closes the link. Writes are at most 512 bytes. A write without response means the system took the bytes, not that the device got them.
+- **iOS.** No scan `mode` and no MTU request (`mtu` answers `requested: false`). No API to drop a central (`central_drop` answers `platform_limit`). An advertisement carries only service UUIDs and a local name, is always connectable, and has no name in the background. In the background, a scan without a service filter stops, and a new one answers `filter_required`.
+- **iOS reads.** A notification that arrives while a read of the same characteristic is in flight answers that read.
+- **Android.** No state restoration: links, the server and advertising end with the app's process. Use `keep_alive` to keep links in the background. With `name`, Android advertises the device's own Bluetooth name. A controller without advertising answers `platform_limit`.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://ble/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `state` | `prompt`: bool | `bleState` | `onBleState` |
+| `events` | `after`: int, min 0<br/>`max`: int, min 1, max 200 | `bleEvents` | `onBleEvents` |
+| `scan_start` | `services`: string, max 740<br/>`seconds`: int, min 0, max 3600<br/>`duplicates`: bool<br/>`mode`: one of `low_power`, `balanced`, `low_latency` | `bleScanStart` | `onBleScanStart` |
+| `scan_stop` | none | `bleScanStop` | `onBleScanStop` |
+| `devices` | none | `bleDevices` | `onBleDevices` |
+| `connect` | `id`: string, max 64, **required**<br/>`auto`: bool<br/>`seconds`: int, min 1, max 20 | `bleConnect` | `onBleConnect` |
+| `disconnect` | `id`: string, max 64, **required** | `bleDisconnect` | `onBleDisconnect` |
+| `links` | none | `bleLinks` | `onBleLinks` |
+| `discover` | `id`: string, max 64, **required** | `bleDiscover` | `onBleDiscover` |
+| `read` | `id`: string, max 64, **required**<br/>`service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`service_n`: int, min 0, max 31<br/>`char_n`: int, min 0, max 31<br/>`descriptor`: string, max 36 | `bleRead` | `onBleRead` |
+| `write` | `id`: string, max 64, **required**<br/>`service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`service_n`: int, min 0, max 31<br/>`char_n`: int, min 0, max 31<br/>`descriptor`: string, max 36<br/>`hex`: string, max 4096<br/>`b64`: string, max 4096<br/>`response`: bool | `bleWrite` | `onBleWrite` |
+| `subscribe` | `id`: string, max 64, **required**<br/>`service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`service_n`: int, min 0, max 31<br/>`char_n`: int, min 0, max 31 | `bleSubscribe` | `onBleSubscribe` |
+| `unsubscribe` | `id`: string, max 64, **required**<br/>`service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`service_n`: int, min 0, max 31<br/>`char_n`: int, min 0, max 31 | `bleUnsubscribe` | `onBleUnsubscribe` |
+| `rssi` | `id`: string, max 64, **required** | `bleRssi` | `onBleRssi` |
+| `mtu` | `id`: string, max 64, **required**<br/>`size`: int, min 23, max 517 | `bleMtu` | `onBleMtu` |
+| `service_add` | `uuid`: string, max 36, **required**<br/>`primary`: bool<br/>`chars`: string, max 4096 | `bleServiceAdd` | `onBleServiceAdd` |
+| `service_remove` | `uuid`: string, max 36 | `bleServiceRemove` | `onBleServiceRemove` |
+| `services` | none | `bleServices` | `onBleServices` |
+| `value_set` | `service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`char_n`: int, min 0, max 31<br/>`hex`: string, max 1024<br/>`b64`: string, max 684 | `bleValueSet` | `onBleValueSet` |
+| `notify` | `service`: string, max 36, **required**<br/>`char`: string, max 36, **required**<br/>`char_n`: int, min 0, max 31<br/>`hex`: string, max 1024<br/>`b64`: string, max 684<br/>`central`: string, max 64 | `bleNotify` | `onBleNotify` |
+| `advertise_start` | `services`: string, max 740<br/>`name`: string, max 26<br/>`manufacturer_id`: int, min 0<br/>`manufacturer_hex`: string, max 62<br/>`service_data_uuid`: string, max 36<br/>`service_data_hex`: string, max 62<br/>`connectable`: bool<br/>`mode`: one of `low_power`, `balanced`, `low_latency`<br/>`seconds`: int, min 0, max 3600 | `bleAdvertiseStart` | `onBleAdvertiseStart` |
+| `advertise_stop` | none | `bleAdvertiseStop` | `onBleAdvertiseStop` |
+| `centrals` | none | `bleCentrals` | `onBleCentrals` |
+| `central_drop` | `central`: string, max 64, **required** | `bleCentralDrop` | `onBleCentralDrop` |
+| `keep_alive` | `enabled`: bool, **required** | `bleKeepAlive` | `onBleKeepAlive` |
+
+### Events
+
+| Event | Callback | Scope |
+| --- | --- | --- |
+| `adapter` | `onBleAdapter` | app |
+| `restored` | `onBleRestored` | app |
+| `device` | `onBleDevice` | document |
+| `scan_end` | `onBleScanEnd` | document |
+| `link` | `onBleLink` | document |
+| `value` | `onBleValue` | document |
+| `gatt_changed` | `onBleGattChanged` | document |
+| `central` | `onBleCentral` | document |
+| `request` | `onBleRequest` | document |
+| `advertise_end` | `onBleAdvertiseEnd` | document |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | Frameworks: `CoreBluetooth` |
+| iOS | Usage descriptions: `NSBluetoothAlwaysUsageDescription` |
+| Android | Permissions: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`, `ACCESS_FINE_LOCATION` |
+
+## License
+
+Read the [LICENSE](https://github.com/despia-legacy/bluetooth/blob/main/LICENSE) before you use or change the extension. Keep its copyright and license notices in copies you share.

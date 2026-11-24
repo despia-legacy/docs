@@ -1,0 +1,342 @@
+---
+title: "Manifest reference"
+description: "The served files (extensions.json, manifest.json), the call and answer contract, and the extension descriptor (despia.extension.json)."
+icon: "file-code"
+---
+
+## Folder layout
+
+The CLI writes this for you (`static/` instead of `public/` in SvelteKit). It is the same if you copy an extension by hand. The files are served from your app's own origin:
+
+```text
+public/despia/
+├── extensions.json              # the list of extension folders
+└── recorder/                    # one folder per extension; the folder name is the extension id
+    ├── manifest.json            # routes, parameters, outputs, events and native files
+    ├── ios/
+    │   └── ...                  # Swift sources and targets
+    └── android/
+        └── ...                  # Java or Kotlin sources and resources
+```
+
+`extensions.json` lists the extension folders:
+
+```json public/despia/extensions.json
+{
+  "extensions": [
+    "recorder"
+  ]
+}
+```
+
+Despia reads the client id, bundle id and Android package from the build, so the file holds only `extensions`. A legacy `app` block is optional and is accepted only when it matches the build.
+
+`extensions` is the only required key. It lists 0 to 8 unique folder names, and each name matches `[a-z][a-z0-9]{1,23}`. An empty list builds without extensions. Any key other than `extensions` and the optional `app` is refused, including `manifest_version`. Each folder has its own `manifest.json` with a `version` field. A folder listed twice is also refused.
+
+The folder name is the id in the scheme. `public/despia/recorder/` is called as `extension://recorder/<route>`. File paths in `manifest.json` are relative to the extension's folder and start with `ios/` or `android/`, for example `ios/app/RecorderExtension.swift`. An extension can only name files inside its own folder. A `manifest.json` that also sets `"id"` is refused, because the folder name is the id.
+
+To add an extension by hand, copy its folder under `public/despia/` and add its name to `extensions.json`. Build verification covers `extensions.json`, every `manifest.json` and each referenced file. A change to any of them needs a fresh verified snapshot and native rebuild.
+
+<Note>
+  Calls are accepted only from the top-level page of your app's own HTTPS origin, or from origins you list in `bridge.allowed_origins`. Iframes, other origins, popups and page sheets get no answer.
+</Note>
+
+- The served folder holds only the files the manifests name. The build refuses a file no manifest names, hidden files and unknown file types.
+- Serve these paths before your single-page-app fallback. A `200` that returns your HTML is not a JSON file. `npx despia-extensions doctor --hosted <url>` checks it.
+- When a manifest names a directory (an Android custom module `dir`, an iOS package or vendor binary `path`), the CLI also writes `public/despia/files.json`, the list of every file in those directories with its hash and size. The build copies those directories from that list. Deploy it with the rest of `public/despia/`.
+
+---
+
+## Declaring routes, outputs and events
+
+Each route in `manifest.json` declares its parameters and its output. The output names the `window` variable that receives the answer and the callback that is called with it:
+
+```json public/despia/recorder/manifest.json (excerpt)
+{
+  "name": "start",
+  "params": {
+    "upload": {
+      "type": "https_url",
+      "hosts": [
+        "upload.example.com"
+      ],
+      "required": true
+    }
+  },
+  "output": {
+    "variable": "recorderStart",
+    "callback": "onRecorderStart"
+  }
+}
+```
+
+For this route the runtime runs `window.recorderStart = <result>` and then `window.onRecorderStart(window.recorderStart)`.
+
+If you leave `output` out, the defaults are `<id><Route>Result` for the variable and `on<Id><Route>Result` for the callback. For the route above that would be `recorderStartResult` and `onRecorderStartResult`.
+
+Events are declared next to the routes, each with its own callback:
+
+```json
+"events": [
+  {
+    "name": "state",
+    "callback": "onRecorderState",
+    "scope": "document"
+  }
+]
+```
+
+Your native code sends an event with `emit("state", data)`, and the page's `window.onRecorderState(data)` runs. With `scope: "document"` (the default), only pages that have called the extension receive it. With `scope: "app"`, the trusted top-level page that is loaded receives it. Events are notifications only. Always read the current state through a route.
+
+### Parameter types
+
+Parameters are declared per route. Anything not declared is refused with `bad_request`.
+
+| Type        | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| `string`    | Text, with an optional `max` length                      |
+| `int`       | Whole number                                             |
+| `bool`      | `true` or `false`                                        |
+| `enum`      | One of a declared list of values                         |
+| `https_url` | An `https` URL whose host is in the route's `hosts` list |
+
+An `int` may declare `min` and `max` anywhere in the range -(2^53-1) to 2^53-1 (the default is -2^31 to 2^31-1), and a value outside it is refused. A `string`'s `max` is at most 4096.
+
+Keep large data on the native side and pass identifiers through the bridge. A call URL is at most 8192 characters, and each extension accepts up to 20 calls per second.
+
+---
+
+## Calling a route with the Despia JS SDK
+
+Install the SDK in your web project:
+
+```bash
+npm install despia-native
+```
+
+Import `despia` from `despia-native`. The examples use the published 1.0.28 API. A command without watched variables resolves when queued, not when the native operation finishes. Pass one answer variable when you need a result:
+
+```javascript
+import despia from 'despia-native';
+
+// Run from a browser click handler or client lifecycle hook.
+async function readRecorderStatus() {
+  const reply = await despia('extension://recorder/status', ['recorderStatus']);
+  const answer = reply.recorderStatus;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) console.error(answer.code, answer.error);
+  return answer;
+}
+```
+
+`recorderStatus` is the output variable declared by the Recorder manifest. Serialize calls that watch the same declared variable: await one before starting the next, including calls from other components. Sharing a watched variable across concurrent requests can mix responses.
+
+The SDK resolves native error answers as well as successes. Read the full envelope through `reply.recorderStatus`, including `ok`, `code`, `error` and `data`. Check `answer.ok`; a native failure does not reject the SDK promise. A single-variable watch resolves to `undefined` after 30 seconds if no value arrives. That timeout does not cancel native work. Inspect the returned native envelope rather than assuming every command uses the same error shape.
+
+### Query encoding and the two timeouts
+
+Encode each value, not the whole command:
+
+```javascript
+import despia from 'despia-native';
+
+async function readRecording(id) {
+  const command = 'extension://recorder/status?id=' + encodeURIComponent(id);
+  const reply = await despia(command, ['recorderStatus']);
+  const answer = reply.recorderStatus;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+```
+
+For JSON-in-a-string parameters, encode `JSON.stringify(value)`. The native decoder preserves literal `+`. If you construct a query with `URLSearchParams`, replace its form-encoded `+` with `%20` before sending; `%2B` already means a literal plus. Do not append `?` when there are no parameters. Duplicate keys, malformed escapes and undeclared parameters are rejected.
+
+The native route's `timeout_ms` defaults to 20000 and accepts 1000 to 25000 milliseconds. The SDK's single-variable watch waits 30 seconds. Native `timeout` is an error envelope; a missing watched value is `undefined`. Neither timer rolls back a native operation. Long operations should acknowledge an accepted/pending state, then expose status and declared events.
+
+### React
+
+Importing the SDK is safe during server rendering. Call it from a client event or lifecycle hook. In Next.js, put the component behind a client boundary. Keep calls sharing an output variable sequential, including calls from other components.
+
+```jsx
+'use client';
+import {useState} from 'react';
+import despia from 'despia-native';
+
+export function RecorderStatus() {
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function readStatus() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const reply = await despia('extension://recorder/status', ['recorderStatus']);
+      const answer = reply.recorderStatus;
+      setMessage(answer === undefined ? 'No native reply within 30 seconds'
+        : answer.ok ? answer.data.state : answer.code + ': ' + answer.error);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <button disabled={busy} onClick={readStatus}>{message || 'Read recording status'}</button>;
+}
+```
+
+### Vue
+
+Use the same SDK function from a Vue click handler. For an automatic call, use `onMounted`, never server setup execution.
+
+```vue
+<script setup>
+import {ref} from 'vue';
+import despia from 'despia-native';
+const message = ref('');
+const busy = ref(false);
+async function readStatus() {
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    const reply = await despia('extension://recorder/status', ['recorderStatus']);
+    const answer = reply.recorderStatus;
+    message.value = answer === undefined ? 'No native reply within 30 seconds'
+      : answer.ok ? answer.data.state : answer.code + ': ' + answer.error;
+  } finally {
+    busy.value = false;
+  }
+}
+</script>
+<template>
+  <button :disabled="busy" @click="readStatus">{{ message || 'Read recording status' }}</button>
+</template>
+```
+
+### Events
+
+Use the extension's state or journal routes to recover after page loads. Events are notifications, not a replay guarantee. Register the declared native callback before starting the operation, and remove your handler when its component unmounts:
+
+```javascript
+import despia from 'despia-native';
+
+const previous = despia.onRecorderState;
+const onState = recording => {
+  if (typeof previous === 'function') {
+    try { previous(recording); }
+    catch (error) { console.error('Previous recorder listener failed', error); }
+  }
+  console.log(recording.recordingId, recording.state);
+};
+globalThis.onRecorderState = onState;
+
+// Call this during component cleanup.
+function stopListening() {
+  if (globalThis.onRecorderState !== onState) return;
+  if (previous === undefined) delete globalThis.onRecorderState;
+  else globalThis.onRecorderState = previous;
+}
+```
+
+The SDK proxy reads existing browser properties such as `despia.onRecorderState`. It does not register event handlers when you assign to that proxy. Event registration above uses the native callback global explicitly; commands still go through the SDK. Run this registration only in the browser. The extension manifest defines each event's callback and scope.
+
+---
+
+## The result
+
+Every answer has the same shape:
+
+| Field       | Meaning                                                           |
+| ----------- | ----------------------------------------------------------------- |
+| `ok`        | `true` on success, `false` on error                               |
+| `provider`  | `nativeext` for every extension answer |
+| `platform`  | The platform that answered                                        |
+| `runtime`   | `3`                                                               |
+| `bridge`    | `1`                                                               |
+| `extension` | The extension id                                                  |
+| `route`     | The route name                                                    |
+| `data`      | Your handler's data on success, `null` on error                   |
+| `error`     | The error message on error                                        |
+| `code`      | The error code on error                                           |
+
+A native failure uses flat `code` and `error` fields in this envelope, not a nested `error.code` object. If the page must tell failures apart, give each one its own code.
+
+### Error codes
+
+| Code               | When                                                                       |
+| ------------------ | -------------------------------------------------------------------------- |
+| `bad_request`      | An undeclared parameter, a missing required one, or a value of the wrong type |
+| `not_registered`   | This build does not contain the extension or route                         |
+| `forbidden_frame`  | The call did not come from the top-level page                              |
+| `forbidden_origin` | The call came from an origin that is not allowed                           |
+| `rate_limited`     | More than 20 calls per second to one extension                             |
+| `timeout`          | The handler did not answer within the route's `timeout_ms`                 |
+| `unavailable`      | The capability is not available right now                                 |
+| `platform_limit`   | This platform or OS version has no such capability. Every route of an Android extension answers it on a device below the extension's `android.min_sdk` |
+| `handler_error`    | Your handler failed                                                        |
+| Your own codes     | Any code your handler returns, for example `busy` or `permission_denied`   |
+
+In a build containing the extension runtime, a call to an extension or route that is not registered answers your explicit `callback` if you gave one; otherwise it fires `despia-feature-not-included`. A build without the extension runtime cannot answer these calls. For missing responses, see [Troubleshooting extension builds](/extensions/troubleshooting).
+
+---
+
+## The descriptor: `despia.extension.json`
+
+The served manifest cannot hold settings, docs or authoring data: the build refuses unknown keys. That data lives in a descriptor at the root of the extension's repository, outside the served folder. The CLI reads it; the build never sees it. You need one only if your extension takes settings, ships a web helper, or you want `info` and the docs to describe it.
+
+```json despia.extension.json
+{
+  "name": "weather",
+  "id": "weather",
+  "title": "Weather",
+  "description": "Current conditions from the device's location.",
+  "docs": "https://github.com/you/weather#readme",
+  "policy": "weather.policy.json",
+  "config": {
+    "apiKey": {
+      "type": "string",
+      "required": true,
+      "title": "Weather API key (client key)",
+      "exposure": "public",
+      "example": "wk_live_pub_0123",
+      "sinks": [
+        { "to": "ios.info_plist", "key": "DESPIA_NX_WEATHER_API_KEY" },
+        { "to": "android.string", "file": "android/weather/src/main/res/values/despia_weather.xml", "name": "despia_nx_weather_api_key" }
+      ]
+    },
+    "apiSecret": { "type": "string", "exposure": "secret", "title": "Weather API secret", "env": "WEATHER_API_SECRET" }
+  }
+}
+```
+
+Top-level keys: `name`, `id`, `title`, `description`, `docs`, `root` (the folder to install when the repository nests it), `policy`, `license`, `web` (helper files for your app's source), `developerFiles` (files you write that an update never replaces), `exclude`, `notes`, `config`, `routes` (per route: the answer's JSON schema in `returns`, with the examples the mock answers from, and the error codes it may answer), `events` (per event: its `payload` schema), `requires` and `provides` (see [Dependencies](/extensions/build/dependencies)), `androidLang` and `createdWith` (written by `create`).
+
+### Settings (`config`)
+
+Each setting uses the manifest's own parameter types plus a few more:
+
+| Key | Meaning |
+| --- | --- |
+| `type` | `string`, `int`, `bool`, `enum`, `https_url`, plus `string_list`, `json` and `file` |
+| `required`, `min`, `max`, `values`, `hosts` | As for route parameters |
+| `title`, `description`, `example`, `docs` | Shown by `info` and on the docs page |
+| `pattern` | A full-match regular expression for the value |
+| `deny` | `{pattern, message}` rules for values known to be this vendor's secrets |
+| `platforms` | `["ios"]`, `["android"]` or both; a one-platform setting is required only there |
+| `exposure` | `public` (ships in the app; anyone can read it) or `secret` (never stored; refused) |
+| `default` | Used when unset |
+| `env` | For a `secret`: the server variable the docs tell people to use |
+| `sinks` | Where the value is written; a `secret` has none. The list of sink kinds below is open: a newer CLI may add one. |
+
+### Sinks
+
+| `to` | Writes |
+| --- | --- |
+| `ios.info_plist` | `ios.app.info_plist[key]` in `manifest.json` (or a named target's); the extension reads it with `Bundle.main.object(forInfoDictionaryKey:)` |
+| `android.string` | A `<string>` in an existing values XML file of the module; read with `getString(R.string.<name>)` |
+| `android.meta_data` | `android.meta_data[name].value` in `manifest.json` |
+| `manifest` | Any place in `manifest.json` by JSON pointer, for example `/bridge/routes/[name=upload]/params/url/hosts` |
+| `file` | Copies your file (for example `GoogleService-Info.plist`) to a path the manifest already names |
+| `literal` | Replaces a `REPLACE_...` string in native source; used only until an extension reads the value from a resource |
+| `runtime` | Writes nothing native; your page passes the value to the named route |
+
+Use `android.string`, not `android.meta_data`, for long numeric IDs: Android reads a numeric-looking meta-data value as a number and can drop digits.
+
+The CLI changes values only where the upstream files already hold a placeholder. It never adds, renames or removes a served file.

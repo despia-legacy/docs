@@ -1,0 +1,137 @@
+---
+title: "Live Activities"
+description: "Start, update and end native activities with delivery, score and timer templates."
+icon: "stopwatch"
+---
+
+Source: [Live Activities repository](https://github.com/despia-legacy/live-activities). Read its [LICENSE](https://github.com/despia-legacy/live-activities/blob/main/LICENSE) before using or modifying the extension.
+
+This extension starts, updates, ends and lists native activities from your web app. It includes delivery, score and timer templates. On iOS it uses ActivityKit for the Lock Screen and Dynamic Island. On Android it uses ongoing notifications, with Live Updates on Android 16 and later when the system allows promotion.
+
+It is for the Despia V3 runtime. You own and maintain the copied native code. First-party V4 support comes through the new package registry. Read [V3 Extensions](/extensions/overview) for build verification and rebuild requirements.
+
+```bash
+npx despia-extensions add live-activities
+```
+
+<Warning>
+  Uploading files does not change an installed app. Rebuild the native app after you install, update or remove this extension. You own and maintain the extension's code once it is in your app.
+</Warning>
+
+## Install
+
+Run the command above in your web project, commit, deploy, then rebuild the app. See [Install with the CLI](/extensions/install).
+
+This extension has no settings.
+
+## Call it from your web app
+
+Install the SDK with `npm install despia-native`. Import `despia` from `despia-native` and watch the route's declared output variable. Call these functions from client events. Timer times are Unix seconds.
+
+```javascript
+import despia from 'despia-native';
+
+async function startTimer() {
+  const startedAt = Date.now() / 1000;
+  const params = new URLSearchParams({
+    template: 'timer',
+    activity_id: 'oven-timer',
+    attributes: JSON.stringify({title: 'Pizza oven'}),
+    state: JSON.stringify({startedAt, endsAt: startedAt + 900, label: 'Baking'})
+  });
+  const reply = await despia('extension://liveactivity/start?' + params.toString().replace(/\+/g, '%20'), ['liveActivityStart']);
+  const answer = reply.liveActivityStart;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  console.log(answer.data.activityId, answer.data.state);
+}
+
+async function endTimer() {
+  const reply = await despia('extension://liveactivity/end?activity_id=oven-timer&dismiss=immediate', ['liveActivityEnd']);
+  const answer = reply.liveActivityEnd;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data;
+}
+```
+
+## Routes and answers
+
+Each success answer uses `{ok: true, data: ...}`. Failures use `{ok: false, code, error}`. The table lists the fields inside `data`.
+
+| Route | Parameters | Answer variable and callback | Answer |
+| --- | --- | --- | --- |
+| `start` | Required: `template` (string), `attributes` and `state` (JSON text). Optional: `activity_id`, `stale_minutes`, `relevance` | `liveActivityStart`, `onLiveActivityStart` | `activityId`, `template`, `state` |
+| `update` | Required: `activity_id`, `state`. Optional: `stale_minutes`, `relevance`, `alert_title`, `alert_body` | `liveActivityUpdate`, `onLiveActivityUpdate` | `activityId`, `template`, `state` |
+| `end` | Required: `activity_id`. Optional: `state`, `dismiss` (`default`, `immediate`, `after`), `dismiss_minutes` | `liveActivityEnd`, `onLiveActivityEnd` | `activityId`, `template`, `state: "ended"` |
+| `list` | None | `liveActivityList`, `onLiveActivityList` | Authorization fields, `templates`, `activities`, `pushToStart` |
+| `permission` | None | `liveActivityPermission`, `onLiveActivityPermission` | Authorization fields. Android can ask for notification permission; iOS reads the current setting |
+| `settings` | None | `liveActivitySettings`, `onLiveActivitySettings` | `opened` |
+
+`stale_minutes` is 0 to 720. `relevance` is 0 to 100. `dismiss=after` requires `dismiss_minutes`, from 0 to 240. IDs contain 1 to 64 letters, digits, dots, underscores or hyphens. The combined attributes and state, including the injected `activityId`, must fit in 4096 UTF-8 bytes.
+
+Each row in `activities` has `activityId`, `template`, `state`, `origin`, `pushToken`, `attributes` and `content`. On Android `pushToken` is `null` and `pushToStart` is empty. iOS authorization fields are `enabled`, `frequentPushes`, `onesignal` and `platform`. Android fields are `enabled`, `permission`, `promoted`, `liveUpdates`, `onesignal` and `platform`. `onesignal` is `linked` or `not_linked`.
+
+### Templates
+
+| Template | Attributes | State |
+| --- | --- | --- |
+| `delivery` | `orderNumber`, `merchant` | `status`, `step`, `stepCount`; optional `etaEpoch` (Unix seconds), `courier` |
+| `score` | `league`, `homeTeam`, `awayTeam`; optional `homeShort`, `awayShort` | `homeScore`, `awayScore`, `period`; optional `clock`, `final` |
+| `timer` | `title` | `startedAt`, `endsAt` (Unix seconds), `label`; optional `pausedRemaining` (seconds) |
+
+The template source files define these fields. Edit the Swift template, Android template and registries together when adding your own template.
+
+### Events
+
+Events have app scope and reach the trusted top-level page.
+
+| Event callback | Fields |
+| --- | --- |
+| `onLiveActivityState` | `activityId`, `template`, `state`, `origin` |
+| `onLiveActivityDismissed` | `activityId`, `template`, `by` (`user` or `end`) |
+| `onLiveActivityToken` | `kind` (`update` or `push_to_start`), `template`, `token`; `activityId` for update tokens |
+
+Read `list` to recover the current state after a page loads. Do not rely only on events.
+
+### Errors
+
+Besides the [standard bridge errors](/extensions/reference/manifest#error-codes), the extension can return `unknown_template`, `activities_disabled`, `exists`, `bad_value`, `too_large` and `unknown_activity`. iOS can also return `activity_failed`, `not_foreground`, `too_many` or `unsupported`. Android can return `storage_failed` or `busy` while a notification permission prompt is open. `settings` can return `unavailable`.
+
+## Platform limits
+
+- iOS local starts require the app to be in the foreground. The extension widget target declares iOS 16.6. Push-to-start requires iOS 17.2 or later. ActivityKit and the user's settings control visibility, lifetime and push delivery.
+- Android 16 and later can promote an eligible ongoing notification to a Live Update. Earlier versions use an ordinary ongoing notification. Promotion is not guaranteed.
+- Android has no ActivityKit relevance score. When you pass `relevance`, Android reports this in `platformDifferences.relevance` instead of applying it.
+- On Android 7, ended notifications are removed immediately because notification timeouts are unavailable. On later Android versions the extension uses a timeout for `default` and `after` dismissal.
+
+The [extension skill](https://github.com/despia-legacy/extension-skill) includes a reference for this extension.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://liveactivity/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `start` | `template`: string, max 32, **required**<br/>`activity_id`: string, max 64<br/>`attributes`: string, max 4096, **required**<br/>`state`: string, max 4096, **required**<br/>`stale_minutes`: int, min 0, max 720<br/>`relevance`: int, min 0, max 100 | `liveActivityStart` | `onLiveActivityStart` |
+| `update` | `activity_id`: string, max 64, **required**<br/>`state`: string, max 4096, **required**<br/>`stale_minutes`: int, min 0, max 720<br/>`relevance`: int, min 0, max 100<br/>`alert_title`: string, max 120<br/>`alert_body`: string, max 240 | `liveActivityUpdate` | `onLiveActivityUpdate` |
+| `end` | `activity_id`: string, max 64, **required**<br/>`state`: string, max 4096<br/>`dismiss`: one of `default`, `immediate`, `after`<br/>`dismiss_minutes`: int, min 0, max 240 | `liveActivityEnd` | `onLiveActivityEnd` |
+| `list` | none | `liveActivityList` | `onLiveActivityList` |
+| `permission` | none | `liveActivityPermission` | `onLiveActivityPermission` |
+| `settings` | none | `liveActivitySettings` | `onLiveActivitySettings` |
+
+### Events
+
+| Event | Callback | Scope |
+| --- | --- | --- |
+| `token` | `onLiveActivityToken` | app |
+| `state` | `onLiveActivityState` | app |
+| `dismissed` | `onLiveActivityDismissed` | app |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | Frameworks: `ActivityKit`, `SwiftUI`, `WidgetKit` |

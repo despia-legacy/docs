@@ -1,0 +1,109 @@
+---
+title: "Firebase Push"
+description: "Push notifications through Firebase Cloud Messaging on iOS and Android, as your app's one push provider."
+icon: "bell"
+---
+
+```bash
+npx despia-extensions add firebase-push \
+  --set iosConfigFile=./firebase/GoogleService-Info.plist \
+  --set androidConfigFile=./firebase/google-services.json
+```
+
+```js
+import despia from 'despia-native';
+
+const configured = (await despia(
+  'extension://firebasepush/configure', ['firebasePushConfigure']
+)).firebasePushConfigure;
+if (!configured?.ok) throw new Error(configured?.code || 'firebase_unavailable');
+
+// After the user chooses to turn on notifications:
+const permission = (await despia(
+  'extension://firebasepush/request_permission', ['firebasePushPermission']
+)).firebasePushPermission;
+```
+
+<Warning>
+  Firebase Push **replaces** the app's built-in push provider when the app is rebuilt. The app then has one Firebase Messaging owner: this extension.
+</Warning>
+
+## Install
+
+1. In Firebase, register your real iOS bundle ID and Android application ID. Download `GoogleService-Info.plist` and `google-services.json`.
+2. Run the `add` command above with the paths to those two files. The CLI copies them to the places the extension reads.
+3. iOS: turn on Push Notifications for the App ID, and upload your APNs key in the Firebase console.
+4. Rebuild and install the app.
+
+| Setting | Platform | What it is |
+| --- | --- | --- |
+| `iosConfigFile` (required) | iOS | Your `GoogleService-Info.plist` |
+| `androidConfigFile` (required) | Android | Your `google-services.json`; its client entry must match the installed package |
+| `serviceAccount` | server | **Secret.** Never in the app. Keep it on your server as `GOOGLE_APPLICATION_CREDENTIALS`. |
+
+The APNs private key and your sending credentials stay out of the app and out of `public/`.
+
+## Use it
+
+```js
+const status = (await despia('extension://firebasepush/status', ['firebasePushStatus'])).firebasePushStatus;
+const tokenReply = (await despia('extension://firebasepush/token', ['firebasePushToken'])).firebasePushToken;
+if (tokenReply?.ok) {
+  // Send tokenReply.data.token to your server and link it to the signed-in account.
+}
+```
+
+| Route | Answer variable | Does |
+| --- | --- | --- |
+| `configure` | `firebasePushConfigure` | Starts Firebase without the permission prompt. It can contact Firebase. |
+| `request_permission` | `firebasePushPermission` | Shows the system prompt. The answer only acknowledges the request; read `status` after. |
+| `status` | `firebasePushStatus` | iOS: `authorization`, `permission_request_pending`, `apns_registered`, `token_available`. Android: `permission`, `notifications_enabled`, `permission_request_pending`. |
+| `token` | `firebasePushToken` | The FCM token, once registration is ready |
+
+Treat the token as a private delivery address: keep it out of logs, URLs and analytics. Unlink it from the account on logout.
+
+## Send messages
+
+Send from your own server with the Firebase Admin SDK or the FCM HTTP v1 API. On iOS, put `"nativeext": "firebasepush"` in the message `data` so the app routes it to this extension.
+
+## Platform limits and what was tested
+
+- Android shows a notification for visible messages that arrive in the foreground; tapping it opens the app's launcher screen. Custom deep links from a tap, silent background JavaScript and one cross-platform delivery callback are not part of this extension.
+- iOS: Firebase Messaging pod 10.29.0. Android: `firebase-messaging` 25.0.1.
+- Tested on the Android API 37 emulator: registration and two live notifications (foreground and background), tap reopened the app. Tested on the iOS 26.5 simulator: foreground and background simulated alerts. Not tested: APNs registration and live iOS delivery, iOS notification taps, hosted builds.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://firebasepush/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Settings
+
+| Setting | Type | Required | Platforms | Environment variable |
+| --- | --- | --- | --- | --- |
+| `iosConfigFile` | file (public) | yes | ios | `DESPIA_EXT_FIREBASEPUSH_IOS_CONFIG_FILE` |
+| `androidConfigFile` | file (public) | yes | android | `DESPIA_EXT_FIREBASEPUSH_ANDROID_CONFIG_FILE` |
+
+Server secrets (never set in your web project; keep them on your server):
+
+- `serviceAccount` (Firebase service account): keep it in your server's environment as `GOOGLE_APPLICATION_CREDENTIALS`.
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `status` | none | `firebasePushStatus` | `onFirebasePushStatus` |
+| `configure` | none | `firebasePushConfigure` | `onFirebasePushConfigure` |
+| `request_permission` | none | `firebasePushPermission` | `onFirebasePushPermission` |
+| `token` | none | `firebasePushToken` | `onFirebasePushToken` |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | CocoaPod `Firebase/Messaging` 10.29.0 |
+| iOS | Frameworks: `UserNotifications` |
+| Android | Module `firebasepush` dependencies: `com.google.firebase:firebase-messaging:25.0.1`, `androidx.activity:activity:1.13.0`, `androidx.core:core:1.18.0` |
+
+## License
+
+Read the [LICENSE](https://github.com/despia-legacy/firebase-push/blob/main/LICENSE) before you use or change the extension. Keep its copyright and license notices in copies you share.

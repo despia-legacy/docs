@@ -1,0 +1,126 @@
+---
+title: "Dependencies"
+description: "Pin a Swift package or a Maven library, and declare that your extension needs another extension."
+icon: "diagram-project"
+---
+
+## Vendor SDKs
+
+Declare dependencies and include their required graph files. Build verification covers the complete pinned dependency closure. A package URL or Maven coordinate alone does not describe that graph or prove it was compiled into the app. You do not need to manually copy library binaries into the app.
+
+**iOS: a Swift package from GitHub.** List it under `ios.packages` in `manifest.json` with its GitHub URL, the full commit `revision` of the release you want, and the products you use. Then link the product in your app target under `ios.app.packages`. For example:
+
+```json
+{
+  "ios": {
+    "packages": [
+      {
+        "name": "stream-video-swift",
+        "remote": {
+          "url": "https://github.com/GetStream/stream-video-swift",
+          "revision": "5fda355f0a682ebbf1e131d80d38386acd4c4406"
+        },
+        "products": ["StreamVideo"]
+      }
+    ],
+    "package_resolved": "ios/Package.resolved",
+    "app": {
+      "packages": ["StreamVideo"]
+    }
+  }
+}
+```
+
+Swift packages come from `github.com` over https. `ios.package_resolved` is required for remote packages and names the complete pinned SwiftPM graph, including transitive packages. Include that file in the extension folder. The snippet above is an excerpt; use the extension's graph file or generate the graph for your own dependency set. A build without the graph is refused.
+
+**iOS: a CocoaPod.** The manifest also accepts CocoaPods. Declare exact pod names and versions in `ios.pods`, point `ios.podfile_lock` at the lockfile under your extension's `ios/` folder, and put the installed-tree SHA-256 for every root pod in that lockfile in `ios.pod_trees`:
+
+```json
+{
+  "ios": {
+    "pods": [{ "name": "Lottie", "version": "4.5.0" }],
+    "podfile_lock": "ios/Podfile.lock",
+    "pod_trees": {
+      "Lottie": "<installed-tree-sha256>"
+    }
+  }
+}
+```
+
+This is an illustrative manifest excerpt. Replace `<installed-tree-sha256>` with the measured 64-character lowercase hexadecimal digest for each root pod in the complete lockfile closure. Include the declared versions and spec checksums. The build checks the installed trees and preserves the base app's existing pods.
+
+**Android: a Maven library.** Add a `custom` module in `manifest.json` that points at your own module folder, and list the libraries in that module's `build.gradle` with `implementation`, the same way as in Android Studio:
+
+```json
+{
+  "android": {
+    "modules": [
+      { "kind": "custom", "name": "streamcall", "dir": "android/streamcall", "link": "implementation" }
+    ]
+  }
+}
+```
+
+```groovy
+// public/despia/streamcall/android/streamcall/build.gradle
+dependencies {
+    implementation project(':nativeext-api')
+    implementation 'io.getstream:stream-video-android-core:1.35.0'
+}
+```
+
+Maven libraries come from Google's Maven repository and Maven Central. A library published only on a vendor's own Maven server is not accepted yet.
+
+Both ways may also declare:
+
+- **Android `min_sdk`** (21 to 36, typed modules). The module builds at that level. On a device below it, the extension is never created and every route answers `platform_limit`.
+- **Android `meta_data`.** Application `<meta-data>` entries, each a `name` and exactly one of `value` or `resource`. A name the app already declares, or another extension declares, is refused. Keep account values in your config, not in a public repository.
+- **iOS `packages[].weak: true`.** Every product of that package is linked as optional, so an app whose deployment target is below the package's minimum still launches. Guard its use with `#available`.
+
+Files are accepted by type: source and text formats, assets and binaries. Every file must be covered by its `manifest.json`, and an unreferenced file is refused. A custom Android module `dir` covers its declared module tree recursively. Hidden files (names that start with a dot) are always refused. Binaries must be declared and covered by the verified build inputs.
+
+---
+
+## Extensions that need other extensions
+
+Declare it in your descriptor, `despia.extension.json`:
+
+```json despia.extension.json
+{
+  "requires": {
+    "extensions": [{ "id": "sqlite", "version": "^1.0.0" }],
+    "capabilities": [{ "name": "push.transport", "version": "^1.0.0", "optional": true }]
+  },
+  "provides": [{ "capability": "push.transport", "version": "1.0.0" }]
+}
+```
+
+- **By id** when your code needs that exact extension. **By capability** when it needs a role any provider can fill. Capability names are free strings that you choose; names starting with `despia.` belong to the app runtime.
+- `"optional": true` lets the app build without it.
+- Versions use npm-style ranges on `x.y.z` versions: `1.2.3`, `^`, `~`, comparisons and `||`.
+
+What the CLI does with them when someone installs your extension:
+
+- `add` installs every extension required by id, at the highest version every requirer accepts. One version per id per app. Ranges that do not overlap stop the install (`DX-G001`) and nothing is written.
+- A required capability is never filled unasked. With no provider installed, `add` stops (`DX-G002`) and lists the candidates; `--with <name>` adds one. With several installed providers, `--bind <capability>=<id>` chooses (`DX-G003` until then), and the choice is kept in `despia.extensions.json` under `bindings`.
+- `public/despia/extensions.json` is written in dependency order: a provider before every extension that requires it. The app registers and starts extensions in that order.
+- `remove` refuses an extension others require (exit 5, `DX-G006`). `--with-dependents` removes them too; `--force` leaves them broken. Extensions installed only as dependencies stay until `remove --prune`.
+- `update` refuses a version outside a dependent's range (exit 5, `DX-G007`) and names the newest version they accept; `--force` takes it anyway.
+- A cycle is refused (`DX-G005`). `doctor` fails when the installed extensions and the recorded graph disagree (`DX-G004`); `sync` rewrites both.
+
+| Code | Means |
+| --- | --- |
+| `DX-G001` | No single version of an id satisfies every requirer |
+| `DX-G002` | A required capability has no installed provider |
+| `DX-G003` | Several installed providers and no binding |
+| `DX-G004` | The index order or the lock's graph differs from the installed extensions |
+| `DX-G005` | The requirements form a cycle |
+| `DX-G006` | `remove` of an extension others require |
+| `DX-G007` | `update` to a version outside a dependent's range |
+| `DX-G008` | A capability version that no installed provider offers |
+| `DX-G009` | A malformed `requires` or `provides` |
+| `DX-G010` | The registry's copy of the declarations differs from the fetched source |
+| `DX-G011` | A required extension is not installed and not in the registry |
+| `DX-G012` | A `--bind` value is malformed or names an extension that does not provide the capability |
+
+Extensions do not call each other's routes. Two extensions cooperate through a shared vendor SDK or through your page.

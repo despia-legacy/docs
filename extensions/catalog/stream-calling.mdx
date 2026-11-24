@@ -1,0 +1,146 @@
+---
+title: "Stream Calling"
+description: "Audio calls through Stream Video, with the system call screen (CallKit on iOS, Telecom on Android)."
+icon: "phone"
+---
+
+```bash
+npx despia-extensions add stream-calling --set tokenHosts=api.example.com
+```
+
+```js
+import despia from 'despia-native';
+
+const credentials = await (await fetch('/stream/token', { method: 'POST' })).json();
+
+const configured = (await despia(
+  `extension://streamcall/configure?api_key=${encodeURIComponent(credentials.apiKey)}&user_id=${encodeURIComponent(credentials.userId)}&token=${encodeURIComponent(credentials.token)}&token_url=${encodeURIComponent('https://api.example.com/stream/refresh')}`,
+  ['streamcallConfigure']
+)).streamcallConfigure;
+if (!configured?.ok) throw new Error(configured?.code);
+
+const joined = (await despia(
+  `extension://streamcall/join?call_type=audio_call&call_id=support-42&create=true&ring=true&members=agent-7`,
+  ['streamcallJoin']
+)).streamcallJoin;
+```
+
+Your page gets the API key, user and token from your server and passes them to `configure`. The app stores them so a push can ring with no page loaded.
+
+## How a call rings
+
+| | iOS | Android |
+| --- | --- | --- |
+| Push | A VoIP push from Stream (PushKit) | A Firebase push from Stream |
+| Call screen | CallKit: the system call screen, on the Lock Screen too | A self-managed Telecom call with Stream's call notification and a full-screen ring |
+| Answer on the Lock Screen | System call screen | `CallIntentActivity` with Answer and Decline |
+| Audio routing | Bluetooth and CarPlay through CallKit | Through Telecom |
+| App open | A ring over Stream's connection shows the same CallKit screen | A ring over Stream's connection shows the same Telecom call and notification |
+
+The credentials from `configure` are kept on the device (the Keychain on iOS, the extension's private storage on Android), so a call rings while the app is closed. On iOS, PushKit is registered when the app launches, so a push can wake a closed app. Every VoIP push is reported to CallKit before PushKit's completion runs; a push with no call in it, or one that arrives after `logout`, is reported and ended at once. A push for a call that already rang over the connection does not ring twice. Stream's CallKit service owns the system call screen; the extension never creates a second PushKit registry. `onStreamcallIncoming` reaches your page when it is loaded; `status` is the truth after the app opens from a call.
+
+<Warning>
+  Source preview. Background ringing and Lock Screen answering are preview features. Switching accounts is experimental: check the push-device registrations in your Stream project when users change.
+</Warning>
+
+## Set it up
+
+1. **Stream dashboard.** Create the APN VoIP configuration (default name `ios-voip`) and the Firebase configuration (default `firebase`). Turn ringing on for your call type.
+2. **Apple Developer.** Turn on Push Notifications for the App ID and create the VoIP key or certificate.
+3. **Despia.** Turn on the microphone purpose string, Android push with your own `google-services.json`, and `RECORD_AUDIO` and `BLUETOOTH_CONNECT`.
+4. **Your server.** Run the token endpoint. Start from `example/server/stream-token.example.js` in the extension's repository.
+
+| Setting | What it is |
+| --- | --- |
+| `tokenHosts` | The hosts `token_url` may use (your token server) |
+| `apiKey` | Stream API key. Not written into the app; your page passes it to `configure`. |
+| `apiSecret` | **Secret.** Server only, as `STREAM_API_SECRET` |
+
+## Routes
+
+| Route | Parameters | Answer variable |
+| --- | --- | --- |
+| `configure` | `api_key`, `user_id`, `token` (required), `user_name`, `token_url`, `voip_provider`, `fcm_provider` | `streamcallConfigure` |
+| `set_token` | `token`, `request_id` | `streamcallSetToken` |
+| `logout` | | `streamcallLogout` |
+| `permissions` | `request` | `streamcallPermissions` (`microphone`, `notifications`; on Android also `bluetooth` and `full_screen`) |
+| `join` | `call_type`, `call_id` (required), `create`, `ring`, `members` | `streamcallJoin` |
+| `leave` | | `streamcallLeave` |
+| `set_muted` | `muted` | `streamcallSetMuted` |
+| `set_speaker` | `on` | `streamcallSetSpeaker` |
+| `status` | | `streamcallStatus` |
+
+`status` is the truth. An event sent while no page is loaded is dropped.
+
+Events (every one has `call_cid` and a growing `seq`): `onStreamcallIncoming`, `onStreamcallConnecting`, `onStreamcallJoined`, `onStreamcallEnded` (with `reason`), `onStreamcallMuted`, `onStreamcallAudioRoute`, `onStreamcallError`, `onStreamcallTokenNeeded`.
+
+## Expired tokens
+
+The app first asks your `token_url`, with no page needed. If that fails, it sends `token_needed` with `user_id` and `request_id` and waits 10 seconds for `set_token`. Pass the same `request_id` back. With no new token the call ends with `token_expired`.
+
+## Full-screen ring on Android 14 and later
+
+A user can turn the full-screen permission off for an app, and Google Play grants it by default only to apps whose core feature is calling. `permissions` reports it as `full_screen`. With `request=true` and the permission off, the app opens the system page where the user turns it back on. Without it the call still rings, as a heads-up notification. In the Play Console, declare `USE_FULL_SCREEN_INTENT` and the phone-call foreground service.
+
+## Platform limits
+
+- One VoIP owner per app: this extension. The build refuses it next to base-app code that registers PushKit itself.
+- iOS: StreamVideo 1.57.0 (the latest release, read 24 Nov 2026). The extension never sets the audio session; Stream and the system do.
+- iOS in China: an app with this extension links PushKit and CallKit. Remove China from the app's available territories in App Store Connect.
+- Android: Stream Android 1.35.0 and push-firebase 1.3.4, the newest on Maven Central (read 24 Nov 2026). Newer versions (1.38.0) are only on Stream's own Maven repository. Lock Screen ringing uses the restricted `USE_FULL_SCREEN_INTENT` permission.
+- Audio calls. The module removes Stream's camera, screen-share and livestream parts.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://streamcall/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Settings
+
+| Setting | Type | Required | Platforms | Environment variable |
+| --- | --- | --- | --- | --- |
+| `tokenHosts` | string_list (public) | no | ios, android | `DESPIA_EXT_STREAMCALL_TOKEN_HOSTS` |
+| `apiKey` | string (public) | no | ios, android | `DESPIA_EXT_STREAMCALL_API_KEY` |
+
+Server secrets (never set in your web project; keep them on your server):
+
+- `apiSecret` (Stream API secret): keep it in your server's environment as `STREAM_API_SECRET`.
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `configure` | `api_key`: string, max 64, **required**<br/>`user_id`: string, max 128, **required**<br/>`user_name`: string, max 256<br/>`token`: string, max 4096, **required**<br/>`token_url`: https_url, hosts `tokens.example.com`<br/>`voip_provider`: string, max 64<br/>`fcm_provider`: string, max 64 | `streamcallConfigure` | `onStreamcallConfigure` |
+| `set_token` | `token`: string, max 4096, **required**<br/>`request_id`: string, max 128 | `streamcallSetToken` | `onStreamcallSetToken` |
+| `logout` | none | `streamcallLogout` | `onStreamcallLogout` |
+| `permissions` | `request`: bool | `streamcallPermissions` | `onStreamcallPermissions` |
+| `join` | `call_type`: string, max 64, **required**<br/>`call_id`: string, max 64, **required**<br/>`create`: bool<br/>`ring`: bool<br/>`members`: string, max 4096 | `streamcallJoin` | `onStreamcallJoin` |
+| `leave` | none | `streamcallLeave` | `onStreamcallLeave` |
+| `set_muted` | `muted`: bool, **required** | `streamcallSetMuted` | `onStreamcallSetMuted` |
+| `set_speaker` | `on`: bool, **required** | `streamcallSetSpeaker` | `onStreamcallSetSpeaker` |
+| `status` | none | `streamcallStatus` | `onStreamcallStatus` |
+
+### Events
+
+| Event | Callback | Scope |
+| --- | --- | --- |
+| `incoming` | `onStreamcallIncoming` | app |
+| `connecting` | `onStreamcallConnecting` | app |
+| `joined` | `onStreamcallJoined` | app |
+| `ended` | `onStreamcallEnded` | app |
+| `muted` | `onStreamcallMuted` | app |
+| `audio_route` | `onStreamcallAudioRoute` | app |
+| `error` | `onStreamcallError` | app |
+| `token_needed` | `onStreamcallTokenNeeded` | app |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | Swift package `stream-video-swift` (https://github.com/GetStream/stream-video-swift) pinned at `5fda355f0a682ebbf1e131d80d38386acd4c4406` |
+| iOS | Frameworks: `AVFAudio`, `CallKit`, `Security`, `UserNotifications` |
+| iOS | Usage descriptions: `NSMicrophoneUsageDescription` |
+| Android | Permissions: `RECORD_AUDIO`, `BLUETOOTH_CONNECT` |
+
+## License
+
+Read the [LICENSE](https://github.com/despia-legacy/stream-calling/blob/main/LICENSE) before you use or change the extension. Keep its copyright and license notices in copies you share.

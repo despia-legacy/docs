@@ -1,0 +1,130 @@
+---
+title: "Meta Glasses"
+description: "Stream the camera of Meta AI glasses into your page, take photos and record clips."
+icon: "glasses"
+---
+
+```bash
+npx despia-extensions add meta-glasses --set urlScheme=myappglasses
+```
+
+```js
+import despia from 'despia-native';
+
+const permission = (await despia(`extension://metaglasses/permission?prompt=${encodeURIComponent(true)}`, ['glassesPermission'])).glassesPermission;
+if (permission?.data?.camera !== 'granted') throw new Error('Register the glasses and grant camera access first');
+
+const stream = (await despia(
+  `extension://metaglasses/start?quality=${encodeURIComponent('medium')}&fps=${encodeURIComponent(24)}`,
+  ['glassesStart']
+)).glassesStart;
+document.querySelector('#glasses').src = stream.data.live;
+```
+
+The live picture is a local MJPEG stream you set as an `<img src>`.
+
+<Warning>
+  Source preview. Not yet tested on glasses hardware. You sign up with Meta and accept its terms on Meta's site yourself.
+</Warning>
+
+## Values
+
+| Setting | What it is |
+| --- | --- |
+| `urlScheme` | Your own callback scheme. The Meta AI app returns to it after registration and the camera permission. |
+| `metaAppId` | Your Meta app ID. Keep `0` for Developer Mode. |
+| `clientToken` | Your Wearables client token. Empty for Developer Mode. |
+| `teamId` (iOS) | Your Apple Developer Team ID. Empty for Developer Mode. |
+
+For Developer Mode, keep the defaults and turn on Developer Mode in Meta AI (Settings, then your glasses). For production, set the values from your app in Meta's Wearables Developer Center. They ship in your app and are not secrets. Never put a Meta server secret in your web project.
+
+Set the purpose text for `NSBluetoothAlwaysUsageDescription` and `NSLocalNetworkUsageDescription` with your other purpose strings in Despia.
+
+## Register first
+
+The app registers once with the Meta AI app, and the camera permission is asked there too. Call `permission?prompt=true`, then `register` when `camera` is `unknown`, then `permission` again. The outcome arrives on `onGlassesRegistration`.
+
+## Routes
+
+| Route | Parameters | Answer variable | Answer |
+| --- | --- | --- | --- |
+| `status` | | `glassesStatus` | State, with `live`, `frame`, `mediaBase` while streaming |
+| `register`, `unregister` | | `glassesRegister`, `glassesUnregister` | `registration` |
+| `permission` | `prompt` | `glassesPermission` | `bluetooth`, `camera` |
+| `start` | `quality` (`low`, `medium`, `high`), `fps` (2 to 30) | `glassesStart` | State with `live`, `frame`, `mediaBase` |
+| `stop` | | `glassesStop` | State |
+| `photo` | | `glassesPhoto` | `id`, `kind`, `url`, `width`, `height` |
+| `record_start` | `seconds` (1 to 60) | `glassesRecordStart` | The clip being recorded |
+| `record_stop` | | `glassesRecordStop` | The finished clip |
+| `frame` | | `glassesFrame` | The newest frame as base64 JPEG, with `seq` |
+| `media` | | `glassesMediaList` | Saved photos and clips |
+| `media_read` | `id`, `kind` (`jpg`, `mp4`), `chunk` | `glassesMediaRead` | One 49152-byte chunk as base64, `eof` on the last |
+| `media_delete` | `id`, `kind` | `glassesMediaDelete` | `deleted: true` |
+| `mock` | `enabled` | `glassesMock` | Debug builds only; release builds answer `mock_unavailable` |
+
+Events: `onGlassesState`, `onGlassesMedia`, `onGlassesRegistration`.
+
+If your page cannot load local HTTP media, poll `frame` and draw `"data:image/jpeg;base64," + data.jpeg` when `seq` changed.
+
+## Platform limits
+
+- iOS 17.2 or later (Meta's toolkit). Earlier iOS answers `platform_limit`.
+- Android 10 (API 29) or later. Below that every route answers `platform_limit`.
+- A session started before registration answers `registration_required`. Unregistering stops every session.
+- A refused stream start because the glasses are hot, low on battery or at peak power answers `device_limit`. A photo times out after 10 seconds.
+- Meta's toolkit records no video. A clip is the app's own H.264 encoding of the stream's frames.
+
+## Reference
+
+Version 1.0.0. Call a route as `extension://metaglasses/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+
+### Settings
+
+| Setting | Type | Required | Platforms | Environment variable |
+| --- | --- | --- | --- | --- |
+| `urlScheme` | string (public) | no | ios, android | `DESPIA_EXT_METAGLASSES_URL_SCHEME` |
+| `metaAppId` | string (public) | no | ios, android | `DESPIA_EXT_METAGLASSES_META_APP_ID` |
+| `clientToken` | string (public) | no | ios, android | `DESPIA_EXT_METAGLASSES_CLIENT_TOKEN` |
+| `teamId` | string (public) | no | ios | `DESPIA_EXT_METAGLASSES_TEAM_ID` |
+
+### Routes
+
+| Route | Parameters | Answer variable | Callback |
+| --- | --- | --- | --- |
+| `status` | none | `glassesStatus` | `onGlassesStatus` |
+| `register` | none | `glassesRegister` | `onGlassesRegister` |
+| `unregister` | none | `glassesUnregister` | `onGlassesUnregister` |
+| `permission` | `prompt`: bool | `glassesPermission` | `onGlassesPermission` |
+| `start` | `quality`: one of `low`, `medium`, `high`<br/>`fps`: int, min 2, max 30 | `glassesStart` | `onGlassesStart` |
+| `stop` | none | `glassesStop` | `onGlassesStop` |
+| `photo` | none | `glassesPhoto` | `onGlassesPhoto` |
+| `record_start` | `seconds`: int, min 1, max 60, **required** | `glassesRecordStart` | `onGlassesRecordStart` |
+| `record_stop` | none | `glassesRecordStop` | `onGlassesRecordStop` |
+| `frame` | none | `glassesFrame` | `onGlassesFrame` |
+| `media` | none | `glassesMediaList` | `onGlassesMediaList` |
+| `media_read` | `id`: string, max 32, **required**<br/>`kind`: one of `jpg`, `mp4`, **required**<br/>`chunk`: int, min 0, max 4096 | `glassesMediaRead` | `onGlassesMediaRead` |
+| `media_delete` | `id`: string, max 32, **required**<br/>`kind`: one of `jpg`, `mp4`, **required** | `glassesMediaDelete` | `onGlassesMediaDelete` |
+| `mock` | `enabled`: bool, **required** | `glassesMock` | `onGlassesMock` |
+
+### Events
+
+| Event | Callback | Scope |
+| --- | --- | --- |
+| `state` | `onGlassesState` | document |
+| `media` | `onGlassesMedia` | document |
+| `registration` | `onGlassesRegistration` | document |
+
+### Native requirements
+
+| Platform | What the build adds |
+| --- | --- |
+| iOS | Swift package `MetaWearablesDAT` (https://github.com/facebook/meta-wearables-dat-ios) pinned at `2c772e03e6a2e74282ac6564c2424acf6e58d8f0` |
+| iOS | Frameworks: `AVFoundation`, `CoreBluetooth`, `CoreMedia`, `CoreVideo`, `Network`, `UIKit` |
+| iOS | Usage descriptions: `NSBluetoothAlwaysUsageDescription`, `NSLocalNetworkUsageDescription` |
+| Android | Permissions: `BLUETOOTH_CONNECT` |
+| Android | Module `glasses` dependencies: `com.meta.wearable:mwdat-core:1.1.0`, `com.meta.wearable:mwdat-camera:1.1.0`, `com.meta.wearable:mwdat-mockdevice:1.1.0`, `androidx.activity:activity:1.13.0` |
+| Android | minSdk 29 |
+
+## License
+
+Read the [LICENSE](https://github.com/despia-legacy/meta-glasses/blob/main/LICENSE) before you use or change the extension. Keep its copyright and license notices in copies you share.

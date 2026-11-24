@@ -75,7 +75,7 @@ const data   = await despia('readvault://?key=userId', ['userId'])
 const userId = data.userId   // null when nothing is stored under this key
 ```
 
-Set `locked=true` to ask for Face ID, Touch ID or the device passcode on iOS, or a strong biometric (fingerprint or face) on Android, before a value is read:
+Set `locked=true` to ask for Face ID, Touch ID or the device passcode on iOS, or any enrolled biometric (fingerprint or face, strong or weak class) or the device PIN, pattern or password on Android, before a value is read:
 
 ```javascript
 // Store, reading this key will ask for Face ID / Touch ID first

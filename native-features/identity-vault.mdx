@@ -65,6 +65,10 @@ else if (r.error.code === 'not_found') showLogin()
 | `identityvault://keys` | Lists the stored keys (never prompts) |
 | `identityvault://clear` | Deletes every Identity Vault value of the app |
 | `identityvault://capabilities` | Says which biometrics the device has, whether they and a passcode are set up, and which `lock` a `set` can use (never prompts) |
+| `identityvault://lock` | Locks the vault: reads of locked values answer `vault_locked` until it is unlocked (never prompts) |
+| `identityvault://unlock[?prompt=…]` | Unlocks the vault after one system prompt (see [Locking the vault](#locking-the-vault)) |
+| `identityvault://state` | Says whether the vault is locked and its background timeout (never prompts) |
+| `identityvault://configure?lockAfterBackgrounded=…` | Sets when the vault locks after the app goes to the background: milliseconds, `0` for at once, or `never` |
 
 Add `id=…` to any command to get it back on the answer, so you can match answers to calls.
 Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
@@ -85,11 +89,13 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 { id: "3", op: "get", ok: false, key: "session", error: { code: "auth_cancelled", message: "…" } }
 { id: "4", op: "capabilities", ok: true, biometryTypes: ["face"], biometricEnrolled: true,
   deviceCredentialSet: true, locks: { none: true, biometric: true, passcode: true } }
+{ id: "5", op: "state", ok: true, locked: true, lockAfterBackgrounded: 0 }
 ```
 
 | Error code | Meaning |
 | :-- | :-- |
 | `not_found` | No value for this key |
+| `vault_locked` | The vault is locked and the value has a `lock`. No prompt is shown; call `unlock`, then read again |
 | `auth_cancelled` / `auth_failed` | The user cancelled or failed the biometric / passcode prompt. A value is never asked for twice in one call: if the screen lock was confirmed and the key still stays locked, the answer is `auth_failed` |
 | `lock_unavailable` | No biometrics enrolled, no passcode set, or the app was built without biometrics |
 | `key_invalidated` | The device's biometrics changed, so a `biometric` value was erased, or (Android) the screen lock was removed, so every locked value was erased. Ask the user to sign in again. On iOS, turning the passcode off deletes locked values with it ([Apple](https://developer.apple.com/documentation/security/ksecattraccessiblewhenpasscodesetthisdeviceonly), read 24 November 2026), and a read then answers `not_found` |
@@ -97,6 +103,49 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 | `quota_exceeded` | Android Block Store: at most 16 values of 4094 bytes (UTF-8) each; elsewhere 64 KB per value |
 | `invalid_argument` | A key, option or command is not valid |
 | `storage_error` | The system store reported an error |
+
+### Locking the vault
+
+A locked value (`lock=biometric` or `lock=passcode`) already asks for the user every time it is read. The vault
+lock adds a session on top: lock the vault when the user signs out of a screen or leaves the app, and reads of
+locked values answer `vault_locked` without a prompt until your page calls `unlock`.
+
+- `lock` and `unlock` lock and open the vault. Locking a locked vault or unlocking an open one changes nothing
+  and answers the state.
+- `unlock` shows one system prompt. iOS: Face ID, Touch ID or the device passcode (the passcode only in an app
+  built without Face ID). Android 11 and newer: a strong (Class 3) biometric or the device PIN, pattern or
+  password. Android 10 and older, or an app built without biometrics: the screen-lock confirmation. A device with no screen lock at all has no locked values to protect, so `unlock` opens the
+  vault without a prompt. A dismissed prompt answers `auth_cancelled` and the vault stays locked.
+- `configure?lockAfterBackgrounded=` sets the background timeout and keeps it across launches.
+  `0` locks the moment the app goes to the background; a number of milliseconds locks when the app comes back
+  (or at the next call) after at least that long away; `never` (the default) never locks by itself. A vault with
+  a timeout also starts locked when the app starts. The vault's own prompts do not count as leaving the app.
+- Only reads of locked values are blocked. `set`, `remove`, `keys`, `clear` and reads of values with
+  `lock=none` work while the vault is locked.
+- `lock`, `unlock`, `state` and `configure` answer `{ op, ok: true, locked, lockAfterBackgrounded }`
+  (`lockAfterBackgrounded` is `null` for `never`).
+
+Every change of the lock state is also sent to the page, whether your page or the app caused it:
+`window.identityVaultLocked` is set to `true` or `false`, `window.onIdentityVaultEvent(event)` is called if you
+define it, and a DOM event `identityvaultlock` or `identityvaultunlock` is dispatched on `window` with the same
+`detail`. The event is `{ event: "lock" | "unlock", reason: "call" | "background", locked }`.
+
+```javascript
+// Lock 30 seconds after the user leaves the app
+await despia('identityvault://configure?lockAfterBackgrounded=30000', ['identityVault'])
+
+window.addEventListener('identityvaultlock', () => showUnlockScreen())
+
+async function unlockAndRead() {
+  const { identityVault: u } = await despia(
+    'identityvault://unlock?prompt=' + encodeURIComponent('Unlock your account'),
+    ['identityVault']
+  )
+  if (!u.ok || u.locked) return
+  const { identityVault: r } = await despia('identityvault://get?key=session', ['identityVault'])
+  if (r.ok) useToken(r.value)
+}
+```
 
 ---
 

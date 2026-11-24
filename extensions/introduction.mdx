@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "A native extension system for advanced developers solving problems Despia cannot anticipate. Wrap any iOS and Android SDK into a plugin, declarative, open source, callable from your web layer."
+description: "Native extensions let you wrap an iOS or Android SDK in your own Swift, Kotlin or Java code and call it from your web layer. See the V3 Extensions guide for how extensions work today."
 icon: "circle-info"
 ---
 
@@ -8,9 +8,9 @@ Despia ships native features continuously. RevenueCat, OneSignal, AppsFlyer, GPS
 
 But some problems are narrower than that. A fitness app integrating with a Chinese OEM watch via an SDK used by a few hundred developers worldwide. A medical device company wrapping a proprietary Bluetooth protocol into a patient-facing app. A logistics platform connecting to hardware scanners with a vendor SDK that ships as a closed Swift Package. These are real technical problems. Despia cannot anticipate all of them, and it does not try to.
 
-The plugin ecosystem exists for exactly these cases. It is the same architecture Despia uses for every built-in feature, a URL scheme intercepted by Swift and Kotlin handlers, results written back to the web layer, opened up so advanced developers can wrap any SDK into the platform themselves.
+Extensions exist for exactly these cases. They follow the same pattern Despia uses for built-in features, a URL scheme handled by native Swift and Kotlin or Java code, with results written back to the web layer, so you can wrap an SDK into your own app yourself.
 
-When a native developer publishes an extension, the integration becomes available to every Despia app through the same single call pattern used for every other feature on the platform.
+An extension you add to your app is called through the same single call pattern used for every other feature on the platform.
 
 ```javascript
 // Built-in Despia feature
@@ -25,14 +25,14 @@ const heartrate   = watchData.oemwatchHeartrateResult
 No new API to learn per integration. No context switching between SDK documentation systems. The platform is the API.
 
 <Info>
-  The plugin ecosystem is in active development. If you want early access or want to publish an extension, reach out at [extensions@despia.com](mailto:extensions@despia.com).
+  The current, experimental V3 Extensions system is documented in the [V3 Extensions guide](/experiments/v3-extensions). Extension builds need a native rebuild, and the build path must be enabled for your app by Despia. The examples further down this page illustrate the idea with an earlier manifest format. For the current format and the `extension://` call scheme, follow the guide.
 </Info>
 
 ---
 
 ## How it works
 
-An extension is a Swift Package containing two files you write and one JSON spec you declare. Everything else, URL routing, param validation, config forms in the dashboard, Package.swift generation, thread safety, is handled by the Despia runtime.
+An extension is a Swift Package containing two files you write and one JSON spec you declare. Everything else, URL routing, param validation, configuration values, Package.swift generation, thread safety, is handled by the Despia runtime.
 
 ```json
 // despia-extension.json, the entire surface area of a plugin
@@ -96,7 +96,7 @@ public final class YourExtension implements DespiaExtensionInterface {
 
     private void handleDoSomething(DespiaExtensionCall call) {
         String userId = call.string("userId");   // validated by runtime before this runs
-        String apiKey = call.config("apiKey");   // from Despia dashboard config
+        String apiKey = call.config("apiKey");   // configuration value
         // your SDK call
         call.resolve(Map.of("success", true));
     }
@@ -114,7 +114,7 @@ console.log(window.yoursdknameResult)
 
 ## The Swift and Java interface
 
-Both platforms share the same call interface. `DespiaExtensionCall` is the only type you interact with, it gives you typed param accessors, dashboard config values, and the two ways to send data back to your web layer.
+Both platforms share the same call interface. `DespiaExtensionCall` is the only type you interact with, it gives you typed param accessors, configuration values, and the two ways to send data back to your web layer.
 
 **Reading params and config:**
 
@@ -124,7 +124,7 @@ call.string("productId")   // String?, URL-decoded, percent-encoding handled
 call.int("quantity")        // Int?
 call.bool("sandbox")        // Bool?, handles "true"/"1"/"yes"
 call.json("metadata")       // [String: Any]?, full JSON object from URL param
-call.config("apiKey")       // String, value set by developer in Despia dashboard
+call.config("apiKey")       // String, configuration value
 ```
 
 ```java
@@ -152,7 +152,7 @@ call.reject("Product not found")
 The Java side is identical, `call.resolve()`, `call.emit()`, `call.reject()`, with the same semantics on both platforms. Write your SDK logic once per platform. Everything else is handled.
 
 <Warning>
-  The DespiaExtension API is in active QA and subject to change over the coming weeks and possibly months. Method names, param shapes, and registration patterns may be revised before the public release. If you are building an extension in early access, expect to update your code as the spec stabilises.
+  The examples on this page use an earlier format and are not the current V3 Extensions reference. Method names, param shapes and registration patterns differ. Use the [V3 Extensions guide](/experiments/v3-extensions) when writing an extension.
 </Warning>
 
 ---
@@ -176,7 +176,7 @@ Declare your native SDK dependencies in `despia-extension.json`. Despia generate
 }
 ```
 
-Despia generates the full SPM manifest and Gradle dependency block from this. When a developer imports your extension from the dashboard, those packages are pulled in automatically. They install an extension, not a build system.
+Despia generates the full SPM manifest and Gradle dependency block from this at build time, so you never write either file.
 
 ---
 
@@ -414,9 +414,9 @@ Native SDK integration has a fixed cost: URL routing, param decoding, thread man
 
 | What you write | What the runtime handles |
 | --- | --- |
-| `despia-extension.json` | URL interception and routing |
+| Extension manifest | URL interception and routing |
 | Swift native SDK calls | Param validation before your code runs |
-| Java native SDK calls | Config form UI in the Despia dashboard |
+| Java native SDK calls | Configuration values passed to your code |
 |  | `Package.swift` and `build.gradle` generation |
 |  | Thread safety on both platforms |
 |  | `window.x` injection on every page load |
@@ -427,7 +427,7 @@ Native SDK integration has a fixed cost: URL routing, param decoding, thread man
 
 ## What ships at launch
 
-The extension system exposes the same architecture used by every built-in Despia feature. First-party extensions in development include camera and media picker, QuickLook document preview, and native contacts access. Third-party extensions are importable directly from the Despia dashboard by URL, no build tooling, no Xcode, no Android Studio required on the app developer's end.
+V3 Extensions are experimental. You write the native files and a manifest, host them with your web app, and a native rebuild compiles them into your app. Extension builds require Despia approval, and a changed extension needs a new native build rather than an over-the-air update. Ready-made template extensions with source you can adapt are listed in the [V3 Extensions guide](/experiments/v3-extensions).
 
 ---
 

@@ -74,13 +74,29 @@ The credentials from `configure` are kept on the device (the Keychain on iOS, th
 
 Events (every one has `call_cid` and a growing `seq`): `onStreamcallIncoming`, `onStreamcallConnecting`, `onStreamcallJoined`, `onStreamcallEnded` (with `reason`), `onStreamcallMuted`, `onStreamcallAudioRoute`, `onStreamcallError`, `onStreamcallTokenNeeded`.
 
+## Why a call ended
+
+`onStreamcallEnded` carries `reason`:
+
+| `reason` | When |
+| --- | --- |
+| `missed` | An incoming ring ended unanswered and this user did not decline it: the caller hung up, another callee declined, or the ring timed out. On Android, also an outgoing ring nobody answered in time. |
+| `declined` | This user declined the ring, here or on another device, or the page called `leave` while the call was still ringing. |
+| `remote` | The other side ended a joined call. |
+| `local` | This user ended a joined call: `leave`, or the system call screen. |
+| `failed` | Joining or the connection failed. |
+| `token_expired` | The token expired and no new one came. |
+| `logout` | The page called `logout` during a call. |
+| `answered_elsewhere` | iOS only: this user answered the ring on another device. |
+| `rejected` | Android only: every callee of an outgoing ring declined. On iOS each callee who declines sends `onStreamcallError` with code `rejected`, and the call stays until Stream ends it or the page leaves. |
+
 ## Expired tokens
 
 The app first asks your `token_url`, with no page needed. If that fails, it sends `token_needed` with `user_id` and `request_id` and waits 10 seconds for `set_token`. Pass the same `request_id` back. With no new token the call ends with `token_expired`.
 
 ## Full-screen ring on Android 14 and later
 
-A user can turn the full-screen permission off for an app, and Google Play grants it by default only to apps whose core feature is calling. `permissions` reports it as `full_screen`. With `request=true` and the permission off, the app opens the system page where the user turns it back on. Without it the call still rings, as a heads-up notification. In the Play Console, declare `USE_FULL_SCREEN_INTENT` and the phone-call foreground service.
+A user can turn the full-screen permission off for an app, and Google Play grants it by default only to apps whose core feature is calling. `permissions` reports it as `full_screen`. With `request=true` and the permission off, the app opens the system page where the user turns it back on. Without it the call still rings, as a heads-up notification. The full-screen Answer and Decline act only on the ring still on screen: when a ring is over, its screen closes, and a new ring takes the place of one that is over. In the Play Console, declare `USE_FULL_SCREEN_INTENT` and the phone-call foreground service.
 
 ## Platform limits
 

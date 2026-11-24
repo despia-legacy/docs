@@ -169,6 +169,15 @@ Check `canAutofill` before a `mediation: 'conditional'` request (passkeys offere
 
 On Android the app uses the WebView's own passkey support where the device's WebView offers it, and otherwise its own bridge to Credential Manager. Both give your server the same origin. Below Android 9 Android has no passkeys, so keep another sign-in method for those devices.
 
+### What the user's device needs
+
+The passkey is saved by the device's own password manager, so the device needs one that can hold it:
+
+- **iOS**: the passkey is saved to the user's passwords and synced with iCloud Keychain, and the user confirms with Face ID or Touch ID, which need a device passcode. Any Apple Account using iCloud Keychain needs two-factor authentication, and iOS prompts for it if it is off.
+- **Android**: the passkey is saved in a credential provider such as Google Password Manager, which keeps it in the user's Google Account, after the device's screen lock verifies the user. On a device with no Google Account and no other password manager, the sheet offers only to create the passkey on another device.
+
+These come from the platform, not from Despia. Your app and your page need nothing extra.
+
 Passkeys work only for the domains you listed and associated. A sign-in page on a third-party identity provider's domain, where you cannot host these files, cannot use passkeys in the app's web view. Open it with [OAuth](/native-features/oauth/introduction) instead.
 
 ---
@@ -181,6 +190,8 @@ Passkeys work only for the domains you listed and associated. A sign-in page on 
 | Every passkey call fails on Android | `assetlinks.json` is missing `get_login_creds`, or lists the upload key fingerprint instead of the app signing key |
 | The sheet opens and the passkey is created, then your server rejects it (Android) | The server does not accept the `android:apk-key-hash:` origin |
 | `SecurityError` | The `rp.id` or `rpId` is not your page's domain or a parent of it |
+| The sheet offers only "Create passkey on another device?" (Android) | The device has no Google Account and no other password manager to save the passkey in |
+| The passkey cannot be saved on iPhone | The device has no passcode, or iCloud Keychain is off |
 | Works on the website, not in the app | The add-on is on but the app was not rebuilt, or the domain is missing from the list |
 
-Sources: Apple, [Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains) and [Supporting passkeys](https://developer.apple.com/documentation/authenticationservices/supporting-passkeys); Google, [Credential Manager in WebView](https://developer.android.com/identity/sign-in/credential-manager-webview), [Digital Asset Links](https://developer.android.com/identity/credential-manager/prerequisites) and [Create a passkey](https://developer.android.com/identity/passkeys/create-passkeys). All read 24 November 2026.
+Sources: Apple, [Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains) and [Supporting passkeys](https://developer.apple.com/documentation/authenticationservices/supporting-passkeys); Google, [Credential Manager in WebView](https://developer.android.com/identity/sign-in/credential-manager-webview), [Digital Asset Links](https://developer.android.com/identity/credential-manager/prerequisites) and [Create a passkey](https://developer.android.com/identity/passkeys/create-passkeys). All read 24 November 2026. Device needs: Apple, [About the security of passkeys](https://support.apple.com/en-us/102195) (published 16 September 2024), [Set up Face ID](https://support.apple.com/guide/iphone/set-up-face-id-iph6d162927a/ios) ("To use Face ID, you must also set a passcode on your iPhone.") and [Passkeys Overview](https://developer.apple.com/passkeys/); Google, [Create a passkey](https://developer.android.com/identity/passkeys/create-passkeys) (stored in a credential provider such as Google Password Manager, after the device's screen lock verifies the user) and [Get started with Google Password Manager](https://support.google.com/accounts/answer/6208650) (passwords and passkeys saved in your Google Account). Read 24 November 2026.

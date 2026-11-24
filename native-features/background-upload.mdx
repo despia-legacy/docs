@@ -1,0 +1,129 @@
+---
+title: "Background Upload"
+description: "Pick a file and upload it to your server as a native transfer that keeps going when the user leaves the page or the app."
+icon: "cloud-arrow-up"
+---
+
+```javascript
+import despia from 'despia-native';
+
+const call = async (route, variable, params = {}) => {
+  const q = new URLSearchParams(params).toString();
+  const reply = await despia(`extension://backgroundupload/${route}${q ? '?' + q : ''}`, [variable]);
+  const answer = reply[variable];
+  if (answer === undefined) throw new Error('No native answer');
+  if (!answer.ok) throw new Error(answer.code + ': ' + answer.error);
+  return answer.data;
+};
+
+const { selection_id } = await call('pick', 'despiaBackgroundUploadPick', { kind: 'video' });
+// The system picker is open. Read the selection when the user is back:
+const selection = await call('selection', 'despiaBackgroundUploadSelection', { selection_id });
+if (selection.state === 'ready') {
+  const { upload_id } = await call('start', 'despiaBackgroundUploadStart', {
+    file_id: selection.files[0].file_id,
+    url: 'https://api.example.com/uploads',
+    headers: JSON.stringify({ Authorization: 'Bearer ' + token }),
+    metadata_json: JSON.stringify({ album: 'trip' })
+  });
+}
+```
+
+Background Upload is built into the app: there is nothing to install or turn on. An app built before it was added needs a new build. Nothing is created on the device until your page makes its first call.
+
+The app copies the picked file into private storage, then sends it to your `https://` endpoint as a native transfer: on iOS a background `URLSession`, on Android a WorkManager job. Leaving the page, locking the phone or the app being closed by the system does not stop it.
+
+`URLSearchParams` encodes each value. With a template string, encode each value with `encodeURIComponent`.
+
+---
+
+## Routes
+
+| Route | Parameters | Answer `data` |
+| --- | --- | --- |
+| `status` | none | `platform`, `picker_available`, `background_upload_available`, `scheduler`, `ready` |
+| `pick` | optional `kind`: `any` (default), `photo`, `video`, `audio`, `file` | `selection_id` |
+| `selection` | `selection_id` | `state`, and `files` when `ready`: `file_id`, `name`, `mime`, `bytes` |
+| `start` | `file_id`, `url`, and the request options below | `upload_id` |
+| `upload` | `upload_id` | the upload (below) |
+| `uploads` | none | `uploads`: every upload, oldest first |
+| `cancel` | `upload_id` | the upload |
+| `discard` | `file_id` | `removed` |
+
+The answer variable is `despiaBackgroundUpload` plus the route, and the callback `onDespiaBackgroundUpload` plus the route: `despiaBackgroundUploadStart` and `onDespiaBackgroundUploadStart`. Each answer is `{ ok, data, code, error, ... }`; a native error does not reject the promise.
+
+Check `status` before you offer an upload: `background_upload_available` is `false` when private storage is not available.
+
+### Picking
+
+`pick` opens the system picker and answers at once with a `selection_id`. The app must be in the foreground (`not_foreground` otherwise), and one selection at a time (`picker_busy`). Ask `selection` for its state: `presenting` while the picker is open and the copy is made, then `ready`, `cancelled` or `failed`, and later `discarded` or `expired`.
+
+A file is at most 250 MiB. The newest eight copies are kept and copies older than a day are removed before the next pick, except one an unfinished upload still sends. Call `discard` when you are done with a file.
+
+### The request
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `url` | required | Your `https://` endpoint. No user name or password in it, no fragment |
+| `method` | `POST` | `POST`, `PUT` or `PATCH` |
+| `body` | `multipart` | `multipart`, or `raw` to send the file bytes alone |
+| `headers` | none | A JSON object of string values, for example `Authorization` |
+| `fields` | none | A JSON object of extra text parts, sent before the file (multipart) |
+| `file_field` | `file` | The form name of the file part |
+| `metadata_json` | `{}` | A JSON object sent as a text part after the file (multipart) |
+| `metadata_field` | `metadata` | The form name of that part |
+
+Field names are 1 to 64 characters of `A-Z a-z 0-9 . _ -`. The transfer owns `Content-Length`, `Host`, `Connection`, `Transfer-Encoding`, `Keep-Alive`, `Upgrade`, `TE`, `Trailer`, `Proxy-Connection` and `Expect`; a header with one of those names is refused. The browser's cookies are not sent: authenticate with a header.
+
+Every request carries an `Idempotency-Key` header with the upload id.
+
+### The upload
+
+```javascript
+{
+  upload_id, file_id,
+  state,          // queued, uploading, retrying, succeeded, failed, cancelling, cancelled
+  sent_bytes, total_bytes, progress, attempts,
+  http_status,    // when the server answered
+  error,          // when failed: http_failed, retry_exhausted, file_missing, ...
+  response, response_type,  // your server's answer, at most 64 KiB
+  next_attempt_ms,          // when a retry is scheduled
+  redirected, final_host,   // when the request was redirected
+  outcome_unknown           // a later attempt may reach a server that stored an earlier one
+}
+```
+
+Changes arrive as events on `window.onDespiaBackgroundUploadEvent(upload)` for pages that called Background Upload, and `uploads` lists them all after a relaunch.
+
+---
+
+## Retries and your server
+
+- A `2xx` answer is success. `408`, `425`, `429` and `5xx` answers and network errors are retried, with a wait of 30 seconds that doubles up to 15 minutes, up to 8 attempts. Other `3xx` and `4xx` answers are final.
+- Answer `2xx` only after the upload is stored, and deduplicate by `Idempotency-Key`: a retried or resent request has the same key. When `outcome_unknown` is `true`, an earlier attempt may already be stored.
+- An upload whose transfer was lost (the user force-quit the app on iOS, or Android stopped the job) is sent again from the first byte with the same key.
+- Redirects: on iOS a background transfer follows them without asking the app; on Android `307` and `308` are followed (same method and body, `https://` only, at most 5 hops) and `301`, `302` and `303` are final. Either way the upload says `redirected` and the final host. Point `url` at the final address.
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Transfer | Background `URLSession`; iOS relaunches the app in the background to report the result | WorkManager; resumes after a reboot |
+| Long transfers | iOS schedules the transfer; the app sets no time limit | A regular job runs for up to 10 minutes at a time, then restarts from the first byte. A long-running mode (a foreground service with a progress notification) lifts this; it is a build setting, off by default, and needs a foreground service declaration in the Play Console |
+| Permissions | None | None in the default mode |
+
+Keep tokens and personal data out of `metadata_json` and `fields` unless your server needs them; use `headers` for credentials.
+
+## Error codes
+
+| Code | Meaning |
+| --- | --- |
+| `bad_request` | A parameter is missing or not valid, or the file or upload is not available |
+| `not_found` | No selection with that id |
+| `not_foreground` | `pick` while the app is not visible |
+| `picker_busy` | A selection is still open or being copied |
+| `busy` | `discard` of a file an upload still uses |
+| `storage_unavailable` / `storage_failed` | Private storage or the upload record could not be used |
+| `timeout` | No answer in time |
+
+Sources: Apple, [Downloading files in the background](https://developer.apple.com/documentation/foundation/downloading-files-in-the-background) and `urlSession(_:task:willPerformHTTPRedirection:newRequest:completionHandler:)`; Google, [Support for long-running workers](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/long-running). Read 24 November 2026.

@@ -288,6 +288,7 @@
           "native-features/service-workers",
           "native-features/url-scheme",
           "native-features/file-picker",
+          "native-features/background-upload",
           "native-features/gps-location",
           "native-features/gyroscope",
           "native-features/light-and-dark-mode",

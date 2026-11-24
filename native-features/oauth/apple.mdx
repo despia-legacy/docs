@@ -774,6 +774,8 @@ The debug overlay below tells you whether Stage 4 received anything. Work backwa
 
 Add this to your `/auth` page during development. Remove it before submitting to the App Store or Google Play. Apple reviewers authenticate through your app during review and will see it.
 
+Show only whether credential fields arrived and a fixed error category. Do not display or log authorization URLs, callback URLs, tokens, session tokens or authorization codes. Use synthetic values when checking diagnostics, and review app, SDK and crash-report logging separately.
+
 <Tabs>
   <Tab title="React">
     Swap in this standalone component as your `/auth` route during testing. Route it back to your real `Auth` component before shipping.
@@ -791,12 +793,16 @@ Add this to your `/auth` page during development. Remove it before submitting to
         // without it this effect runs once on mount and never again,
         // missing tokens that arrive via deeplink on an already-mounted page
         useEffect(() => {
+            const error = searchParams.get('error')
+            const knownErrors = ['no_id_token', 'access_denied', 'invalid_client', 'invalid_request']
+            const errorCategory = knownErrors.includes(error) ? error : (error ? 'unrecognized' : 'none')
             setInfo(
-                'Full URL:\n'      + window.location.href                     + '\n\n' +
-                'id_token:\n'      + (searchParams.get('id_token')      || '(none)') + '\n\n' +
-                'session_token:\n' + (searchParams.get('session_token') || '(none)') + '\n\n' +
-                'code:\n'          + (searchParams.get('code')          || '(none)') + '\n\n' +
-                'error:\n'         + (searchParams.get('error')         || '(none)')
+                'Query present: ' + Boolean(window.location.search) + '\n' +
+                'Fragment present: ' + Boolean(window.location.hash) + '\n' +
+                'id_token present: ' + Boolean(searchParams.get('id_token')) + '\n' +
+                'session_token present: ' + Boolean(searchParams.get('session_token')) + '\n' +
+                'code present: ' + Boolean(searchParams.get('code')) + '\n' +
+                'error: ' + errorCategory
             )
         }, [searchParams])
     
@@ -815,7 +821,7 @@ Add this to your `/auth` page during development. Remove it before submitting to
                     }}
                 />
                 <p style={{ marginTop: 10, fontSize: 11, lineHeight: 1.5 }}>
-                    Empty? Token did not arrive, check native-callback.html and the deeplink format.<br />
+                    No credential fields present? Check native-callback.html and the deeplink format.<br />
                     Token present but not signed in? Your auth logic is not reacting to URL changes.
                 </p>
             </div>
@@ -851,7 +857,7 @@ Add this to your `/auth` page during development. Remove it before submitting to
         border:1px solid #ccc;font-size:11px;font-family:monospace;padding:6px;box-sizing:border-box;
         resize:none;outline:none;display:block;"></textarea>
       <div style="font-size:10px;margin-top:6px;line-height:1.5;color:#555;">
-        Empty? Token did not arrive, check native-callback.html and the deeplink format.<br />
+        No credential fields present? Check native-callback.html and the deeplink format.<br />
         Token present but not signed in? Your auth logic is not reacting to URL changes.
       </div>
     </div>
@@ -861,12 +867,16 @@ Add this to your `/auth` page during development. Remove it before submitting to
         var el = document.getElementById('auth-debug-out')
         if (!el) return
         var p = new URLSearchParams(window.location.search)
+        var error = p.get('error')
+        var knownErrors = ['no_id_token', 'access_denied', 'invalid_client', 'invalid_request']
+        var errorCategory = knownErrors.includes(error) ? error : (error ? 'unrecognized' : 'none')
         el.value =
-          'Full URL:\n'      + window.location.href               + '\n\n' +
-          'id_token:\n'      + (p.get('id_token')      || '(none)') + '\n\n' +
-          'session_token:\n' + (p.get('session_token') || '(none)') + '\n\n' +
-          'code:\n'          + (p.get('code')          || '(none)') + '\n\n' +
-          'error:\n'         + (p.get('error')         || '(none)')
+          'Query present: ' + Boolean(window.location.search) + '\n' +
+          'Fragment present: ' + Boolean(window.location.hash) + '\n' +
+          'id_token present: ' + Boolean(p.get('id_token')) + '\n' +
+          'session_token present: ' + Boolean(p.get('session_token')) + '\n' +
+          'code present: ' + Boolean(p.get('code')) + '\n' +
+          'error: ' + errorCategory
       }
       updateDebug()
       window.addEventListener('popstate', updateDebug)
@@ -880,7 +890,7 @@ Add this to your `/auth` page during development. Remove it before submitting to
 
 | What you see | What it means | Where to look |
 | --- | --- | --- |
-| Textarea empty, URL has no params | Token never reached `/auth` | Stage 2 or 3, check `native-callback.html` and deeplink format |
+| Credential presence fields are false | No nonempty token or code reached `/auth` | Stage 2 or 3, check `native-callback.html` and deeplink format |
 | `error: no_id_token` | `native-callback.html` got no token in the hash | Check `response_mode`, OAuth URL params, Services ID config |
 | `error: access_denied` | User cancelled or Apple rejected the request | User cancelled, or Services ID / domain mismatch |
 | `error: invalid_client` | Apple rejected the request entirely | Services ID identifier wrong, or not configured |
@@ -889,11 +899,11 @@ Add this to your `/auth` page during development. Remove it before submitting to
 
 ### Common failure points
 
-**Chrome Custom Tabs does not open.** Log the URL before passing it to `despia()` and confirm it is a valid HTTPS URL. Depending on your backend it may start with `https://appleid.apple.com/auth/authorize` (custom backend), or your Supabase, Firebase, or other hosted auth provider's own OAuth endpoint. The important thing is that it is a full HTTPS URL and not empty or malformed.
+**Chrome Custom Tabs does not open.** Check that the URL passed to `despia()` is valid HTTPS and uses the expected provider hostname. Do not print its query string or fragment. Depending on your backend it may start with `https://appleid.apple.com/auth/authorize` (custom backend), or your Supabase, Firebase, or other hosted auth provider's own OAuth endpoint. The important thing is that it is a full HTTPS URL and not empty or malformed.
 
 **`native-callback.html` not reached.** The `redirect_uri` in your OAuth URL must exactly match the return URL registered in the Apple Developer Console including `https://`, the full domain, the path, and the `.html` extension. Apple does exact string matching.
 
-**Hash fragment empty in `native-callback.html`.** Some hosting platforms strip hash fragments from redirects. Log `window.location.href` at the top of the script to confirm the full URL arrived. If using a React component for the callback, switch to `public/native-callback.html`. React Router may be stripping the hash.
+**Hash fragment empty in `native-callback.html`.** Some hosting platforms strip hash fragments from redirects. Check only whether `window.location.hash` is nonempty at the top of the script. Do not print the fragment or full URL. If using a React component for the callback, switch to `public/native-callback.html`. React Router may be stripping the hash.
 
 **Deeplink does not close Chrome Custom Tabs.** The `oauth/` segment must be present, `myapp://oauth/auth`. Without it Despia does not intercept the deeplink and the tab stays open. Find your scheme in **Despia \> Publish \> Deeplink**.
 

@@ -328,6 +328,7 @@ Every failure arrives as an `error` event with a stable `code`. Messages are adv
 | `no_presenter` | A picker was requested before a screen was available to present it |
 | `scanner_unsupported` | The document scanner is not available on this device |
 | `scanner_failed` | The document scanner errored before recognition began |
+| `camera_unavailable` | `@documentscanner` was requested in a build that excludes the camera. The error message is `document scanner not available in this build`. Returned on both iOS and Android; the other `src` forms are unaffected |
 
 ---
 

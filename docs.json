@@ -316,6 +316,7 @@
           },
           "native-features/siri-shortcuts",
           "native-features/biometrics",
+          "native-features/passkeys",
           "native-features/speech-recognition",
           "native-features/app-privacy",
           "native-features/safe-areas",

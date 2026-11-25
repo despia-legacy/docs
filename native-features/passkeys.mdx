@@ -1,0 +1,197 @@
+---
+title: "Passkeys"
+description: "Your web app's own passkey sign-in works inside your iOS and Android app. Passkeys made on your website sign in in the app, and passkeys made in the app sign in on your website."
+icon: "key"
+---
+
+Passkeys belong to your domain, not to a browser or an app. When your app is associated with your domain, the passkey sign-up and sign-in you already built with the standard WebAuthn API (`navigator.credentials`) runs unchanged inside your Despia app. The passkeys live in iCloud Keychain, Google Password Manager or the password manager the user chose, so a passkey created on your website signs the user in to the app, and the reverse.
+
+<Info>
+  Passkeys are an add-on built into your app. Enable the **Passkeys** add-on for your app and list your passkey domains, host two files on each domain, allow the Android origin on your server, then ship a new build. Without the add-on, Android keeps passkeys off in the app's web view, and iOS allows them only for domains already in your app's `webcredentials` associated domains.
+</Info>
+
+---
+
+## Enabling passkeys
+
+1. Enable the **Passkeys** add-on and list every domain your web app uses as its relying party ID: the `rp.id` you pass to `navigator.credentials.create()` and the `rpId` you pass to `navigator.credentials.get()`, usually your main domain such as `example.com`. List as many as you use. A leading `*.` matches every subdomain on iOS.
+2. Host the two association files below on **each** listed domain.
+3. Allow the Android app origin on your WebAuthn server (see [Server setup](#server-setup)).
+4. Ship a new build of the app.
+
+On iOS the build adds every listed domain to the app's `webcredentials` associated domains, next to any you already set. Apple lets an app use passkeys in a web view only for those domains. On Android, Credential Manager reads each domain's `assetlinks.json` when the user signs in, so a fix to that file needs no new build.
+
+The build fetches both files for every listed domain and prints a warning in the build log when one is missing or does not list your app. It does not stop the build: the files are on your website, and you can fix them there.
+
+---
+
+## Hosting the association files
+
+### iOS: apple-app-site-association
+
+Serve at `https://<your domain>/.well-known/apple-app-site-association`, with no file extension, over `https://` with a valid certificate and no redirects. Each entry is your Apple Team ID and your app's bundle ID:
+
+```json
+{
+  "webcredentials": {
+    "apps": ["ABCDE12345.com.example.app"]
+  }
+}
+```
+
+If the file already has an `applinks` section for universal links, keep it and add `webcredentials` beside it. Passkeys need the `webcredentials` section.
+
+Apple's content delivery network requests the file for your domain within 24 hours, and devices check for updates about once a week after the app is installed. Publish it before you release the build.
+
+### Android: assetlinks.json
+
+Serve at `https://<your domain>/.well-known/assetlinks.json` with HTTP status `200`, `Content-Type: application/json` and no redirect:
+
+```json
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.app",
+      "sha256_cert_fingerprints": [
+        "AB:CD:EF:..."
+      ]
+    }
+  }
+]
+```
+
+`get_login_creds` is the relation that shares passkeys between your website and the app. Use the SHA-256 fingerprint of the certificate your published app is **signed with**. With Play App Signing that is Google's app signing key, shown on the Play Console's app signing page, not your upload key. You can list both.
+
+If `robots.txt` blocks `/.well-known/`, allow it:
+
+```text
+User-agent: *
+Allow: /.well-known/
+```
+
+---
+
+## Server setup
+
+Your WebAuthn server checks the `origin` inside `clientDataJSON`. Inside the app it is:
+
+| Platform | Origin your server sees |
+| --- | --- |
+| iOS | Your page's own origin, for example `https://app.example.com`, as in Safari |
+| Android | `android:apk-key-hash:<hash>`, where `<hash>` is the base64url SHA-256 fingerprint of your app's signing certificate, without padding |
+
+Add the Android value to your allowed origins. Libraries such as SimpleWebAuthn accept an array for `expectedOrigin`:
+
+```javascript
+await verifyAuthenticationResponse({
+  response: body,
+  expectedChallenge,
+  expectedOrigin: [
+    'https://app.example.com',
+    'android:apk-key-hash:AbC123...'
+  ],
+  expectedRPID: 'example.com',
+  credential
+})
+```
+
+To get the hash, take the same SHA-256 fingerprint you put in `assetlinks.json`, drop the colons, convert the hex to bytes and base64url-encode it without padding:
+
+```javascript
+const hex = 'AB:CD:EF:...'.replace(/:/g, '')
+const hash = Buffer.from(hex, 'hex').toString('base64url')
+console.log('android:apk-key-hash:' + hash)
+```
+
+If you have more than one signing certificate (Play app signing and upload, or several apps), allow each origin.
+
+---
+
+## Your code does not change
+
+Keep calling the standard API, the same code you run in the browser:
+
+```javascript
+// Sign up: create a passkey
+const options = await fetch('/webauthn/register/options').then(r => r.json())
+const credential = await navigator.credentials.create({
+  publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options)
+})
+await fetch('/webauthn/register/verify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(credential.toJSON())
+})
+```
+
+```javascript
+// Sign in: use an existing passkey
+const options = await fetch('/webauthn/login/options').then(r => r.json())
+const assertion = await navigator.credentials.get({
+  publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options)
+})
+await fetch('/webauthn/login/verify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(assertion.toJSON())
+})
+```
+
+Start passkey calls from a tap on a button. Each platform shows its own passkey sheet. The relying party ID must be your page's domain or a parent of it; otherwise the call fails with `SecurityError`.
+
+### Feature detection
+
+```javascript
+const canUsePasskeys = window.PublicKeyCredential &&
+  await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+
+const canAutofill = window.PublicKeyCredential &&
+  PublicKeyCredential.isConditionalMediationAvailable &&
+  await PublicKeyCredential.isConditionalMediationAvailable()
+```
+
+Check `canAutofill` before a `mediation: 'conditional'` request (passkeys offered in the username field's autofill). On iOS it is `true` when passkey AutoFill is available. Android's WebView does not support conditional requests, so in the Android app show a **Sign in with a passkey** button, which opens the same system sheet.
+
+---
+
+## Platform support
+
+| | iOS | Android |
+| --- | --- | --- |
+| Create and sign in with passkeys | Yes | Android 9 and later |
+| Passkeys from your website in the app, and the reverse | Yes | Yes |
+| Passkey autofill (`mediation: 'conditional'`) | When `isConditionalMediationAvailable()` is `true` | No, Android's WebView does not support it |
+
+On Android the app uses the WebView's own passkey support where the device's WebView offers it, and otherwise its own bridge to Credential Manager. Both give your server the same origin. Below Android 9 Android has no passkeys, so keep another sign-in method for those devices.
+
+### What the user's device needs
+
+The passkey is saved by the device's own password manager, so the device needs one that can hold it:
+
+- **iOS**: the passkey is saved to the user's passwords and synced with iCloud Keychain, and the user confirms with Face ID or Touch ID, which need a device passcode. Any Apple Account using iCloud Keychain needs two-factor authentication, and iOS prompts for it if it is off.
+- **Android**: the passkey is saved in a credential provider such as Google Password Manager, which keeps it in the user's Google Account, after the device's screen lock verifies the user. On a device with no Google Account and no other password manager, the sheet offers only to create the passkey on another device.
+
+These come from the platform, not from Despia. Your app and your page need nothing extra.
+
+Passkeys work only for the domains you listed and associated. A sign-in page on a third-party identity provider's domain, where you cannot host these files, cannot use passkeys in the app's web view. Open it with [OAuth](/native-features/oauth/introduction) instead.
+
+---
+
+## Troubleshooting
+
+| What you see | Cause |
+| --- | --- |
+| Every passkey call fails on iOS | The domain is not in your passkey domain list, its `apple-app-site-association` has no `webcredentials` entry for your app, or Apple's network has not fetched it yet (up to 24 hours) |
+| Every passkey call fails on Android | `assetlinks.json` is missing `get_login_creds`, or lists the upload key fingerprint instead of the app signing key |
+| The sheet opens and the passkey is created, then your server rejects it (Android) | The server does not accept the `android:apk-key-hash:` origin |
+| `SecurityError` | The `rp.id` or `rpId` is not your page's domain or a parent of it |
+| The sheet offers only "Create passkey on another device?" (Android) | The device has no Google Account and no other password manager to save the passkey in |
+| The passkey cannot be saved on iPhone | The device has no passcode, or iCloud Keychain is off |
+| Works on the website, not in the app | The add-on is on but the app was not rebuilt, or the domain is missing from the list |
+
+Sources: Apple, [Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains) and [Supporting passkeys](https://developer.apple.com/documentation/authenticationservices/supporting-passkeys); Google, [Credential Manager in WebView](https://developer.android.com/identity/sign-in/credential-manager-webview), [Digital Asset Links](https://developer.android.com/identity/credential-manager/prerequisites) and [Create a passkey](https://developer.android.com/identity/passkeys/create-passkeys). All read 24 November 2026. Device needs: Apple, [About the security of passkeys](https://support.apple.com/en-us/102195) (published 16 September 2024), [Set up Face ID](https://support.apple.com/guide/iphone/set-up-face-id-iph6d162927a/ios) ("To use Face ID, you must also set a passcode on your iPhone.") and [Passkeys Overview](https://developer.apple.com/passkeys/); Google, [Create a passkey](https://developer.android.com/identity/passkeys/create-passkeys) (stored in a credential provider such as Google Password Manager, after the device's screen lock verifies the user) and [Get started with Google Password Manager](https://support.google.com/accounts/answer/6208650) (passwords and passkeys saved in your Google Account). Read 24 November 2026.

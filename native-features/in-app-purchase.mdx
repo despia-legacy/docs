@@ -1,0 +1,80 @@
+---
+title: "In-App Purchase"
+description: "Sell products and subscriptions directly through the App Store and Google Play with three calls, and send people to a success or expired page in your app."
+icon: "cart-shopping"
+---
+
+Direct store purchases work the same way on iOS and Android: you call a URL scheme, the store shows its own purchase sheet, and your app opens the page you named when it is done. This is separate from [RevenueCat](/native-features/revenuecat/introduction). Use it when you sell through the stores yourself and keep your own record of who paid.
+
+```javascript
+import despia from 'despia-native'
+
+// Buy a product or start a subscription. The page you name loads when the store confirms it.
+despia('inapppurchase://?package=premium_lifetime&successful_url=https://example.com/thanks&expired_url=https://example.com/renew')
+despia('inappsubscription://?package=premium_monthly&successful_url=https://example.com/thanks&expired_url=https://example.com/renew')
+
+// Give back what the person already owns, for example after a new phone.
+despia('restoreinapppurchases://', ['restoredProductIDs'])
+```
+
+## Turn it on
+
+Add the in-app purchase feature to your app and save the settings. One settings object is shared by both platforms, so you set it once.
+
+| Setting | What it does |
+| --- | --- |
+| `success_url` | Default page opened after a purchase when the call does not carry `successful_url`. |
+| `expired_url` | Default page opened when a purchase fails or is cancelled, and when a subscription ends. |
+| `play_license_key` | Android only, optional. The base64 public key from the Google Play Console (Monetize, Monetization setup). When set, a purchase is accepted only with a valid Play signature. |
+| `active` | Set to false to switch the three calls off again without removing the feature. |
+
+An app that does not turn the feature on has none of this code in its build. The calls answer with the usual "not included" event, and apps that already use the Android purchase calls keep working as before.
+
+The iOS shared secret is no longer needed. StoreKit 2 checks Apple's signature on the device, so a purchase is only reported when Apple has signed it.
+
+## Call arguments
+
+| Argument | Meaning |
+| --- | --- |
+| `package` | Required. The product id from App Store Connect or the Google Play Console. |
+| `successful_url` | Page to open after the purchase is confirmed. Falls back to the `success_url` setting. |
+| `expired_url` | Page to open if the purchase fails, is cancelled, or the subscription later ends. Falls back to the `expired_url` setting. |
+| `consumable=true` | The product can be bought again. `package=consumable.<id>` works the same way. |
+| `disableadmob=true` | Remove ads for this person once the purchase succeeds. |
+
+A URL argument runs to the next known argument, so a success URL may contain its own `&` parameters.
+
+## What your page receives
+
+When the store confirms a purchase, the page gets a global call before it is sent to the success URL:
+
+```javascript
+window.iapSuccess = (purchase) => {
+  // purchase.planID          the product id
+  // purchase.transactionID   the store transaction
+  // purchase.purchaseToken   iOS: the signed transaction; Android: the Play purchase token
+  // purchase.subreceipts     iOS: the app receipt (base64); Android: the product ids in the purchase
+  // purchase.store           "app_store" or "google_play"
+  // purchase.productType     "consumable", "nonconsumable" or "subscription"
+}
+```
+
+The values are also set as globals (`planID`, `transactionID`, `purchaseToken`, `subreceipts`) for pages written against the earlier calls.
+
+<Warning>
+  The page callback tells your interface what happened. Grant access from your backend, using the token or receipt with Apple or Google, because a page can be changed by its user.
+</Warning>
+
+## Subscriptions that end
+
+For a subscription bought through these calls, the app checks the store every time it comes to the foreground. If the store no longer lists it as active, the `expired_url` you gave at purchase opens once. Nothing runs for apps that never bought a subscription this way.
+
+## Restore
+
+`restoreinapppurchases://` asks the store for the person's purchases and sets `restoredProductIDs` on the page as an array of product ids. On iOS this includes an App Store sync, which may ask the person to sign in. When ads were removed by an earlier purchase, they stay removed.
+
+## Testing
+
+- iOS: use a sandbox tester or a StoreKit configuration file. The purchase sheet says it is a test.
+- Android: add the tester in the Play Console licence testers list and install the app from an internal testing track. Products must be active and the app must be signed with the key uploaded to Play.
+- A product id the store does not know opens the `expired_url`.

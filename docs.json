@@ -338,6 +338,7 @@
           "native-features/simple-storage",
           "native-features/print-documents",
           "native-features/screenshot",
+          "native-features/screen-guard",
           "native-features/notification-sounds",
           "native-features/audio-player",
           "native-features/age-assurance",

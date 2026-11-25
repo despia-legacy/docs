@@ -106,6 +106,7 @@ function ContactList() {
             try {
                 await despia('requestcontactpermission://')
                 const data = await despia('readcontacts://', ['contacts'])
+                if (data.contacts === null) { setError(true); return }
                 setContacts(Object.entries(data.contacts))
             } catch (e) {
                 setError(e)
@@ -138,21 +139,19 @@ function ContactList() {
 
 ## Handle the permission denied case
 
-If the user denies the permission prompt, `readcontacts://` rejects rather than returning an empty object. Wrap the read in `try/catch` and fall back to a manual entry path so the feature stays usable.
+`readcontacts://` always answers. When the app has access, `contacts` is the object above. When it does not, `contacts` is `null`: the user denied the prompt, access is restricted on the device, or the build does not include contacts. It does not reject and it does not stay unset, so test the value instead of wrapping the call in `try/catch`.
 
 ```javascript
 async function loadContactsWithFallback() {
     if (!isDespia) return { contacts: null, denied: false, browser: true }
 
-    try {
-        await despia('requestcontactpermission://')
-        const data = await despia('readcontacts://', ['contacts'])
-        return { contacts: data.contacts, denied: false, browser: false }
-    } catch {
-        return { contacts: null, denied: true, browser: false }
-    }
+    await despia('requestcontactpermission://')
+    const data = await despia('readcontacts://', ['contacts'])
+    return { contacts: data.contacts, denied: data.contacts === null, browser: false }
 }
 ```
+
+On iOS, a read that arrives while the system prompt is still on screen waits for the user's choice and then answers with the contacts or `null`, so awaiting the permission call and then reading on the first run works. With limited access (iOS 18), the answer holds the contacts the user chose to share. On Android, a read without the contacts permission answers `null` at once and does not show a prompt: call `requestcontactpermission://` first.
 
 Once the user denies the prompt, the OS will not show it again on subsequent app launches. The user has to grant the permission manually in Settings, App Permissions, Contacts on Android or in Settings, Privacy & Security, Contacts on iOS. Surface this in your UI rather than letting the user retap a button that does nothing.
 
@@ -172,6 +171,7 @@ async function findContactsOnPlatform() {
 
     await despia('requestcontactpermission://')
     const data = await despia('readcontacts://', ['contacts'])
+    if (data.contacts === null) return []
 
     const numbers = Object.values(data.contacts).flat()
     const hashed  = await Promise.all(numbers.map(hashNumber))

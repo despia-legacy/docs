@@ -284,6 +284,18 @@ In `stripe://manage`, Apple Pay needs only the merchant ID the app is signed for
 
 ---
 
+## Redirect payment methods
+
+Some methods send the customer to a bank page or another app and back: Klarna, Affirm, Afterpay, Amazon Pay and similar. Stripe's iOS SDK hides every method that needs a return URL when none is set, so the Despia iOS runtime sets one on both sheets: `<your app's URL scheme>://stripe-redirect`. The scheme is the first URL scheme in the built app, the one Despia writes from your app's scheme setting. If the app has no valid URL scheme, no return URL is set and Stripe leaves those methods out of the sheet.
+
+You add nothing to your page or to your Stripe call. When the customer returns, the app hands the URL to Stripe before any other URL handler. Stripe finishes the payment and closes its web page. Any other URL the app opens takes its usual route. Do not use `stripe-redirect` as a deep link of your own.
+
+On Android the runtime adds no return URL; the sheet returns to the app by itself.
+
+Redirect methods show only when your Payment Intent allows them (for example `automatic_payment_methods` on, or the method in `payment_method_types`) and Stripe offers them for the amount, currency and country.
+
+---
+
 ## Result events
 
 The Despia runtime fires `window.stripeEvent` exactly once per `despia('stripe://payment?...')` call, or zero times if the listener was missing when the result arrived. There are no intermediate `presented`, `processing`, or `dismissing` events. The `method` field on the payload is always the string `paymentSheet`, even though the action is `payment`, so always match on `status`.
@@ -300,7 +312,12 @@ The Despia runtime fires `window.stripeEvent` exactly once per `despia('stripe:/
 
 // status: 'failed' (Stripe SDK error)
 { "method": "paymentSheet", "status": "failed", "error": "The payment intent client secret is invalid." }
+
+// status: 'failed' (iOS: another screen was still closing)
+{ "method": "paymentSheet", "status": "failed", "error": "presenter busy" }
 ```
+
+`presenter busy` (iOS only) means the app was still showing another screen, for example a page alert that was closing, and it had not closed after 2 seconds. The sheet was not shown and nothing was charged. `stripe://manage` answers the same with `method: 'customerSheet'`. Call again once your own dialog is gone; a call made right after a dialog closes waits for it and presents normally.
 
 The literal string `"missing param"` is the only stable matchable error value. It fires in two cases: when `publishable_key` or `payment_intent_client_secret` is missing or empty, and when the optional saved-card pair (`customer_id`, `ephemeral_key_secret`) is half-supplied with exactly one of the two values rather than both or neither. Every other failure (bad client secret, test and live mode mismatch, expired ephemeral key, API version mismatch, network failure, terminal decline) returns Stripe's localized SDK message. Log or display these messages, but never branch on their contents since they are locale-dependent.
 

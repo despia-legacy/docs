@@ -184,6 +184,28 @@ See: [App Privacy Details](https://setup.despia.com/lovable/native-features/app-
 
 ---
 
+### The privacy manifest is generated for you (iOS)
+
+**Apple refuses an upload that uses a required-reason API without a privacy manifest (ITMS-91053)**
+
+Since 1 May 2024, App Store Connect reads required-reason API use and collected data types from a privacy manifest (`PrivacyInfo.xcprivacy`) inside the app, never from `Info.plist`. A privacy block in `Info.plist` has no effect. Despia writes the manifest for your iOS build, from the features that are compiled into it, so an app declares only what it uses.
+
+| Declared | When |
+| --- | --- |
+| Required-reason APIs: UserDefaults (`CA92.1`, `1C8F.1`), file timestamps (`C617.1`), system boot time (`35F9.1`) | Every build |
+| Collected data: Product interaction | Every build (audio player webhooks you point at your own endpoint) |
+| Collected data: Precise location | Unless location is left out of the build |
+| Collected data: Health, Device ID | When Apple Health is in the build and reads are not disabled |
+| Collected data: Fitness | Unless motion is left out of the build |
+
+All collected types are linked to the user, not used for tracking, and have the purpose App Functionality. `NSPrivacyTracking` is `false` for Despia's own code; SDKs such as AppsFlyer and Audience Network ship and declare their own manifests. The image widget and Share Extension targets carry their own manifests for the app group they use.
+
+You still fill in the App Privacy answers in App Store Connect and keep your privacy policy in step with them (see above): the manifest tells Apple what the binary does, the labels and policy tell users what you collect. Android has no manifest file; Google Play uses the Data safety form in the Play Console. Source: Apple, "Describing use of required reason API" and "Describing data use in privacy manifests" (developer.apple.com/documentation/bundleresources), read 25 Nov 2026.
+
+An extension that ships its own `PrivacyInfo.xcprivacy` as an app resource would collide with the generated file; none does today.
+
+---
+
 ### Include account deletion instructions
 
 **Required by Apple since 2022**

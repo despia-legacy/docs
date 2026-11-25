@@ -140,6 +140,7 @@ A record is `{ bucket, key, value, revision }`. Store JSON as text in `value`.
 | `bad_request` | A parameter, a name, the JSON or the number of statements or bound values is not valid |
 | `sql_error` | SQLite refused the statement (the message has SQLite's text and code) |
 | `constraint` | A constraint failed (unique, not null, foreign key, check) |
+| `not_allowed` | The SQL reaches a file other than the database's own, so it is refused: `ATTACH`, `DETACH`, `VACUUM INTO`, `load_extension()` and the `PRAGMA`s that name a directory (`temp_store_directory`, `data_store_directory`) |
 | `conflict` | Record routes: the revision does not match |
 | `busy` | The database is locked or too many record calls are waiting |
 | `storage_full` | The device is full, or the record store holds 512 records |

@@ -363,9 +363,10 @@ function App() {
 
 **Storage Vault benefits:**
 
-- Persists across uninstall/reinstall
-- Syncs across devices (iCloud/Google)
+- Can come back after uninstall/reinstall through the user's iCloud (iOS) or last Google backup (Android)
+- Syncs across the user's Apple devices through iCloud; Android restores from backup rather than syncing live
 - Can require Face ID/Touch ID
+- Not encrypted by Despia: for the tokens themselves, [Identity Vault](/native-features/identity-vault) keeps them in the Keychain and the Keystore
 - Most reliable for long-term sessions
 
 **When to use localStorage vs Vault:**

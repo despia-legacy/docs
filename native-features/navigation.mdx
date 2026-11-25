@@ -54,6 +54,7 @@ An unknown key or a value that is not valid is ignored with a console warning.
 | `title` | text | the page's `<title>` |
 | `subtitle` | text | none |
 | `style` | `inline`, `large`, `medium` | `inline` |
+| `align` | `start`, `center`: where the title sits (on iOS, `start` needs iOS 16 or later) | `center` on iOS, `start` on Android |
 | `back` | `auto` (shown when there is a page to go back to), `show`, `hide` | `auto` |
 | `backtitle` | text for the back button | the platform's |
 | `backaction` | `history` (go back), `event` (tell the page) | `history` |
@@ -81,6 +82,7 @@ A colour is `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()`. With t
 | `hidden` | `true`, `false` | `false` |
 | `background` | a colour, or `transparent` | the platform's |
 | `tint` | a colour for the selected tab | the platform's |
+| `transition` | `default`, `fade`, `none`: how the page changes when a tab is tapped | `fade` |
 
 ## Buttons and tabs
 
@@ -99,14 +101,15 @@ despia('navigation://bar?items=' + encodeURIComponent(JSON.stringify(items)));
 
 | Field | Meaning |
 | --- | --- |
-| `id` | Sent back in the event; required |
-| `title` | The label |
+| `id` | Sent back in the event; defaults to the `title` |
+| `title` | The label; required, an item without one is dropped |
 | `icon.sfSymbol` | An SF Symbol name, used on iOS |
-| `icon.svg` or `icon.src` | An image URL, relative to the page; used on Android, and on iOS when there is no symbol |
+| `icon.material` | A Material Symbols name, used on Android. Without it the SF Symbol name is mapped to its Material Symbols equivalent where one exists |
+| `icon.svg` or `icon.src` | An image URL, relative to the page; used when the platform has no symbol for the item |
 | `placement` | `leading` or `trailing` (bar buttons; default `trailing`) |
 | `style` | `prominent` for a bar button, `destructive` for a menu row |
 | `enabled` | `false` greys it out |
-| `badge` | A number or short text on a tab |
+| `badge` | A number or short text on a tab or a bar button (on iOS, a bar button badge needs iOS 26 or later) |
 | `url` | A tab with a `url` loads it, relative to the page, when tapped |
 | `menu` | A list of rows shown as a menu instead of a single action |
 
@@ -124,9 +127,9 @@ window.onNavigationEvent = (e) => {
 };
 ```
 
-`e.source` on a back event is `button` (the back button or `navigation://back`), `system` (the Android back gesture or button) or `menu` (the iOS back button's long-press history menu). While `backaction=event`, `navigation://back` sends this event too instead of going back, and the swipe back gesture is off; go back with `history.back()`.
+`e.source` on a back event is `button` (the back button or `navigation://back`), or `system` (the Android back gesture or button). While `backaction=event`, `navigation://back` sends this event too instead of going back, and the swipe back gesture is off; go back with `history.back()`.
 
-A tab with a `url` sends its event and then loads the URL.
+A tab with a `url` sends its event and then loads the URL. A tab without a `url` only changes the selection. A tab is a top-level destination: it has no back button, and the status bar icons follow the bar's background.
 
 ## Laying out your page
 
@@ -177,11 +180,11 @@ Pages that change the URL with `history.pushState` count as pages too: back retu
 | Back gesture | The edge swipe | The system back gesture, with the predictive back animation on Android 14 and later |
 | Back history | A long press on the back button lists earlier pages | Not available |
 | Tab bar | `UITabBar`, Liquid Glass on iOS 26 and later | `BottomNavigationView`, labels always shown |
-| `placement: "leading"` | Left of the title | Buttons are placed at the end of the toolbar |
-| `tint` | Bar buttons and the selected tab | The back arrow |
-| Icons | `icon.sfSymbol`, else `icon.svg` or `icon.src` | `icon.svg` or `icon.src` |
-| `style: "prominent"` | The bar button's prominent style | No change |
-| `style: "destructive"` | A red menu row | No change |
+| `placement: "leading"` | Left of the title | At the start of the toolbar, after the back button |
+| `tint` | Bar buttons and the selected tab | Bar buttons, the overflow menu and the back arrow |
+| Icons | `icon.sfSymbol`, else `icon.svg` or `icon.src` | `icon.material`, else the mapped SF Symbol name, else `icon.svg` or `icon.src` |
+| `style: "prominent"` | The bar button's prominent style | Always shown on the bar, never folded into the overflow menu, in the primary colour |
+| `style: "destructive"` | A red menu row | The error colour |
 | Right-to-left | Follows the page's `dir` | Follows the page's `dir` |
 
 ## Troubleshooting

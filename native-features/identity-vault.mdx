@@ -79,7 +79,7 @@ Keys are 1 to 64 characters of `A-Z a-z 0-9 . _ -`.
 | :-- | :-- | :-- | :-- |
 | `sync` | `device`, `cloud` | `device` | `cloud` shares the value with the user's other devices (see below) |
 | `lock` | `none`, `biometric`, `passcode` | `none` | `biometric`: the enrolled Face ID, Touch ID or fingerprint only. `passcode`: the device passcode, PIN, pattern or password only; no biometric is offered |
-| `survivesReinstall` | `true`, `false` | `false` (`true` with `sync=cloud`) | Keep the value when the app is deleted and installed again |
+| `survivesReinstall` | `true`, `false` | `false` (`true` with `sync=cloud`) | Keep the value when the app is deleted and installed again. `sync=cloud` with `survivesReinstall=false` answers `invalid_argument`: a cloud value comes back from the cloud after a reinstall |
 
 ### Answers
 

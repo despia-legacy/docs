@@ -54,12 +54,20 @@ window.iapSuccess = (purchase) => {
   // purchase.transactionID   the store transaction
   // purchase.purchaseToken   iOS: the signed transaction; Android: the Play purchase token
   // purchase.subreceipts     iOS: the app receipt (base64); Android: the product ids in the purchase
-  // purchase.store           "app_store" or "google_play"
+  // purchase.store           "app_store" or "play_store" (the same values as getpurchasehistory:// rows)
   // purchase.productType     "consumable", "nonconsumable" or "subscription"
 }
 ```
 
 The values are also set as globals (`planID`, `transactionID`, `purchaseToken`, `subreceipts`) for pages written against the earlier calls.
+
+### When a purchase counts as delivered
+
+The app finishes a purchase with the store (iOS) or acknowledges or consumes it (Android) only once your page has it: your `iapSuccess` function ran without throwing, or the success URL your own call named was opened. Until then the store keeps the purchase and the app offers it again.
+
+Some purchases reach the app outside your call: one interrupted before it finished, an Ask to Buy or slow payment approved later, a renewal, or a purchase made on another device. These are only passed to `iapSuccess`, on your next purchase call, when a page finishes loading and when the app comes to the foreground. They never open a URL. Define `iapSuccess` on every page that should receive them. On Android, Google Play refunds a purchase that is not acknowledged within three days.
+
+In apps that also use RevenueCat, a product bought through these calls is reported once, by these calls.
 
 <Warning>
   The page callback tells your interface what happened. Grant access from your backend, using the token or receipt with Apple or Google, because a page can be changed by its user.
@@ -76,5 +84,5 @@ For a subscription bought through these calls, the app checks the store every ti
 ## Testing
 
 - iOS: use a sandbox tester or a StoreKit configuration file. The purchase sheet says it is a test.
-- Android: add the tester in the Play Console licence testers list and install the app from an internal testing track. Products must be active and the app must be signed with the key uploaded to Play.
+- Android: add the tester in the Play Console licence testers list and install the app from an internal testing track. Products must be active and the app must be signed with the key uploaded to Play. Licence testers can pay with Google's test cards, including the slow test cards that approve or decline after a few minutes, to try pending purchases.
 - A product id the store does not know opens the `expired_url`.

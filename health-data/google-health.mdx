@@ -118,7 +118,7 @@ if (isDespiaAndroid) {
 
 On Android 7 (API 24 and 25), which the Health Connect library does not support, every health call answers at once with the same shapes as a build without Health Connect, using the code `health_connect_requires_android_8` (status `requires_android_8`). Android 8 answers `unavailable`.
 
-`healthConnectInstall` is `{ opened, status }`. When Health Connect is not usable, reads answer `{ "error": "health_connect_unavailable" }` or `{ "error": "health_connect_update_required" }` in `healthkitResponse`.
+`healthConnectInstall` is `{ opened, status }`. When Health Connect is not usable, reads answer in `healthkitResponse` with `error` set to `health_connect_unavailable` or `health_connect_update_required` and a `message` (see [Answers and errors](#answers-and-errors)).
 
 ---
 
@@ -185,6 +185,25 @@ const data = await despia(
 Units and scales match iOS for the same identifier: kg for body mass, cm for height, a fraction from 0 to 1 for body fat and oxygen saturation, mg or mcg for nutrients, `count/min` for heart rate. Daily totals of cumulative types come from Health Connect's own aggregation, which removes the overlap when several apps record the same activity.
 
 Sleep sessions return an `inBed` entry (value 0) for the whole session, followed by one entry per stage: `awake` 2, `core` 3 (Health Connect light sleep), `deep` 4, `rem` 5, and `asleep` 1 for sleep without a stage.
+
+### Answers and errors
+
+Answers have the same shape as on [iOS](/health-data/apple-health#answers-and-errors):
+
+- Every type you asked for is a key whose value is an array: the records read, or `[]` when there is nothing to show.
+- A call that failed adds `error` (a code) and `message` (a sentence), always together. An answer that did not fail has neither.
+- If the page defines `window.onHealthkitResponse(response)`, it is called once per answer with the same object.
+- `healthkit://workouts` merges its list into `healthkitResponse.HKWorkoutTypeIdentifier`, clears an earlier read's `error` and `message` first, and sets its own pair only when the workouts call failed.
+
+| `error` | When |
+| --- | --- |
+| `health_connect_unavailable` | Health Connect is not installed, or the device is Android 8 |
+| `health_connect_update_required` | The Health Connect app must be updated |
+| `health_connect_authorization_failed` | The permission request itself failed (not a decline, which reads as `[]`) |
+| `health_connect_timeout` | The reads did not finish within 15 seconds of the permission step; the answer keeps what was read |
+| `health_connect_read_failed` | An unexpected failure while reading; every requested type is `[]` |
+| `health_connect_invalid_request` | The call cannot be read as given, for example `bucket=week` (`bucket` must be `day` or `hour`); the `message` says what is wrong |
+| `health_connect_not_included` | The build has no Health Connect (see below) |
 
 ### Time ranges and hourly buckets
 
@@ -340,7 +359,7 @@ These cannot be written on Android: the activity-specific distance, speed and po
 
 ## Builds without Health Connect
 
-When an Android build does not include Health Connect, every health call still answers right away, so your code never waits: reads give `{ "error": "health_connect_not_included" }`, writes give `success: false`, workouts `[]`, observers `[]`, and the `despia-feature-not-included` event fires.
+When an Android build does not include Health Connect, every health call still answers right away, so your code never waits: reads give `{ "error": "health_connect_not_included" }` and call `onHealthkitResponse`, writes give `success: false` and call `onHealthKitWrite`, workouts `[]`, observers `[]`, and the status, permissions, install, settings, delete and changes calls answer their own globals with the not-included status. The `despia-feature-not-included` event fires on each call, with `detail.scheme` set to the scheme you called.
 
 ---
 

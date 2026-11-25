@@ -119,6 +119,36 @@ if (isDespiaIOS) {
 
 Despia requests HealthKit permission on the first call for each identifier, then fetches and returns the data. A single multi-identifier call prompts the user once for the whole set rather than once per type.
 
+### Answers and errors
+
+Every read and every workouts call answers once, on both iOS and [Android](/health-data/google-health#answers-and-errors), in the same shape:
+
+- Every identifier you asked for is a key whose value is an array: the samples read, or `[]` when there is nothing to show (no data, or a read the user declined; HealthKit does not tell an app which).
+- A call that failed adds `error` (a code) and `message` (a sentence), always together. An answer that did not fail has neither, so `if (response.error)` is the whole check.
+- If the page defines `window.onHealthkitResponse(response)`, it is called once per answer with the same object, so you can wait for the result instead of polling `window.healthkitResponse`.
+
+```javascript
+window.onHealthkitResponse = (response) => {
+    if (response.error) {
+        console.warn(response.error, response.message)
+        return
+    }
+    const steps = response.HKQuantityTypeIdentifierStepCount // always an array
+}
+despia('readhealthkit://HKQuantityTypeIdentifierStepCount?days=7')
+```
+
+| `error` | When |
+| --- | --- |
+| `healthkit_unavailable` | Health data is not available on this device |
+| `healthkit_authorization_failed` | The permission request itself failed (not a decline) |
+| `healthkit_timeout` | The reads did not finish in time; the answer keeps what was read so far and `[]` for the rest |
+| `healthkit_read_failed` | A query failed, or the view went away before the answer |
+
+Every call answers within 15 seconds of starting. While HealthKit's permission sheet is on screen, that clock waits for the sheet (your call's own sheet, or another call's sheet ahead of it in line) and a 300 second safety limit applies instead; when the call goes on it gets a fresh 15 seconds. A call that is stuck therefore always ends with `healthkit_timeout`.
+
+A `healthkit://workouts` call also merges its list into `window.healthkitResponse.HKWorkoutTypeIdentifier` and calls `onHealthkitResponse`. It clears any `error` and `message` left by an earlier read, and sets its own pair only when the workouts call itself failed.
+
 ---
 
 ## Read

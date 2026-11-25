@@ -94,6 +94,14 @@ When connectivity is available, Despia checks for new builds and downloads them 
 3. Stores it separately without affecting the running app
 4. Applies on next launch
 
+### Updates are all or nothing
+
+The new version is downloaded into its own folder next to the one being served, and it replaces the served version only when every file in the manifest has arrived. A file that fails (the network drops, or the server answers with an error such as a 404, which is never saved as an asset) discards the download. Your users keep running the previous complete deployment, online or offline, and the update is tried again on a later launch. A deployment is never a mix of two versions.
+
+If the app is killed during an update, the next launch finishes the swap when the download was complete, or drops it and keeps the previous version when it was not.
+
+Folders the runtime keeps for itself (the [local CDN](/local-cdn/introduction) files, local uploads and shared files) are not part of a deployment: they are carried over to the new version, so an update never deletes them.
+
 **What you can update:**
 
 - Web UI (HTML, CSS, JavaScript)
@@ -225,7 +233,7 @@ Despia's local server is fully compliant with both Apple App Store and Google Pl
   </Accordion>
 
   <Accordion title="How do updates reach users?">
-    On startup, Despia fetches your `despia/local.json` manifest and compares the `deployed_at` timestamp with the cached value. If it has changed, the new build downloads in the background and applies on the next launch - zero downtime, no broken states.
+    On startup, Despia fetches your `despia/local.json` manifest and compares the `deployed_at` timestamp with the cached value. If it has changed, the new build downloads in the background and applies on the next launch - zero downtime, no broken states. A build that cannot be fully downloaded never replaces the one that works.
   </Accordion>
 
   <Accordion title="Can I add new native features via OTA updates?">

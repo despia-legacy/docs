@@ -193,6 +193,8 @@ The plugin hooks into your build tool's completion event, scans the output direc
 
 This manifest enables Despia to discover all assets for complete caching, determine changes via `deployed_at`, guarantee offline operation, and perform atomic updates safely.
 
+An update is atomic in this sense: every file listed in `assets` (and the `entry`) must download successfully, with a 2xx answer, before the new deployment is served. If one file is missing, for example it is listed in `assets` but not deployed, the whole update is dropped and the previous deployment keeps being served. Keep `assets` in step with the files you deploy.
+
 ---
 
 ## Version guards

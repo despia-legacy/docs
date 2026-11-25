@@ -13,7 +13,7 @@ despia('admob://banner?adunit=' + encodeURIComponent('ca-app-pub-xxxxxxxxxxxxxxx
 That shows a native Google AdMob banner at the bottom of the app. By default the web page gets smaller, so the banner covers nothing and your CSS needs no change.
 
 <Warning>
-  Banner ads need AdMob in your app: the AdMob integration on in the Despia Editor under **App \> Integrations \> AdMob**, with your iOS and Android App IDs, and a new build that has the banner. In a build without AdMob, `admob://` calls do nothing: the console shows `admob:// is not included in this build` and a `despia-feature-not-included` event fires on `window` with `detail.scheme` set to `admob`.
+  Banner ads need AdMob in your app: the AdMob integration enabled for your app, with your iOS and Android App IDs, and a new build that has the banner. In a build without AdMob, `admob://` calls do nothing: the console shows `admob:// is not included in this build` and a `despia-feature-not-included` event fires on `window` with `detail.scheme` set to `admob`.
 </Warning>
 
 ---

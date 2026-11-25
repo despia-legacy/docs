@@ -4,7 +4,7 @@ description: "Small key-value storage that follows the user: iCloud Key-Value St
 icon: "vault"
 ---
 
-Small key-value storage bridged to your web layer. Values survive app restarts and updates, and can come back after an uninstall and reinstall when the user's iCloud (iOS) or Google backup (Android) carries them. Set `locked=true` to ask for Face ID, Touch ID, fingerprint or the device passcode before a value is read back.
+Small key-value storage bridged to your web layer. Values survive app restarts and updates, and can come back after an uninstall and reinstall when the user's iCloud (iOS) or Google backup (Android) carries them. Set `locked=true` to ask for Face ID, Touch ID or the device passcode (iOS), or any enrolled biometric or the device PIN, pattern or password (Android), before a value is read back.
 
 <Warning>
   **Storage Vault is not encrypted by Despia.** Values are saved as plain text in the app's own storage: iCloud Key-Value Store on iOS, the app's private preferences file on Android. The operating system keeps other apps out and encrypts the device's disk, but anyone who can read the app's data or its backup can read the values. `locked=true` is a prompt before the value is handed to your page; the value itself is stored the same way. For session tokens, refresh tokens and other secrets, use [Identity Vault](/native-features/identity-vault), which keeps them in the iOS Keychain and the Android Keystore.

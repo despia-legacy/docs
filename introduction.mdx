@@ -158,7 +158,7 @@ Despia exposes native device features through a single JavaScript function. Each
 
 ### Storage Vault
 
-Small key-value storage backed by iCloud Key-Value Store on iOS and Android Auto Backup on Android. Values can come back after a reinstall through the user's iCloud or Google backup. Not encrypted by Despia; an optional prompt (Face ID, Touch ID, fingerprint) is configured per key. For tokens and secrets, use [Identity Vault](/native-features/identity-vault) (`identityvault://`, iOS Keychain and Android Keystore).
+Small key-value storage backed by iCloud Key-Value Store on iOS and Android Auto Backup on Android. Values can come back after a reinstall through the user's iCloud or Google backup. Not encrypted by Despia; an optional prompt (Face ID, Touch ID or the passcode on iOS; any enrolled biometric or the device PIN, pattern or password on Android) is configured per key. For tokens and secrets, use [Identity Vault](/native-features/identity-vault) (`identityvault://`, iOS Keychain and Android Keystore).
 
 ```javascript
 await despia('setvault://?key=userId&value=user123&locked=false')

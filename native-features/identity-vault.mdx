@@ -120,9 +120,10 @@ locked values answer `vault_locked` without a prompt until your page calls `unlo
   `0` locks the moment the app goes to the background; a number of milliseconds locks when the app comes back
   (or at the next call) after at least that long away; `never` (the default) never locks by itself. A vault with
   a timeout also starts locked when the app starts. The vault's own prompts do not count as leaving the app.
-- A system prompt cannot be shown while the app is in the background. On Android, a call that needs one
-  (`unlock`, or `get` / `set` of a locked value) answers `auth_cancelled` at once while the app is not in the
-  foreground; call it again when the app is back (the `visibilitychange` event or the next user action).
+- A system prompt cannot be shown while the app is in the background. A call that needs one answers
+  `auth_cancelled` at once while the app is not in the foreground, on both platforms: `unlock` and `get` of a
+  locked value, and on Android also `set` of a locked value (Android must unlock the key to encrypt; iOS stores it
+  without a prompt). Call it again when the app is back (the `visibilitychange` event or the next user action).
 - Only reads of locked values are blocked. `set`, `remove`, `keys`, `clear` and reads of values with
   `lock=none` work while the vault is locked.
 - `lock`, `unlock`, `state` and `configure` answer `{ op, ok: true, locked, lockAfterBackgrounded }`

@@ -138,6 +138,18 @@ Every element has `type`, and may have `id`, `class`, `style`, `if` (a formula; 
 
 `align` is one of `start`, `center`, `end`, `top`, `bottom`, `topStart`, `topEnd`, `bottomStart`, `bottomEnd`.
 
+### Images
+
+An `image` shows a symbol, an `https://` picture (`src`), inline SVG text (`svg`) or a bundled `asset`. A widget and an activity cannot load the network when they draw, so the app does it for them:
+
+- When a document, a state, a timeline or a push arrives, the app downloads every `https://` image the document can show, in every family, for the current state and each timeline state. It keeps the picture, so the widget draws at once.
+- Inline `svg` is turned into a picture by the app the same way, at its own aspect ratio.
+- A picture is scaled down to at most 1200 pixels on its longest side. A download larger than 16 MB is not used, and neither is a response other than 200 OK. A picture that could not be fetched is simply not drawn; the widget keeps working.
+- A `src` that is not `https://` is refused with `bad_url`. This is checked by `validate`.
+- A summary `icon` or `largeIcon` of an activity takes the same forms as `image`: `{ "src": "https://..." }`, `{ "svg": "<svg ...>" }`, `{ "asset": "..." }` or `{ "symbol": { "ios": "bag.fill", "android": "shopping_bag" } }`. Each value inside it may be a formula, the object itself is not one. A `background.image.src` is fetched the same way.
+
+Use a `src` that changes in state (`{ "src": { "var": "state.img" } }`) to change a picture with a push. The new picture is fetched when the push arrives.
+
 ### Styles
 
 | Property | Values |

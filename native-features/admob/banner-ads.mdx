@@ -45,7 +45,7 @@ There is no built-in test unit. With no unit in the settings and none passed, th
 
 | Call | Does |
 | --- | --- |
-| `admob://banner?<parameters>` | Shows the banner, creating it on first use. Parameters are merged into the current ones; a parameter with an empty value (`gap=`) goes back to its default. A new `adunit`, `size` or `collapsible` requests a new ad; any other change only moves it. |
+| `admob://banner?<parameters>` | Shows the banner, creating it on first use. Parameters are merged into the current ones; a parameter with an empty value (`gap=`) goes back to its default. A new `adunit`, `size` or `collapsible` requests a new ad; any other change only moves it. With a new `adunit`, the ad on screen stays until the new unit's first ad loads; if that request fails, the shown ad stays and `failed` is sent. |
 | `admob://banner/hide` | Hides the banner and gives its space back. The loaded ad is kept, so `admob://banner` shows it again without a new request. |
 | `admob://banner/reload` | Requests a new ad now. Google serves a collapsible banner only on a request that asks for one, and automatic refreshes never collapse, so call this for another collapsible ad. |
 | `admob://privacyoptions` | Shows Google's privacy options form, for every AdMob format |

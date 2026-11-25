@@ -242,53 +242,6 @@
         "tag": "V4"
       },
       {
-        "group": "Extensions",
-        "icon": "puzzle-piece",
-        "pages": [
-          "extensions/overview",
-          "extensions/install",
-          {
-            "group": "Ready-made extensions",
-            "icon": "box-open",
-            "pages": [
-              "extensions/catalog/superwall",
-              "extensions/catalog/firebase-push",
-              "extensions/catalog/supabase",
-              "extensions/catalog/base44",
-              "extensions/catalog/plaid",
-              "extensions/catalog/meta-ads",
-              "extensions/catalog/tiktok-ads",
-              "extensions/catalog/google-ads",
-              "extensions/catalog/recorder",
-              "extensions/catalog/home-widgets",
-              "extensions/catalog/live-activities",
-              "extensions/catalog/calendar",
-              "extensions/catalog/alarms",
-              "extensions/catalog/app-lock",
-              "extensions/catalog/bluetooth",
-              "extensions/catalog/meta-glasses",
-              "extensions/catalog/stream-calling"
-            ]
-          },
-          {
-            "group": "Build your own",
-            "icon": "hammer",
-            "pages": [
-              "extensions/build/create",
-              "extensions/build/local-loop",
-              "extensions/build/compile-and-test",
-              "extensions/build/native-code",
-              "extensions/build/dependencies",
-              "extensions/build/publishing"
-            ]
-          },
-          "extensions/reference/cli",
-          "extensions/reference/manifest",
-          "extensions/troubleshooting",
-          "extensions/ai-skills"
-        ]
-      },
-      {
         "group": "Native Features",
         "icon": "bolt-lightning",
         "expanded": false,
@@ -390,6 +343,23 @@
           "native-features/audio-player",
           "native-features/age-assurance",
           "native-features/sandbox"
+        ]
+      },
+      {
+        "group": "Experiments",
+        "icon": "flask",
+        "pages": [
+          "experiments/v3-extensions",
+          "experiments/extension-troubleshooting",
+          {
+            "group": "Despia V3 Extensions",
+            "icon": "vial",
+            "pages": [
+              "experiments/samples/recorder",
+              "experiments/samples/live-activities",
+              "experiments/samples/home-widgets"
+            ]
+          }
         ]
       },
       {
@@ -607,37 +577,8 @@
     "indexing": "all"
   },
   "redirects": [
-    {
-      "source": "/custom-code/extensions",
-      "destination": "/extensions/overview"
-    },
-    {
-      "source": "/local-database/introduction",
-      "destination": "/native-features/storage-vault"
-    },
-    {
-      "source": "/local-database/reference",
-      "destination": "/native-features/storage-vault"
-    },
-    {
-      "source": "/experiments/v3-extensions",
-      "destination": "/extensions/overview"
-    },
-    {
-      "source": "/experiments/extension-troubleshooting",
-      "destination": "/extensions/troubleshooting"
-    },
-    {
-      "source": "/experiments/extension-authoring",
-      "destination": "/extensions/build/create"
-    },
-    {
-      "source": "/experiments/samples/:slug",
-      "destination": "/extensions/catalog/:slug"
-    },
-    {
-      "source": "/extensions/introduction",
-      "destination": "/extensions/overview"
-    }
+    { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
+    { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
+    { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]
 }

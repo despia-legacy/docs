@@ -1,0 +1,73 @@
+---
+title: "V3 Extensions: package format (beta)"
+description: "Write a Despia V3 extension as a DSX package folder and call it from your web app through window.dsx."
+icon: "box"
+tag: "Beta"
+---
+
+{/* DRAFT: merge after the despia-extensions CLI with the package format ships. Do not add to the navigation before then. */}
+
+<Warning>
+  **Beta.** The package format is built on the DSX package API before DSX 1.0.0. The API may change, and Despia makes no support promise for it yet. An extension in this format runs in Despia V3; it is not a V4 package.
+</Warning>
+
+A V3 extension can be a DSX package folder instead of a `manifest.json` with `extension://` routes. Your web code then calls it through `window.dsx`, with a Promise or with a callback per event.
+
+## Create one
+
+```bash
+npx --yes github:despia-legacy/despia-extensions#<commit> create geo --format package \
+  --action "current:lat=number,units=string?" \
+  --event current:progress \
+  --broadcast changed \
+  --config units:string
+```
+
+This writes:
+
+| File | Holds |
+| --- | --- |
+| `dsx.json` | The contract: each action's `args` (DSX type words: `string`, `int`, `number`, `boolean`, `array`, `object`, `file`), `resolves`, `events`, `errors` and `tests`. Only DSX package keys. |
+| `despia.v3.json` | The Despia V3 build facts: where each setting is written, iOS and Android build lines, claims. Never put these in `dsx.json`. |
+| `config.json` | Public settings only. A secret never ships in the app; your server keeps it. |
+| `web/geo.d.ts` | Generated types for `window.dsx.module.geo`. Run `gen` after you change `dsx.json`. |
+
+Every action keeps at least one row in `tests`. Each row is a contract vector: `{ "name", "args", "resolve" }` or `{ "name", "args", "expectError" }`, with `events` and `broadcasts` when the call raises them.
+
+## Call it from your web app
+
+```javascript
+// A Promise: resolves with the action's result, rejects with { code, message, recoverable }.
+const here = await window.dsx.module.geo.current({ lat: 25.2 });
+
+// A callback per event: one function for each event the action declares, plus result and error.
+const call = window.dsx.module.geo.current({ lat: 25.2 }, {
+  progress: (data) => console.log('progress', data),
+  result: (data) => console.log('done', data),
+  error: (data, envelope) => console.error(envelope.code, envelope.message),
+});
+await window.dsx.stop(call); // stop listening to a call you started
+
+// Announcements the extension sends to every page, and whether this build carries it.
+const off = window.dsx.on('geo', (envelope) => console.log(envelope.event, envelope.data));
+if (!window.dsx.has('geo')) console.log('this build does not include geo');
+```
+
+A call with missing or wrong arguments is answered with `missing_param` or `invalid_param`. A name the build does not carry is answered with `unknown_action`.
+
+## Check, mock and pack
+
+| Command | Does |
+| --- | --- |
+| `check` | Checks the folder without any toolchain, and runs every test row through the same page bridge your app uses. |
+| `mock` | Prints the lines that answer `window.dsx` calls in the browser from your test rows during development. `mock --run page.js` runs a page script in node. |
+| `pack` | Writes `dist/<id>-<version>.despia-ext.tgz` and a proof record that lists each check that ran, each that did not and why, and what needs a Mac. |
+| `publish --dry-run` | Shows the registry entry the pack would get, without writing anything. Despia publishes to the registry after a review; install your own extension from its git URL. |
+
+## What a V3 app does not carry
+
+A Despia V3 app hosts the DSX bus only. `check` refuses what needs the full DSX runtime: components and places, presented components, delegate decisions, `dsx.shared`, `dsx.global` and `entry.gates`.
+
+## Native code
+
+The Swift and Kotlin parts of a package-format extension read their arguments with `dsx.action.argument("x")` or `dsx.action.arguments()` and raise events with `dsx.action.event(name, value)`. The CLI writes them once the DSX bus Despia V3 links supports these calls; `despia-extensions doctor --bus` tells you when.

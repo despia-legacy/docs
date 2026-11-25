@@ -197,7 +197,6 @@ Since 1 May 2024, App Store Connect reads required-reason API use and collected 
 | Collected data: Precise location | Unless location is left out of the build |
 | Collected data: Health, Device ID | When Apple Health is in the build and reads are not disabled |
 | Collected data: Fitness | Unless motion is left out of the build |
-| Collected data: User ID | When Stream calling is in the build |
 
 All collected types are linked to the user, not used for tracking, and have the purpose App Functionality. `NSPrivacyTracking` is `false` for Despia's own code; SDKs such as AppsFlyer and Audience Network ship and declare their own manifests. The image widget and Share Extension targets carry their own manifests for the app group they use.
 

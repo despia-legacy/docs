@@ -129,7 +129,7 @@ despia('screenshotguard://off')     // allow them again
 despia('screenshotguard://status')  // answer only
 ```
 
-- The page's call always wins. In an app whose screenshot protection setting is on, protection starts on at launch, and a page can still turn it off with `screenshotguard://off`.
+- Nothing is protected until the page calls `screenshotguard://on`. The editor's screenshot protection setting only configures the app (it is reported as `configured`); it never turns protection on at launch. Call `screenshotguard://on` from `<head>`, before the page renders anything private. The launch splash is all that shows before that.
 - `window.onScreenCaptureAttempt()` is called when the user takes a screenshot or starts recording while protection is on.
 - On Android, blocking screenshots also blocks casting and screen sharing of the app. On iOS, recordings and mirroring show a blank screen.
 
@@ -181,7 +181,8 @@ An unknown verb answers `{ ok: false, code: 'unknown_command' }` and a malformed
 window.despiaScreenshotGuard = {
     ok: true,
     guard: 'on',             // protection in force now
-    source: 'page',          // 'page' (a call set it) | 'app_setting' (the app's screenshot protection setting)
+    source: 'page',          // 'page' (a call set it) | 'none' (no call yet)
+    configured: false,       // the editor's screenshot protection setting (reported only)
     platform: 'android'
 }
 ```
@@ -194,6 +195,7 @@ window.despiaScreenshotGuard = {
 
 ## Rules
 
-- Only the top-level page of the app can turn either guard on or off. A call from an iframe, a popup or the in-app browser is ignored. The cover still hides those, because it covers the whole window.
+- Only the top-level page of the app, on the app's own https address, can turn either guard on or off. A call from an iframe, a popup, an outside site or the in-app browser is ignored. The cover still hides those, because it covers the whole window.
+- A page loaded from a `file://` address (a bundled offline page) cannot call the guards. Serve the page from the app's https address or its local server.
 - Both guards work offline.
-- After the app is closed, both are back to their start state: screen guard off, screenshot guard as the app's screenshot protection setting says. Call them again from `<head>`.
+- After the app is closed, both guards are off. Call them again from `<head>`.

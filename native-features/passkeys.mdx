@@ -7,14 +7,14 @@ icon: "key"
 Passkeys belong to your domain, not to a browser or an app. When your app is associated with your domain, the passkey sign-up and sign-in you already built with the standard WebAuthn API (`navigator.credentials`) runs unchanged inside your Despia app. The passkeys live in iCloud Keychain, Google Password Manager or the password manager the user chose, so a passkey created on your website signs the user in to the app, and the reverse.
 
 <Info>
-  Passkeys are an add-on built into your app. Turn on the **Passkeys** add-on for your app in Despia and list your passkey domains, host two files on each domain, allow the Android origin on your server, then ship a new build. Without the add-on, Android keeps passkeys off in the app's web view, and iOS allows them only for domains already in your app's `webcredentials` associated domains.
+  Passkeys are an add-on built into your app. Enable the **Passkeys** add-on for your app and list your passkey domains, host two files on each domain, allow the Android origin on your server, then ship a new build. Without the add-on, Android keeps passkeys off in the app's web view, and iOS allows them only for domains already in your app's `webcredentials` associated domains.
 </Info>
 
 ---
 
 ## Enabling passkeys
 
-1. Turn on the **Passkeys** add-on and list every domain your web app uses as its relying party ID: the `rp.id` you pass to `navigator.credentials.create()` and the `rpId` you pass to `navigator.credentials.get()`, usually your main domain such as `example.com`. List as many as you use. A leading `*.` matches every subdomain on iOS.
+1. Enable the **Passkeys** add-on and list every domain your web app uses as its relying party ID: the `rp.id` you pass to `navigator.credentials.create()` and the `rpId` you pass to `navigator.credentials.get()`, usually your main domain such as `example.com`. List as many as you use. A leading `*.` matches every subdomain on iOS.
 2. Host the two association files below on **each** listed domain.
 3. Allow the Android app origin on your WebAuthn server (see [Server setup](#server-setup)).
 4. Ship a new build of the app.

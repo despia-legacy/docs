@@ -1,0 +1,59 @@
+---
+title: "Plaid Link"
+description: "Connect bank accounts with Plaid Link in your Despia app: Link, update mode, Layer, Embedded Institution Search and, on iOS, FinanceKit. Installed per app."
+icon: "building-columns"
+---
+
+Plaid Link lets people connect a bank account to your product. Your app opens Plaid's own native screen on iOS (LinkKit) and Android (Plaid Android SDK), and hands the result back to your page.
+
+Plaid is a first-party feature: it is built into the app only when you install it for the app. An app without it contains no Plaid code, no Plaid SDK, no associated-domains entry for Plaid, no Plaid manifest entry and no FinanceKit entitlement. The `extension://plaid/...` calls then answer with an unknown-feature error.
+
+## Install
+
+Install **Plaid Link** for the app. Feature settings: `enabled` (boolean) and `redirect_domain` (required, the host of your Plaid OAuth redirect page, for example `app.example.com`). Despia adds `applinks:<redirect_domain>` to the iOS associated domains for you.
+
+## What you do in your own account
+
+1. Your server creates the Plaid `link_token` (and `layer_token` for Layer) with Plaid's API. The Plaid client id and secret stay on your server. Despia never stores a Plaid key.
+2. In the `link_token` request set `redirect_uri` to an https page on `redirect_domain`, and `android_package_name` to your Android application id.
+3. In the Plaid Dashboard add that redirect URI and your Android package name to the allowed lists.
+4. Serve an `apple-app-site-association` file on `redirect_domain` that lists your iOS app id for the redirect path.
+5. FinanceKit (iOS only): Apple has to assign the FinanceKit entitlement to your Apple Developer Program account before FinanceKit works. You request it with Apple's FinanceKit Entitlement Request Form (Account Holder); it is granted per bundle ID, needs the app in the Finance category on the App Store, and works on iPhone with iOS 17.4 or later in the US (iOS 18.4 or later in the UK) (Apple, developer.apple.com/financekit, read 25 Nov 2026). Until the entitlement is granted, the FinanceKit routes answer with the platform's own refusal.
+
+## JavaScript API
+
+The family is `extension://plaid/<route>?<params>`, as in the Plaid extension. Variables are `plaid<Route>`, callbacks `onPlaid<Route>`.
+
+| Route | Parameters | What it does |
+|---|---|---|
+| `open` | `link_token` (required); `mode` (`link` or `update`); `connection_id` (required for update, refused for link) | Opens Plaid Link with your token. |
+| `status` | `id` (session id, optional) | State of the current session. |
+| `close` | `id` (optional) | Closes the open Link, Layer, headless or Embedded session. |
+| `layer` | `layer_token` (required); `phone_number` (E.164), `date_of_birth` (YYYY-MM-DD) | Starts a Plaid Layer session. |
+| `layer_submit` | `phone_number` or `date_of_birth`, never both | Sends the data Layer asked for. |
+| `headless` | `link_token` (required) | Starts a headless Link session. |
+| `embedded_show` | `link_token` (required); `x`, `y`, `width`, `height` | Shows Embedded Institution Search over the page. |
+| `embedded_hide` | | Removes it again. |
+| `financekit_status` | | iOS: FinanceKit availability. Android: `platform_limit`. |
+| `financekit_sync` | `link_token` (required); `behavior` (`live` or `simulated`); `request_authorization` | iOS: FinanceKit sync through Link. Android: `platform_limit`. |
+
+States: `idle`, `waiting_activity`, `presenting`, `waiting_layer`, `running`, `embedded`, `linked`, `updated`, `failed`, `cancelled`, `closed`. A finished Link in update mode ends in `updated`, otherwise `linked`; an exit with a Plaid error ends in `failed` with `error_code`, an exit without one in `cancelled`.
+
+Answers carry `state`, `kind`, `mode`, `session_id`, `connection_id`, `error_code`, `events` (the last 64 Plaid events), and on success `link` (the `public_token`, the institution and the accounts) or on exit `exit` (the status, request id and Plaid error fields). Your server exchanges the `public_token` with Plaid.
+
+Events: `changed` (`onPlaidChanged`, state changes) and `event` (`onPlaidEvent`, each Plaid event name with its metadata).
+
+Error codes: `invalid_params`, `invalid_link_token`, `invalid_layer_token`, `busy` (a session is already open), `not_open` (nothing to close or submit to), `not_found`, `unavailable`, `platform_limit`, `plaid_error`, `timeout`.
+
+## Platform notes
+
+- iOS: LinkKit 7.4.0. `close` dismisses the Link screen and the session ends as `closed`.
+- Android: Plaid Android SDK (sdk-core) 6.4.0, which needs Android 7.1 (API 25). On older Android versions the build still works and the routes answer `unavailable`. `close` destroys the session.
+- OAuth banks return through your `redirect_domain` page (universal link on iOS, app link and Custom Tabs on Android).
+- FinanceKit reads Apple Wallet data (Apple Card, Apple Cash, Savings) and exists only on iOS. Plaid's own React Native SDK documents the same limit: FinanceKit is iOS only and the Android call rejects with an error (github.com/plaid/react-native-plaid-link-sdk README, read 25 Nov 2026). The Android build therefore answers `platform_limit` for `financekit_status` and `financekit_sync`. Plaid added FinanceKit to its iOS Link SDK in 6.0.0 (plaid.com/docs/changelog, via search result, read 25 Nov 2026).
+
+## Differences from the extension
+
+- The app receives the `link_token` on `open`; there is no separate backend call to get one from Despia.
+- The `public_token` comes back to your page, and no Despia backend state is kept.
+- The metadata returned is the metadata Plaid's SDK returns; do not log it, it can contain account details.

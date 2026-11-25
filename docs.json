@@ -345,13 +345,6 @@
         ]
       },
       {
-        "group": "Extensions",
-        "icon": "puzzle-piece",
-        "pages": [
-          "extensions/introduction"
-        ]
-      },
-      {
         "group": "Editor",
         "icon": "edit",
         "pages": [
@@ -566,12 +559,13 @@
     "indexing": "all"
   },
   "redirects": [
-    { "source": "/custom-code/extensions", "destination": "/extensions/introduction" },
-    { "source": "/experiments/v3-extensions", "destination": "/extensions/introduction" },
-    { "source": "/experiments/extension-troubleshooting", "destination": "/extensions/introduction" },
-    { "source": "/experiments/samples/recorder", "destination": "/extensions/introduction" },
-    { "source": "/experiments/samples/live-activities", "destination": "/extensions/introduction" },
-    { "source": "/experiments/samples/home-widgets", "destination": "/extensions/introduction" },
+    { "source": "/custom-code/extensions", "destination": "/introduction" },
+    { "source": "/experiments/v3-extensions", "destination": "/introduction" },
+    { "source": "/experiments/extension-troubleshooting", "destination": "/introduction" },
+    { "source": "/experiments/samples/recorder", "destination": "/introduction" },
+    { "source": "/experiments/samples/live-activities", "destination": "/introduction" },
+    { "source": "/experiments/samples/home-widgets", "destination": "/native-features/home-widgets" },
+    { "source": "/extensions/introduction", "destination": "/introduction" },
     { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
     { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]

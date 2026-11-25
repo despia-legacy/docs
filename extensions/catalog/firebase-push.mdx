@@ -55,26 +55,97 @@ if (tokenReply?.ok) {
 
 | Route | Answer variable | Does |
 | --- | --- | --- |
-| `configure` | `firebasePushConfigure` | Starts Firebase without the permission prompt. It can contact Firebase. |
-| `request_permission` | `firebasePushPermission` | Shows the system prompt. The answer only acknowledges the request; read `status` after. |
-| `status` | `firebasePushStatus` | iOS: `authorization`, `permission_request_pending`, `apns_registered`, `token_available`. Android: `permission`, `notifications_enabled`, `permission_request_pending`. |
-| `token` | `firebasePushToken` | The FCM token, once registration is ready |
+| `configure` | `firebasePushConfigure` | Starts Firebase without the permission prompt. The choice is remembered across launches. It can contact Firebase. |
+| `request_permission` | `firebasePushPermission` | Shows the system prompt. `data.accepted` and `data.requested` (`false` when permission is already granted or a request is open); read `status` after. |
+| `status` | `firebasePushStatus` | `configured`, `permission`, `notifications_enabled`, `permission_request_pending`, `token_available`, `pending_opened`; `apns_registered` on iOS; `error_code` after a failed restore or conflict. |
+| `token` | `firebasePushToken` | The FCM token in `data.token`, once registration is ready |
+| `delete_token` | `firebasePushDeleteToken` | Deletes the device's FCM token (`data.deleted`). Call it on logout. |
+| `subscribe`, `unsubscribe` | `firebasePushSubscribe`, `firebasePushUnsubscribe` | `topic` (1 to 900 characters of `a-z A-Z 0-9 - _ . ~ %`). Answers `topic` and `subscribed`. |
+| `events` | `firebasePushEvents` | Received messages and notification taps kept on the device. Optional `after` (a sequence number). |
+| `take_opened` | `firebasePushTakeOpened` | Notification taps the page has not taken yet, then marks them taken |
 
-Treat the token as a private delivery address: keep it out of logs, URLs and analytics. Unlink it from the account on logout.
+`permission` is `not_determined`, `denied` or `authorized` on both platforms, and also `provisional` or `ephemeral` on iOS. On iOS, `token`, `subscribe` and `unsubscribe` answer `not_ready` until APNs registration completes (`apns_registered` in `status`).
+
+A failed request has `ok: false` and a `code`:
+
+| Code | Meaning |
+| --- | --- |
+| `not_configured` | The configuration file is missing or still the placeholder, or `configure` was not called |
+| `configuration_invalid` | The file is malformed: on iOS a `GOOGLE_APP_ID` that is not an iOS app ID; on Android a `mobilesdk_app_id` that is not an Android app ID, or an API key Firebase would refuse. The app keeps running. |
+| `configuration_mismatch` | iOS: the file is for another bundle ID |
+| `sdk_conflict` | Another integration owns the default Firebase app |
+| `not_ready` | iOS: APNs registration is not complete |
+| `token_unavailable`, `sdk_error` | Firebase could not give a token or finish the call |
+| `bad_request` | A bad topic name or parameter |
+| `activity_unavailable` | Android: the prompt needs a visible screen |
+
+Treat the token as a private delivery address: keep it out of logs, URLs and analytics. Call `delete_token` and unlink it from the account on logout.
+
+## Messages, taps and token changes
+
+The page receives three events while it is loaded:
+
+```js
+window.onFirebasePushMessage = (m) => { /* m.data, m.title, m.body, m.message_id, m.seq */ };
+window.onFirebasePushOpened = (tap) => { /* tap.data, tap.action, tap.seq */ };
+window.onFirebasePushTokenChanged = () => { /* read the new token with the token route */ };
+```
+
+The extension also keeps the last 128 received messages and notification taps on the device, so nothing is lost while the page is not loaded, for example when a tap opens a closed app. A tap that starts the app stays readable until the page takes it. On start, read what the page missed:
+
+```js
+const opened = (await despia(
+  'extension://firebasepush/take_opened', ['firebasePushTakeOpened']
+)).firebasePushTakeOpened;
+for (const tap of opened?.data?.opened ?? []) {
+  // Route the user, for example with tap.data.orderId.
+}
+
+const since = Number(localStorage.getItem('fcmSeq') || 0);
+const log = (await despia(
+  `extension://firebasepush/events?after=${since}`, ['firebasePushEvents']
+)).firebasePushEvents;
+if (log?.ok) localStorage.setItem('fcmSeq', String(log.data.last_sequence));
+```
+
+`events` answers `events`, `last_sequence` and `oldest_sequence`. Each entry has `type` (`message` or `opened`), `seq`, `time` (milliseconds), `data` (your custom data, as strings) and, where the platform provides them, `title`, `body`, `message_id` and `from`. A tap entry adds `action` (`default`, or the iOS action identifier) and, for typed iOS replies, `text`.
 
 ## Send messages
 
-Send from your own server with the Firebase Admin SDK or the FCM HTTP v1 API. On iOS, put `"nativeext": "firebasepush"` in the message `data` so the app routes it to this extension.
+Send from your own server with the Firebase Admin SDK or the FCM HTTP v1 API. Put your own values (for example `orderId`) in `data`; they reach the page as strings.
 
-## Platform limits and what was tested
+```json
+{
+  "message": {
+    "token": "FCM_TOKEN_FROM_YOUR_APP",
+    "notification": { "title": "Your update is ready", "body": "Open the app to view it." },
+    "data": { "nativeext": "firebasepush", "orderId": "1234" }
+  }
+}
+```
 
-- Android shows a notification for visible messages that arrive in the foreground; tapping it opens the app's launcher screen. Custom deep links from a tap, silent background JavaScript and one cross-platform delivery callback are not part of this extension.
-- iOS: Firebase Messaging pod 10.29.0. Android: `firebase-messaging` 25.0.1.
-- Tested on the Android API 37 emulator: registration and two live notifications (foreground and background), tap reopened the app. Tested on the iOS 26.5 simulator: foreground and background simulated alerts. Not tested: APNs registration and live iOS delivery, iOS notification taps, hosted builds.
+- **iOS** routes a message to this extension only when its `data` includes `"nativeext": "firebasepush"`. A data-only (silent) message also needs `apns.payload.aps.content-available: 1`; iOS may delay or throttle it.
+- **Android** delivers data-only messages to the extension in the foreground and in the background. A notification message received in the foreground is shown by the extension on its own channel (or `default_notification_channel_id`); in the background FCM shows it itself. Both tap paths are recorded.
+- Android notification icon and colour: set FCM's standard `com.google.firebase.messaging.default_notification_icon` and `default_notification_color` meta-data. Without them the extension uses the app's status-bar icon, else the launcher icon.
+
+| Feature | iOS | Android |
+| --- | --- | --- |
+| Token, token refresh | yes | yes |
+| Foreground message | event and log, shown as a banner | event and log, shown by the extension |
+| Background or data-only message | with `content-available`: event and log | event and log |
+| Tap, including from a closed app | `opened` event and `take_opened` | `opened` event and `take_opened` |
+| Topics | yes | yes |
+
+## SDK versions and what was tested
+
+- Android: `firebase-messaging` 26.0.2, the latest release on Google's Maven repository (published 11 Nov 2026, checked 24 Nov 2026).
+- iOS: Firebase iOS SDK 13.2.0 as a Swift package (product `FirebaseMessaging`), the latest release (published 13 Nov 2026, checked 24 Nov 2026). Firebase 13 is published only as a Swift package and needs Xcode 26.2 or later. The build uses one copy of Firebase: the app's own Firebase push is left out while this extension replaces it.
+- Tested: Android emulator (API 37), debug and release builds: a bad client file answers `configuration_invalid` without a crash, and a tap that cold-starts the app is recorded once and handed out once by `take_opened`. iOS simulator and Android builds with a malformed client file answer `configuration_invalid`.
+- Not tested yet: a live FCM send to a real device (foreground, background and closed), a real token refresh, topics against a real Firebase project, and a tap on a real notification.
 
 ## Reference
 
-Version 1.0.0. Call a route as `extension://firebasepush/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
+Version 1.1.0. Call a route as `extension://firebasepush/<route>`. The answer is written to the route's variable on `window`, then its callback is called with it.
 
 ### Settings
 
@@ -95,14 +166,27 @@ Server secrets (never set in your web project; keep them on your server):
 | `configure` | none | `firebasePushConfigure` | `onFirebasePushConfigure` |
 | `request_permission` | none | `firebasePushPermission` | `onFirebasePushPermission` |
 | `token` | none | `firebasePushToken` | `onFirebasePushToken` |
+| `delete_token` | none | `firebasePushDeleteToken` | `onFirebasePushDeleteToken` |
+| `subscribe` | `topic` (string, max 900, required) | `firebasePushSubscribe` | `onFirebasePushSubscribe` |
+| `unsubscribe` | `topic` (string, max 900, required) | `firebasePushUnsubscribe` | `onFirebasePushUnsubscribe` |
+| `events` | `after` (int, 0 to 2147483647, optional) | `firebasePushEvents` | `onFirebasePushEvents` |
+| `take_opened` | none | `firebasePushTakeOpened` | `onFirebasePushTakeOpened` |
+
+### Events
+
+| Event | Callback | Scope |
+| --- | --- | --- |
+| `message` | `onFirebasePushMessage` | app |
+| `opened` | `onFirebasePushOpened` | app |
+| `token` | `onFirebasePushTokenChanged` | app |
 
 ### Native requirements
 
 | Platform | What the build adds |
 | --- | --- |
-| iOS | CocoaPod `Firebase/Messaging` 10.29.0 |
+| iOS | Swift package `firebase-ios-sdk` 13.2.0, product `FirebaseMessaging` |
 | iOS | Frameworks: `UserNotifications` |
-| Android | Module `firebasepush` dependencies: `com.google.firebase:firebase-messaging:25.0.1`, `androidx.activity:activity:1.13.0`, `androidx.core:core:1.18.0` |
+| Android | Module `firebasepush` dependencies: `com.google.firebase:firebase-messaging:26.0.2`, `androidx.activity:activity:1.13.0`, `androidx.core:core:1.18.0` |
 
 ## License
 

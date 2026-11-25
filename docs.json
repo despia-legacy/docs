@@ -340,6 +340,7 @@
           "native-features/screenshot",
           "native-features/notification-sounds",
           "native-features/audio-player",
+          "native-features/background-recorder",
           "native-features/age-assurance",
           "native-features/sandbox"
         ]
@@ -354,7 +355,6 @@
             "group": "Despia V3 Extensions",
             "icon": "vial",
             "pages": [
-              "experiments/samples/recorder",
               "experiments/samples/live-activities",
               "experiments/samples/home-widgets"
             ]
@@ -577,6 +577,7 @@
   },
   "redirects": [
     { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
+    { "source": "/experiments/samples/recorder", "destination": "/native-features/background-recorder" },
     { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
     { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]

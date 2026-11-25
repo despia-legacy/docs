@@ -1,0 +1,127 @@
+---
+title: "Background Recorder"
+description: "Record audio in the background and upload the file to your server when recording stops, with a Lock Screen widget on iOS and a notification and home screen widget on Android."
+icon: "microphone"
+---
+
+Background Recorder records audio from the microphone, keeps recording when the app goes to the background, and uploads the file to your server when recording stops. It shows its state in a Lock Screen widget on iOS, and in a foreground service notification and a home screen widget on Android.
+
+Your page only ever sees a recording id and its state. The audio never crosses the bridge.
+
+---
+
+## Turn it on
+
+Background Recorder is a native feature of your Despia app. It is part of the app only while it is turned on, and a rebuild is needed after changing it.
+
+1. Turn on **Background Recorder** for your project.
+2. Add the host names that may receive uploads, for example `upload.example.com`. The recorder only sends a recording to a URL whose host is in this list (HTTPS, no port, no credentials in the URL).
+3. On iOS, set the microphone purpose text (shown in the permission prompt). If you leave it empty, the text from your app's microphone permission is used. If neither is set, the build stops and says so.
+4. Rebuild the app.
+
+When it is off, none of the following is in your app: the iOS background audio and processing modes the recorder adds, the microphone purpose text, the recorder's App Group, its Lock Screen widget, or on Android the microphone foreground service, its permission and the widget receiver.
+
+---
+
+## Permissions and capabilities
+
+<Tabs>
+  <Tab title="iOS">
+    - **Microphone.** The purpose text from step 3. iOS shows the microphone prompt itself on the first `start`.
+    - **Background modes.** `audio` (keep recording in the background) and `processing` (finish uploads in a background processing task).
+    - **App Group.** `group.<your bundle id>.recorder`, shared by the app and the Lock Screen widget. Register it in the Apple Developer portal and add it to the app's and the widget's bundle IDs, as for [Home Widgets](/native-features/home-widgets).
+    - **Widget.** `RecorderStatusWidget`, a WidgetKit extension for iOS 16.6 and later.
+  </Tab>
+  <Tab title="Android">
+    - **Microphone.** `android.permission.RECORD_AUDIO` must be granted before `start`; otherwise `start` answers `permission_denied`. See [Asking for the microphone on Android](#asking-for-the-microphone-on-android).
+    - **Foreground service.** `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MICROPHONE` with the service type `microphone`. Google Play asks you to declare this use in the Play Console.
+    - **Notifications.** `POST_NOTIFICATIONS`, for the recording notification and its stop action.
+    - **Widget.** A home screen widget showing the recording state.
+  </Tab>
+</Tabs>
+
+---
+
+## Using it from your web app
+
+The upload URL receives an HTTP `PUT` with `Content-Type: audio/mp4` and an `X-Recording-Id` header (raw body, not multipart). Your endpoint must implement that. An `uploading` state is not server-confirmed completion.
+
+```javascript
+import despia from 'despia-native';
+
+async function startRecording(uploadUrl) {
+  const reply = await despia('extension://recorder/start?upload=' + encodeURIComponent(uploadUrl), ['recorderStart']);
+  const answer = reply.recorderStart;
+  if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
+  if (!answer.ok) { console.error(answer.code, answer.error); return; }
+  return answer.data.recordingId;
+}
+
+async function stopRecording(id) {
+  const reply = await despia('extension://recorder/stop?id=' + encodeURIComponent(id), ['recorderStop']);
+  const stopped = reply.recorderStop;
+  if (stopped === undefined || !stopped.ok) { console.error(stopped && stopped.code); return; }
+  return stopped.data.state;
+}
+```
+
+Define `onRecorderState(data)` on `window` before starting if you need live changes. Read `status` after a page reload; event delivery is not durable.
+
+### Asking for the microphone on Android
+
+On iOS, `start` shows the microphone prompt itself. On Android it does not. Ask from the page first with the standard web API. Despia's Android app turns a web microphone request into the system prompt:
+
+```javascript
+const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+stream.getTracks().forEach(track => track.stop());
+```
+
+If the user denies it, `getUserMedia` throws and `start` answers `permission_denied`.
+
+### Routes
+
+| Route     | Parameters                 | Answer variable and callback           | What it does                                                                           |
+| --------- | -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
+| `start`   | `upload` (required)        | `recorderStart`, `onRecorderStart`     | Starts a recording and answers with its `recordingId`                                   |
+| `stop`    | `id` (required)            | `recorderStop`, `onRecorderStop`       | Stops the recording and starts the upload                                               |
+| `status`  | `id` (optional)            | `recorderStatus`, `onRecorderStatus`   | The state of a recording, or of the latest one without `id`; `idle` when there is none  |
+| `discard` | `id` (required)            | `recorderDiscard`, `onRecorderDiscard` | Deletes a stopped recording and its file                                                |
+| `upload`  | `id`, `upload` (required)  | `recorderUpload`, `onRecorderUpload`   | Sends a saved recording again to a fresh URL, for example after a presigned URL expired |
+
+The `state` event calls the declared `onRecorderState(data)` handler on changes.
+
+### States
+
+| State         | Meaning                                                                               |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `starting`    | The recording is being set up                                                         |
+| `recording`   | Recording                                                                             |
+| `interrupted` | Paused by the system (a call, an alarm); it resumes when the system hands audio back  |
+| `uploading`   | Stopped, and the file is being uploaded                                               |
+| `uploaded`    | The upload finished                                                                   |
+| `failed`      | The upload failed. `reason` says why. Call `upload` with a fresh URL to try again      |
+| `terminated`  | The app was closed while recording. The file was never finished and is never uploaded |
+| `discarding`  | The file is being deleted                                                             |
+| `discarded`   | The recording is gone                                                                 |
+
+Answers and events carry `recordingId`, `state`, `durationMs` and `bytes`, plus `httpStatus` after an upload attempt and `reason` when the state is `failed`.
+
+### Error codes
+
+| Code                  | When                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `busy`                | A recording is already running, or the recording is not in a state that allows this route |
+| `permission_denied`   | Microphone access is not granted                                                         |
+| `not_found`           | No recording has this id                                                                 |
+| `record_failed`       | The recorder could not start, or the recording was never finished                         |
+| `storage_unavailable` | The recorder's index cannot be read yet. Try again later                                 |
+| `storage_failed`      | The index could not be saved, or the upload could not be scheduled. Nothing changed      |
+| `index_recovered`     | The index was unreadable and was replaced, so an older recording may be missing          |
+| `discard_failed`      | The file could not be deleted yet. It stays `discarding` and is deleted on the next `discard` or launch |
+
+---
+
+## Platform limits
+
+- **iOS.** Recording must start while the app is in the foreground. It continues in the background while the audio session stays active. A force-quit ends it. Uploads run while the app runs, in the limited background time iOS may give, and in a background processing task if iOS grants one. iOS guarantees neither, and an upload that is cut off starts again from the beginning the next time the app runs.
+- **Android.** Android 14 and later only start a microphone foreground service while the app is visible, so call `start` from a page the user is looking at. Uploads run through WorkManager and can also restart from the beginning.

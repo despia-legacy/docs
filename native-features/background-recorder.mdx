@@ -1,10 +1,10 @@
 ---
 title: "Background Recorder"
-description: "Record audio in the background and upload the file to your server when recording stops, with a Lock Screen widget on iOS and a notification and home screen widget on Android."
+description: "Record audio in the background, pause and resume it, and upload the file to your server when recording stops, with a Lock Screen widget on iOS and a notification and home screen widget on Android."
 icon: "microphone"
 ---
 
-Background Recorder records audio from the microphone, keeps recording when the app goes to the background, and uploads the file to your server when recording stops. It shows its state in a Lock Screen widget on iOS, and in a foreground service notification and a home screen widget on Android.
+Background Recorder records audio from the microphone, keeps recording when the app goes to the background, lets your page pause and resume it, and uploads the file to your server when recording stops. It shows its state in a Lock Screen widget on iOS, and in a foreground service notification and a home screen widget on Android.
 
 Your page only ever sees a recording id and its state. The audio never crosses the bridge.
 
@@ -16,7 +16,7 @@ Background Recorder is a native feature of your Despia app. It is part of the ap
 
 1. Turn on **Background Recorder** for your project.
 2. Add the host names that may receive uploads, for example `upload.example.com`. The recorder only sends a recording to a URL whose host is in this list (HTTPS, no port, no credentials in the URL).
-3. On iOS, set the microphone purpose text (shown in the permission prompt). If you leave it empty, the text from your app's microphone permission is used. If neither is set, the build stops and says so.
+3. On iOS, set the microphone purpose text (shown in the permission prompt). If you leave it empty, the text from your app's microphone permission is used. If neither is set, the build stops and says so. Android has no such text: the system shows its own microphone prompt.
 4. Rebuild the app.
 
 When it is off, none of the following is in your app: the iOS background audio and processing modes the recorder adds, the microphone purpose text, the recorder's App Group, its Lock Screen widget, or on Android the microphone foreground service, its permission and the widget receiver.
@@ -83,7 +83,9 @@ If the user denies it, `getUserMedia` throws and `start` answers `permission_den
 | Route     | Parameters                 | Answer variable and callback           | What it does                                                                           |
 | --------- | -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
 | `start`   | `upload` (required)        | `recorderStart`, `onRecorderStart`     | Starts a recording and answers with its `recordingId`                                   |
-| `stop`    | `id` (required)            | `recorderStop`, `onRecorderStop`       | Stops the recording and starts the upload                                               |
+| `pause`   | `id` (required)            | `recorderPause`, `onRecorderPause`     | Pauses a running recording. The file keeps what was recorded; paused time is not recorded |
+| `resume`  | `id` (required)            | `recorderResume`, `onRecorderResume`   | Continues a paused recording, or one the system interrupted, in the same file            |
+| `stop`    | `id` (required)            | `recorderStop`, `onRecorderStop`       | Stops the recording (also while paused or interrupted) and starts the upload             |
 | `status`  | `id` (optional)            | `recorderStatus`, `onRecorderStatus`   | The state of a recording, or of the latest one without `id`; `idle` when there is none  |
 | `discard` | `id` (required)            | `recorderDiscard`, `onRecorderDiscard` | Deletes a stopped recording and its file                                                |
 | `upload`  | `id`, `upload` (required)  | `recorderUpload`, `onRecorderUpload`   | Sends a saved recording again to a fresh URL, for example after a presigned URL expired |
@@ -96,7 +98,8 @@ The `state` event calls the declared `onRecorderState(data)` handler on changes.
 | ------------- | ------------------------------------------------------------------------------------- |
 | `starting`    | The recording is being set up                                                         |
 | `recording`   | Recording                                                                             |
-| `interrupted` | Paused by the system (a call, an alarm); it resumes when the system hands audio back  |
+| `paused`      | Paused by your page with `pause`. Only `resume` or `stop` moves it on                  |
+| `interrupted` | Paused by the system because another app took the microphone (a call, an alarm). It continues by itself when the system hands audio back after a short interruption; after a lasting one it waits for `resume` or `stop` |
 | `uploading`   | Stopped, and the file is being uploaded                                               |
 | `uploaded`    | The upload finished                                                                   |
 | `failed`      | The upload failed. `reason` says why. Call `upload` with a fresh URL to try again      |
@@ -104,13 +107,16 @@ The `state` event calls the declared `onRecorderState(data)` handler on changes.
 | `discarding`  | The file is being deleted                                                             |
 | `discarded`   | The recording is gone                                                                 |
 
+Both platforms report the same states in the same order. `status` and the answers of `pause` and `resume` carry `durationMs`, the time actually recorded so far (paused and interrupted time is not counted).
+
 Answers and events carry `recordingId`, `state`, `durationMs` and `bytes`, plus `httpStatus` after an upload attempt and `reason` when the state is `failed`.
 
 ### Error codes
 
 | Code                  | When                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------- |
-| `busy`                | A recording is already running, or the recording is not in a state that allows this route |
+| `busy`                | A recording is already running, or the recording is not in a state that allows `discard` or `upload` |
+| `invalid_state`       | `pause` was sent to a recording that is not running, or `resume` to one that is not paused or interrupted |
 | `permission_denied`   | Microphone access is not granted                                                         |
 | `not_found`           | No recording has this id                                                                 |
 | `record_failed`       | The recorder could not start, or the recording was never finished                         |
@@ -124,4 +130,4 @@ Answers and events carry `recordingId`, `state`, `durationMs` and `bytes`, plus 
 ## Platform limits
 
 - **iOS.** Recording must start while the app is in the foreground. It continues in the background while the audio session stays active. A force-quit ends it. Uploads run while the app runs, in the limited background time iOS may give, and in a background processing task if iOS grants one. iOS guarantees neither, and an upload that is cut off starts again from the beginning the next time the app runs.
-- **Android.** Android 14 and later only start a microphone foreground service while the app is visible, so call `start` from a page the user is looking at. Uploads run through WorkManager and can also restart from the beginning.
+- **Android.** Android 14 and later only start a microphone foreground service while the app is visible, so call `start` from a page the user is looking at (Android Developers, "Restrictions on starting a foreground service from the background", read 25 Nov 2026: while-in-use permissions such as the microphone mean the service cannot be created while the app is in the background). Uploads run through WorkManager and can also restart from the beginning.

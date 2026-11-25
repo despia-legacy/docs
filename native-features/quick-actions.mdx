@@ -4,13 +4,7 @@ description: "Add native long-press shortcuts to your app icon that invoke a glo
 icon: "align-left"
 ---
 
-<iframe src="https://www.youtube.com/embed/UDbmAj5yWso" title="YouTube video player" frameborder="0" className="w-full aspect-video rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
-
-<Note>
-  The video uses a specific AI coding tool to demonstrate the setup, but the configuration works 1:1 with Cursor, Claude Code, or any other tool. Despia is web framework and tooling agnostic, so the only things that matter are the global JavaScript function you define and the shortcut configuration in the Despia Editor that calls it.
-</Note>
-
-When the user long-presses your app icon, the OS shows a list of shortcuts you configured in the Despia Editor. Tapping one launches your app and the Despia runtime calls the global JavaScript function you bound to that shortcut. There is no SDK call from your code, the runtime invokes the function directly by name.
+When the user long-presses your app icon, the OS shows a list of shortcuts you configured for your app: Home Screen quick actions on iOS, app shortcuts in the launcher on Android. Tapping one launches your app, opens the shortcut's Quick Link, and runs the JavaScript you set on it, which can call a global function of yours. There is no SDK call from your code, the runtime runs the snippet directly.
 
 ---
 
@@ -61,7 +55,7 @@ Quick Actions does not require installing the `despia-native` package. The runti
 
 ## How it works
 
-Two pieces have to line up. First, attach the function you want the shortcut to trigger as a global on `window`. Second, configure a Quick Action in the Despia Editor that calls that function. The runtime picks up the configuration during the build and wires the shortcut to invoke your function on tap.
+Two pieces have to line up. First, attach the function you want the shortcut to trigger as a global on `window`. Second, configure a Quick Action that calls that function. The runtime picks up the configuration during the build and wires the shortcut to invoke your function on tap.
 
 ```javascript
 window.dontLeave = function () {
@@ -73,42 +67,36 @@ The function must be globally accessible because the native runtime invokes it b
 
 ---
 
-## Despia Editor setup
+## Configuring a shortcut
 
-Configure the shortcut in the Despia Editor under **Add-ons \> Hard Coded \> Quick Actions**. Each shortcut has a label, an icon, an optional Quick Link, and a JavaScript snippet that the runtime executes on tap.
+Each shortcut has four settings: a label, an icon, a Quick Link, and a JavaScript snippet that the runtime executes once the Quick Link has loaded. The shortcuts are compiled into the app, so a change needs a new build and cannot be applied over-the-air.
 
-<Steps>
-  <Step title="Open Quick Actions">
-    In the Despia Editor, navigate to **Add-ons \> Hard Coded \> Quick Actions** and click **Add New**.
-  </Step>
-  <Step title="Name the shortcut">
-    Give it a short, action-oriented label like `Don't Leave`, `Track Macros`, or `Scan Invoice`. This is the text the user sees in the long-press menu.
-  </Step>
-  <Step title="Select an icon">
-    Choose an icon from the picker that visually matches the action. The icon shows next to the label in the long-press menu.
-  </Step>
-  <Step title="Leave Quick Link empty">
-    Skip the Quick Link field. It is only for shortcuts that should navigate to a specific URL on tap, which is not what you are doing here. Your function call will handle the action.
-  </Step>
-  <Step title="Add the JavaScript">
-    In the JavaScript editor, call your global function inside the commented section:
+| Setting | What to set |
+| --- | --- |
+| Label | A short, action-oriented text like `Don't Leave`, `Track Macros` or `Scan Invoice`. It is the text the user sees in the long-press menu. |
+| Icon | The icon shown next to the label in the long-press menu. |
+| Quick Link | The page of your app that defines the function, for example your app's home address. The runtime opens it when the shortcut is tapped, and runs your JavaScript once that page has loaded. On Android a shortcut without a label or without a Quick Link is not published. |
+| JavaScript | The snippet that calls your global function, for example `window.dontLeave()`. Replace `dontLeave` with the name you used for your global function in the web app. The name has to match exactly. |
 
-    ```javascript
-    window.dontLeave()
-    ```
-
-    Replace `dontLeave` with whatever name you used for your global function in the web app. The function name has to match exactly.
-  </Step>
-  <Step title="Save and rebuild">
-    Save the shortcut, then trigger a fresh build from the Despia Editor. Quick Actions are native components compiled into the binary, so this cannot be applied over-the-air. After the rebuild, the shortcut appears in the long-press menu on the user's home screen.
-  </Step>
-</Steps>
-
-To add more shortcuts, repeat the flow with a different label, icon, and function call. Each shortcut is independent.
+Add one shortcut per action, each with its own label, icon, and function call. Each shortcut is independent.
 
 <Warning>
-  The function name in the Despia Editor JavaScript field must match the global function name in your web app exactly. A typo on either side means the shortcut taps into a `function is not defined` error and nothing happens. Copy the name, do not retype.
+  The function name in the shortcut's JavaScript must match the global function name in your web app exactly. A typo on either side means the shortcut taps into a `function is not defined` error and nothing happens. Copy the name, do not retype.
 </Warning>
+
+---
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Where it shows | Long-press menu of the Home Screen icon | App shortcuts of the launcher, on the app icon |
+| How many | The first four, in the configured order | The first four, in the configured order, and never more than the launcher's own limit (`getMaxShortcutCountPerActivity`; most launchers show four) |
+| Icon | The shortcut's symbol, as a system symbol | The same symbol drawn from its vector path as the shortcut icon; the app icon when it cannot be drawn |
+| Published | When the app starts | On every launch, replacing the app's earlier shortcuts; an empty list clears them |
+| On tap | Opens the Quick Link, then runs the JavaScript | Opens the Quick Link through the web view's normal link checks, then runs the JavaScript. On a cold start this happens once the first page has loaded |
+
+On Android the shortcut carries only its position, never the link or the script. The app looks the shortcut up in its own list when it is tapped, so another app cannot send your web view a link or a script. A shortcut that is not in the list does nothing, and neither does a Quick Link that starts with `javascript:`, `file:`, `data:`, `content:`, `blob:` or `vbscript:`. A tap runs once: recreating the app or reopening it from Recents does not replay it. Source for the launcher limit: Android Developers, "App shortcuts" (shortcut limitations), read 25 Nov 2026.
 
 ---
 
@@ -144,7 +132,7 @@ Re-bind on every mount of your top-level component so the function survives navi
 
 ## Pass arguments via the function body
 
-The Despia Editor JavaScript field executes the snippet you put there as a literal expression, so you can pass hardcoded arguments to your function if one shortcut should always do one specific thing. This unlocks "one function, many shortcut variations" without defining a new global per shortcut.
+The shortcut's JavaScript setting executes the snippet you put there as a literal expression, so you can pass hardcoded arguments to your function if one shortcut should always do one specific thing. This unlocks "one function, many shortcut variations" without defining a new global per shortcut.
 
 ```javascript
 window.openCategory = function (category) {
@@ -152,7 +140,7 @@ window.openCategory = function (category) {
 }
 ```
 
-In the Despia Editor JavaScript field for each shortcut:
+In the JavaScript setting of each shortcut:
 
 ```javascript
 window.openCategory('food')      // Shortcut 1: "Browse Food"

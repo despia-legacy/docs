@@ -57,7 +57,7 @@ Access Apple HealthKit from your web app through the Despia native bridge. Despi
 
 ## Apple Developer and Despia setup
 
-HealthKit requires the HealthKit capability on your core app bundle ID before any read or write call works. Configure Apple Developer first, then enable Health Data in the Despia Editor and rebuild.
+HealthKit requires the HealthKit capability on your core app bundle ID before any read or write call works. Configure Apple Developer first, then enable the Health Data addon for your app and rebuild.
 
 <Steps>
   <Step title="Sign in to Apple Developer">
@@ -66,16 +66,16 @@ HealthKit requires the HealthKit capability on your core app bundle ID before an
   <Step title="Add HealthKit to your core app bundle ID">
     Find your core app (e.g. `com.despia.myapp`), click into it, and check **HealthKit** under Capabilities. Click **Save**. Without this, HealthKit reads will return empty arrays and writes will fail silently, since iOS rejects HealthKit access for any app whose bundle ID does not declare the capability.
   </Step>
-  <Step title="Enable Health Data in the Despia Editor">
-    Open the Despia Editor and go to **App \> Addons \> Health Data**. Toggle the addon on. This signals Despia to compile the HealthKit framework and the matching usage descriptions into your next build.
+  <Step title="Enable the Health Data addon">
+    Enable the **Health Data** addon for your app. It makes the build compile the HealthKit framework and the matching usage descriptions into your next build.
   </Step>
   <Step title="Rebuild your app">
-    Trigger a fresh build from the Despia Editor. HealthKit linking happens at the binary level, so this cannot be applied over-the-air. After the rebuild, calls to `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, and `healthkit://observe` will function in production.
+    Build the app again. HealthKit linking happens at the binary level, so this cannot be applied over-the-air. After the rebuild, calls to `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, and `healthkit://observe` will function in production.
   </Step>
 </Steps>
 
 <Warning>
-  Skipping the HealthKit capability on the core bundle ID, or skipping the rebuild after enabling the Despia addon, leaves the integration inactive even when both toggles read enabled. `readhealthkit://` returns empty arrays, `healthkit://workouts` resolves to `[]`, `writehealthkit://` resolves silently without saving, and `healthkit://observe` never fires a webhook. If health data stops working after editing settings, verify the capability is on in Apple Developer and rebuild before opening a support ticket.
+  Skipping the HealthKit capability on the core bundle ID, or skipping the rebuild after enabling the Health Data addon, leaves the integration inactive. Without the capability, `readhealthkit://` returns empty arrays, `healthkit://workouts` resolves to `[]`, `writehealthkit://` resolves silently without saving, and `healthkit://observe` never fires a webhook. A build made without the addon answers every read with `{ "error": "healthkit_read_not_available" }`. If health data stops working after you change the configuration, verify the capability is on in Apple Developer and rebuild before opening a support ticket.
 </Warning>
 
 ---
@@ -118,6 +118,36 @@ if (isDespiaIOS) {
 ```
 
 Despia requests HealthKit permission on the first call for each identifier, then fetches and returns the data. A single multi-identifier call prompts the user once for the whole set rather than once per type.
+
+### Answers and errors
+
+Every read and every workouts call answers once, on both iOS and [Android](/health-data/google-health#answers-and-errors), in the same shape:
+
+- Every identifier you asked for is a key whose value is an array: the samples read, or `[]` when there is nothing to show (no data, or a read the user declined; HealthKit does not tell an app which).
+- A call that failed adds `error` (a code) and `message` (a sentence), always together. An answer that did not fail has neither, so `if (response.error)` is the whole check.
+- If the page defines `window.onHealthkitResponse(response)`, it is called once per answer with the same object, so you can wait for the result instead of polling `window.healthkitResponse`.
+
+```javascript
+window.onHealthkitResponse = (response) => {
+    if (response.error) {
+        console.warn(response.error, response.message)
+        return
+    }
+    const steps = response.HKQuantityTypeIdentifierStepCount // always an array
+}
+despia('readhealthkit://HKQuantityTypeIdentifierStepCount?days=7')
+```
+
+| `error` | When |
+| --- | --- |
+| `healthkit_unavailable` | Health data is not available on this device |
+| `healthkit_authorization_failed` | The permission request itself failed (not a decline) |
+| `healthkit_timeout` | The reads did not finish in time; the answer keeps what was read so far and `[]` for the rest |
+| `healthkit_read_failed` | A query failed, or the view went away before the answer |
+
+Every call answers within 15 seconds of starting. While HealthKit's permission sheet is on screen, that clock waits for the sheet (your call's own sheet, or another call's sheet ahead of it in line) and a 300 second safety limit applies instead; when the call goes on it gets a fresh 15 seconds. A call that is stuck therefore always ends with `healthkit_timeout`.
+
+A `healthkit://workouts` call also merges its list into `window.healthkitResponse.HKWorkoutTypeIdentifier` and calls `onHealthkitResponse`. It clears any `error` and `message` left by an earlier read, and sets its own pair only when the workouts call itself failed.
 
 ---
 

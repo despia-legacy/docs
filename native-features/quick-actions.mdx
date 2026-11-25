@@ -10,7 +10,7 @@ icon: "align-left"
   The video uses a specific AI coding tool to demonstrate the setup, but the configuration works 1:1 with Cursor, Claude Code, or any other tool. Despia is web framework and tooling agnostic, so the only things that matter are the global JavaScript function you define and the shortcut configuration in the Despia Editor that calls it.
 </Note>
 
-When the user long-presses your app icon, the OS shows a list of shortcuts you configured in the Despia Editor. Tapping one launches your app and the Despia runtime calls the global JavaScript function you bound to that shortcut. There is no SDK call from your code, the runtime invokes the function directly by name.
+When the user long-presses your app icon, the OS shows a list of shortcuts you configured in the Despia Editor: Home Screen quick actions on iOS, app shortcuts in the launcher on Android. Tapping one launches your app, opens the shortcut's Quick Link, and runs the JavaScript you set on it, which can call a global function of yours. There is no SDK call from your code, the runtime runs the snippet directly.
 
 ---
 
@@ -75,7 +75,7 @@ The function must be globally accessible because the native runtime invokes it b
 
 ## Despia Editor setup
 
-Configure the shortcut in the Despia Editor under **Add-ons \> Hard Coded \> Quick Actions**. Each shortcut has a label, an icon, an optional Quick Link, and a JavaScript snippet that the runtime executes on tap.
+Configure the shortcut in the Despia Editor under **Add-ons \> Hard Coded \> Quick Actions**. Each shortcut has a label, an icon, a Quick Link, and a JavaScript snippet that the runtime executes once the Quick Link has loaded.
 
 <Steps>
   <Step title="Open Quick Actions">
@@ -87,8 +87,8 @@ Configure the shortcut in the Despia Editor under **Add-ons \> Hard Coded \> Qui
   <Step title="Select an icon">
     Choose an icon from the picker that visually matches the action. The icon shows next to the label in the long-press menu.
   </Step>
-  <Step title="Leave Quick Link empty">
-    Skip the Quick Link field. It is only for shortcuts that should navigate to a specific URL on tap, which is not what you are doing here. Your function call will handle the action.
+  <Step title="Set the Quick Link">
+    Set the Quick Link to the page of your app that defines the function, for example your app's home address. The runtime opens it when the shortcut is tapped, and runs your JavaScript once that page has loaded. On Android a shortcut without a label or without a Quick Link is not published.
   </Step>
   <Step title="Add the JavaScript">
     In the JavaScript editor, call your global function inside the commented section:
@@ -109,6 +109,20 @@ To add more shortcuts, repeat the flow with a different label, icon, and functio
 <Warning>
   The function name in the Despia Editor JavaScript field must match the global function name in your web app exactly. A typo on either side means the shortcut taps into a `function is not defined` error and nothing happens. Copy the name, do not retype.
 </Warning>
+
+---
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Where it shows | Long-press menu of the Home Screen icon | App shortcuts of the launcher, on the app icon |
+| How many | The first four, in the editor's order | The first four, in the editor's order, and never more than the launcher's own limit (`getMaxShortcutCountPerActivity`; most launchers show four) |
+| Icon | The shortcut's symbol, as a system symbol | The same symbol drawn from its vector path as the shortcut icon; the app icon when it cannot be drawn |
+| Published | When the app starts | On every launch, replacing the app's earlier shortcuts; an empty list clears them |
+| On tap | Opens the Quick Link, then runs the JavaScript | Opens the Quick Link through the web view's normal link checks, then runs the JavaScript. On a cold start this happens once the first page has loaded |
+
+On Android the shortcut carries only its position, never the link or the script. The app looks the shortcut up in its own list when it is tapped, so another app cannot send your web view a link or a script. A shortcut that is not in the list does nothing, and neither does a Quick Link that starts with `javascript:`, `file:`, `data:`, `content:`, `blob:` or `vbscript:`. A tap runs once: recreating the app or reopening it from Recents does not replay it. Source for the launcher limit: Android Developers, "App shortcuts" (shortcut limitations), read 25 Nov 2026.
 
 ---
 

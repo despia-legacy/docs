@@ -123,4 +123,75 @@ What the CLI does with them when someone installs your extension:
 | `DX-G011` | A required extension is not installed and not in the registry |
 | `DX-G012` | A `--bind` value is malformed or names an extension that does not provide the capability |
 
-Extensions do not call each other's routes. Two extensions cooperate through a shared vendor SDK or through your page.
+---
+
+## Calling another extension
+
+An extension may call the routes and listen to the events of an extension it requires, by id or through a capability. List only what it uses:
+
+```json despia.extension.json
+{
+  "requires": {
+    "extensions": [
+      { "id": "depbase", "version": "^1.0.0", "uses": { "routes": ["ping"], "events": ["tick"] } },
+      { "id": "absentone", "version": "*", "optional": true, "uses": { "routes": ["go"] } }
+    ],
+    "capabilities": [
+      { "name": "demo.clock", "version": "^1.0.0", "uses": { "routes": ["now"], "events": ["changed"] } }
+    ]
+  }
+}
+```
+
+The provider maps the capability's names onto its own routes and events:
+
+```json despia.extension.json
+{
+  "provides": [
+    { "capability": "demo.clock", "version": "1.0.0", "routes": { "now": "time" }, "events": { "changed": "tick" } }
+  ]
+}
+```
+
+- Your code calls only what `uses` lists. Any other call answers `undeclared_dependency`. A call to an optional dependency that is not in the build answers `not_included`.
+- On iOS, call with `context.invoke(extension:route:params:)`, `invoke(capability:route:params:)` and `invokeAll(capability:route:params:)`, listen with `on(extension:event:)` and `on(capability:event:)`, and ask who provides a capability with `provider(of:)`. On Android the context has `invoke`, `invokeCapability`, `invokeAll`, `on`, `onCapability` and `providerOf`.
+- A call uses the provider route's parameter rules and timeout and returns exactly one result. It does not count against the page's call limit.
+- The provider reads the caller's id in `call.caller` (`"page"` for a page). The runtime sets it from the context it gave your extension at launch, so an extension cannot call as another.
+- A route that only other extensions may call has `"callers": ["extensions"]`. A page that calls it gets `not_registered`.
+- Two providers of one capability need a choice (`--bind`, kept under `bindings` in `despia.extensions.json`), or the requirement asks for every provider with `"bind": "all"`.
+- On iOS, your sources name only the extension API (`NativeExtension`, `NativeExtContext`, `NativeExtCall`, `NativeExtResult`, `NativeExtScenePhase`, `NativeExtFetchResult`, `NativeExtVoIPHandler`) and your own types. Naming another extension's types needs `"link": true` on the requirement. On Android, `"link": true` puts the provider's library modules on your classpath as Gradle `implementation` dependencies; a provider with only dynamic-feature modules cannot be linked, so call it through its routes. A linked requirement is never optional.
+- Native SDKs that several extensions pin are linked once, at the highest version every extension accepts. When no version fits all of them, the build stops with `NX-D040` (Swift packages), `NX-D041` (CocoaPods) or `NX-D042` (Maven).
+
+### The app's own features as capabilities
+
+The base app serves some of its features as capabilities named `despia.*`:
+
+| Capability | Routes |
+| --- | --- |
+| `despia.app` | `version`: answers `{ "version", "build" }` |
+| `despia.flashlight` | `on`, `off`; `not_included` when the app turns the flashlight off or ships without camera access, `unavailable` on a device without a torch |
+| `despia.haptics` | `play` with `style`: `light`, `medium`, `heavy`, `success`, `warning`, `error` |
+
+```json despia.extension.json
+{ "requires": { "capabilities": [{ "name": "despia.app", "version": "^1.0.0", "uses": { "routes": ["version"] } }] } }
+```
+
+A required `despia.*` capability whose feature the build leaves out fails the build with `NX-G043`. Mark it `optional` to get `not_included` instead.
+
+### What the build refuses
+
+The build checks the served folder against these declarations. The CLI installs the dependencies; the build does not download them.
+
+| Code | Refuses |
+| --- | --- |
+| `NX-M140` | A malformed declaration, a linked requirement marked optional, or an Android `link` to a provider with no library module |
+| `NX-M141` | A required extension that is not in `extensions.json` |
+| `NX-M142` | An extension version outside the range |
+| `NX-M143` | A capability with no provider |
+| `NX-M144` | Two providers of one capability with no binding |
+| `NX-M145` | A cycle |
+| `NX-M146` | A route, event or version that does not match what the provider declares |
+| `NX-M147` | A platform gap |
+| `NX-M148` | A built-in removed that a requirement needs |
+| `NX-M149` | A bad `bindings` entry in `extensions.json` |
+| `NX-M150` | A start order where a dependency starts after its consumer |

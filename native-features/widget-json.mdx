@@ -449,6 +449,8 @@ Widgets and activities also update from a push, with the app closed. Put an enve
 | `staleAt`, `dismissAt`, `relevance` | activity timing |
 | `seq`, `ts` | ordering; older updates are dropped |
 
+Always send `seq` or `ts`. An envelope is applied when the push is delivered. On iOS an alert push is also read when it shows while the app is open and when someone opens it later; from those two paths only an envelope with `seq` or `ts` is applied, so opening an old notification is dropped as `stale` and never rolls a widget back or restarts an activity. An alert push without `seq` or `ts` and without `content-available` is therefore not applied on iOS. Android applies envelopes on delivery only, never from a notification tap.
+
 The envelope works through APNs and OneSignal on iOS, and through Firebase Cloud Messaging and OneSignal on Android. On iOS, Live Activities have their own push tokens: `tokens` lists them as `{ kind, id, token, environment }`, where `kind` is `activity_start` (push to start, iOS 17.2 and later), `activity_update` (one per running activity) or `widget`. `window.onWidgetJsonToken(token)` reports each new token, and `token-sink` posts each one to your server (an `https://` URL on your page's own site, with an optional bearer token).
 
 ---

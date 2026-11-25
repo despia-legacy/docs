@@ -127,7 +127,7 @@ window.onAgeAssuranceResult = function (verdict) {
 </ParamField>
 
 <ParamField path="unavailable" type="object">
-  No provider could answer. `ok` is `false` and `error.code` says why: `os_unsupported`, `not_configured`, `no_play_services`, `no_result`, or a Play condition this install cannot recover from. Use your own gating.
+  No provider could answer. `ok` is `false` and `error.code` says why: `os_unsupported`, `not_configured`, `no_play_services`, `no_result`, or a Play condition this install cannot recover from: `api_not_available`, `play_store_not_found`, `play_services_not_found`, `play_store_version_outdated`, `play_services_version_outdated`, `sdk_version_outdated`, `app_not_owned` or `device_not_supported` (Play Age Signals 0.0.6: this type of device is not supported). Use your own gating.
 </ParamField>
 
 <ParamField path="error" type="object">

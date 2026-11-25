@@ -87,8 +87,8 @@ Events (every one has `call_cid` and a growing `seq`): `onStreamcallIncoming`, `
 | `failed` | Joining or the connection failed. |
 | `token_expired` | The token expired and no new one came. |
 | `logout` | The page called `logout` during a call. |
-| `answered_elsewhere` | iOS only: this user answered the ring on another device. |
-| `rejected` | Android only: every callee of an outgoing ring declined. On iOS each callee who declines sends `onStreamcallError` with code `rejected`, and the call stays until Stream ends it or the page leaves. |
+| `answered_elsewhere` | This user answered the ring on another device or session, on iOS and Android. |
+| `rejected` | Every callee of an outgoing ring declined, on iOS and Android. Before that, each callee who declines sends `onStreamcallError` with code `rejected`, their `user_id` and, when Stream gives one, `reason`; the call goes on until the last callee has declined, or someone answers. |
 
 ## Expired tokens
 
@@ -96,7 +96,7 @@ The app first asks your `token_url`, with no page needed. If that fails, it send
 
 ## Full-screen ring on Android 14 and later
 
-A user can turn the full-screen permission off for an app, and Google Play grants it by default only to apps whose core feature is calling. `permissions` reports it as `full_screen`. With `request=true` and the permission off, the app opens the system page where the user turns it back on. Without it the call still rings, as a heads-up notification. The full-screen Answer and Decline act only on the ring still on screen: when a ring is over, its screen closes, and a new ring takes the place of one that is over. In the Play Console, declare `USE_FULL_SCREEN_INTENT` and the phone-call foreground service.
+A user can turn the full-screen permission off for an app, and Google Play grants it by default only to apps whose core feature is calling. `permissions` reports it as `full_screen`. With `request=true` and the permission off, the app opens the system page where the user turns it back on. Without it the call still rings, as a heads-up notification. The full-screen Answer and Decline act only on the ring still on screen: when a ring is over, its screen closes, and a new ring takes the place of one that is over. The screen shows the caller's name; for a push ring that arrives without a name from Stream, it uses the name the ring came with. In the Play Console, declare `USE_FULL_SCREEN_INTENT` and the phone-call foreground service.
 
 ## Platform limits
 

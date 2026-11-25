@@ -123,12 +123,12 @@ Every element has `type`, and may have `id`, `class`, `style`, `if` (a formula; 
 | `type` | Fields |
 | --- | --- |
 | `text` | `text`, `format` |
-| `image` | `symbol` (`{ "ios": "<SF Symbol>", "android": "<Material Symbol>" }`), `src`, `svg`, `asset`, `fit` (`cover`, `contain`, `fill`), `rendering`, `label` |
+| `image` | `symbol` (`{ "ios": "<SF Symbol>", "android": "<Material Symbol>" }`), `src`, `svg`, `asset`, `fit` (`cover`, `contain`, `fill`), `rendering` (`original`, `template`, `accented`, `desaturated`, `accentedDesaturated`, `fullColor`), `label` |
 | `stack` | `dir` (`h`, `v`, `z`), `children`, `align`, `gap` |
 | `spacer` | `size` |
 | `divider` | |
 | `progress` | `shape` (`linear`, `circular`), `value`, `from`, `to`, `label` |
-| `gauge` | `value`, `min`, `max`, `label`, `current`, `shape`, `capacity` |
+| `gauge` | `value`, `min`, `max`, `label`, `current`, `shape` (`circular`, `linear`), `capacity` |
 | `timer` | `to`, `from`, `display` (`timer`, `relative`, `offset`), `showsHours` |
 | `date` | `value`, `display` (`time`, `date`) |
 | `link` | `to`, `children` |
@@ -444,7 +444,7 @@ Widgets and activities also update from a push, with the app closed. Put an enve
 | Field | Values |
 | --- | --- |
 | `target` | `widget`, `activity` |
-| `event` | `state`, `patch`, `doc`, `timeline`, `reload`, `clear`, `start`, `update`, `end` |
+| `event` | For a `widget`: `state`, `patch`, `doc`, `timeline`, `reload`, `clear`. For an `activity`: `start`, `update`, `end` |
 | `state`, `patch`, `doc`, `attrs`, `entries`, `alert` | as in the calls |
 | `staleAt`, `dismissAt`, `relevance` | activity timing |
 | `seq`, `ts` | ordering; older updates are dropped |
@@ -479,17 +479,20 @@ The envelope works through APNs and OneSignal on iOS, and through Firebase Cloud
 | Image `rendering` | Every value | `original` and `template` |
 | iOS-only styles | | Ignored |
 
-Run `validate` on each platform: its errors and notes say exactly what a document does there.
+Run `validate` on each platform: its errors say exactly what a document does there.
+
+The JavaScript validator (the command line and the preview) checks more than the app does. Besides the codes above it reports `unknown_property` (a field, style property or `symbol` platform the format does not have), `unknown_family` (a name in a layout's `for`) and `link_needs_widget_url` (a `link` in a family with one tap target), and it adds notes such as `android_ignored`. The app's own `validate` call does not report those three.
 
 ## Error codes
 
 | Code | Meaning |
 | --- | --- |
-| `bad_value`, `missing_field`, `unknown_property` | A field is wrong or missing; `path` points to it |
-| `unknown_element`, `unknown_operator`, `unknown_family`, `unknown_class`, `unknown_action` | A name the format does not have |
+| `invalid_json` | The document is not a JSON object |
+| `bad_value`, `missing_field` | A field is wrong or missing; `path` points to it |
+| `unknown_element`, `unknown_operator`, `unknown_class`, `unknown_action` | A name the format does not have |
 | `bad_formula`, `too_deep`, `too_large`, `too_many_elements`, `too_large_activity` | A formula or document breaks a limit |
-| `list_without_max`, `link_needs_widget_url`, `summary_required` | A rule of the format (see above) |
-| `requires_newer_renderer`, `unknown_version` | The document needs a newer app |
+| `list_without_max`, `summary_required` | A rule of the format (see above) |
+| `requires_newer_renderer`, `unknown_version`, `unsupported_version` | The document, or a push envelope, needs a newer app |
 | `stale`, `duplicate` | An older update than the last one |
 | `too_many` | Too many timeline entries |
 | `bad_url` | A URL is not `https://` (or not on your site, for `token-sink`) |

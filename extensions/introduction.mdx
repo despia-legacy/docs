@@ -5,4 +5,9 @@ icon: "puzzle-piece"
 tag: "Beta"
 ---
 
-V3 extensions are moving to a V4 DSX subsystem, called from your web app as `window.dsx.module.<chain>.<action>`. Extensions built now carry over to V4, and V3 takes on no new technical debt. This is a beta, and details follow when it ships.
+V3 extensions are moving to a V4 DSX subsystem, called from your web app as `window.dsx.module.<package>.<action>(...)`. Extensions built now carry over to V4, and V3 takes on no new technical debt. This is a beta, and details follow when it ships.
+
+```javascript
+// example; final names come with the release
+window.dsx.module.camera.capture({ quality: 0.8 })
+```

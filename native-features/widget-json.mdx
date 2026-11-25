@@ -422,7 +422,7 @@ On iOS, buttons and toggles that only `set` run without opening the app on iOS 1
 
 ## Live Activities and Live Updates
 
-A document with `kind: "activity"` runs as a Live Activity on iOS 16.2 and later (lock screen, Dynamic Island) and as an ongoing notification on Android, promoted to a Live Update on Android 16 and later when your app's Live Updates setting is on.
+A document with `kind: "activity"` runs as a Live Activity on iOS 16.2 and later (lock screen, Dynamic Island) and as an ongoing notification on Android, promoted to a Live Update on Android 16 and later when the build declares Live Updates (`capabilities.liveUpdates` is `true`).
 
 ```javascript
 despia('widgetjson://activity/start?id=match-42'
@@ -472,7 +472,7 @@ The envelope works through APNs and OneSignal on iOS, and through Firebase Cloud
 | --- | --- | --- |
 | Renderer | SwiftUI in WidgetKit | Glance |
 | Lock screen widgets | `accessory*` families | Not available |
-| Activities | Live Activities, iOS 16.2 and later | Ongoing notification; Live Update on Android 16 and later with the setting on |
+| Activities | Live Activities, iOS 16.2 and later | Ongoing notification; Live Update on Android 16 and later when the build declares Live Updates |
 | Push to start | iOS 17.2 and later | Not available |
 | Adding the widget | The user adds it from the widget gallery (`widget/pin` answers `platform_limit`) | `widget/pin` asks the launcher, Android 8.0 and later |
 | Icons | SF Symbols | Material Symbols when the build bundles them; `svg` always works |

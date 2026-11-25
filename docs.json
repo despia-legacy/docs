@@ -328,6 +328,7 @@
           "native-features/app-settings",
           "native-features/file-viewer",
           "native-features/home-widgets",
+          "native-features/widget-json",
           "native-features/file-sharing",
           "native-features/focus-events",
           "native-features/screen-brightness",

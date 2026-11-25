@@ -310,6 +310,7 @@
             "group": "Health Data",
             "icon": "leaf-heart",
             "pages": [
+              "health-data/health",
               "health-data/apple-health",
               "health-data/google-health"
             ]

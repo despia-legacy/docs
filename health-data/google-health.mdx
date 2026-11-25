@@ -6,7 +6,7 @@ description: "Read and write Google Health Connect data on Android with the same
 
 Despia connects your web app to [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect), Android's on-device store for health and fitness data. You use the **same calls as [Apple Health](/health-data/apple-health)**: `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, `healthkit://observe` and `healthkit://unobserve`, with the same identifiers and the same result shapes. One code path serves iPhone and Android.
 
-On top of that, `healthconnect://` gives you what Health Connect offers beyond HealthKit: an availability check, the install flow, the Health Connect settings screen, explicit permission requests, time ranges and hourly buckets, deletes of your own records, and change tokens.
+The neutral [`health://` calls](/health-data/health) answer the same way on iOS and Android, including status, permissions, delete and change tokens, and are the way to write code that runs on both. On top of that, `healthconnect://` gives you what Health Connect offers beyond HealthKit: an availability check, the install flow, the Health Connect settings screen, explicit permission requests, time ranges and hourly buckets, deletes of your own records, and change tokens.
 
 <Info>
   Android support is new. The type mapping, the request handling and the result shapes are covered by automated tests. Testing on devices is in progress, so check your flows on a real phone before you release.
@@ -41,12 +41,14 @@ Health Connect is built into your Android app only when you turn it on, because 
 
 | Build setting | Value |
 | :-- | :-- |
-| `HEALTH_CONNECT_ENABLED` | `true` |
-| `HEALTH_CONNECT_READ` | Comma-separated identifiers, record names or permission names, or `all` |
-| `HEALTH_CONNECT_WRITE` | The same, for writes |
-| `HEALTH_CONNECT_BACKGROUND` | `true` to let observers read while the app is closed |
-| `HEALTH_CONNECT_HISTORY` | `true` to read data older than 30 days before the user granted access |
-| `HEALTH_CONNECT_PRIVACY_URL` | Your privacy policy URL |
+| `HEALTHKIT_EXTENSION` (or `HEALTH_ENABLED`) | `true`. The same switch iOS reads |
+| `HEALTH_READ` | Comma-separated identifiers, record names or permission names, or `all` |
+| `HEALTH_WRITE` | The same, for writes |
+| `HEALTH_BACKGROUND` | `true` to let observers read while the app is closed |
+| `HEALTH_HISTORY` | `true` to read data older than 30 days before the user granted access |
+| `HEALTH_PRIVACY_URL` | Your privacy policy URL |
+
+These are the settings of the one [Health](/health-data/health) feature, shared with iOS. The earlier names `DESPIA_HC_READ`, `DESPIA_HC_WRITE`, `DESPIA_HC_BACKGROUND`, `DESPIA_HC_HISTORY` and `DESPIA_HC_PRIVACY_URL` (and the `HEALTH_CONNECT_*` forms) still read. The `HEALTH_CONNECT_ENABLED` name shown on earlier versions of this page was never read by the build.
 
 An identifier that Health Connect has no type for stops the build with its name, so a typo never ships silently.
 

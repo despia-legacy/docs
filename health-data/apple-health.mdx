@@ -10,6 +10,8 @@ Access Apple HealthKit from your web app through the Despia native bridge. Despi
   HealthKit is iOS only. Always gate calls behind an `isDespiaIOS` check so your app degrades gracefully in a browser or on Android.
 </Info>
 
+Android serves the same calls through [Google Health Connect](/health-data/google-health), and the [`health://` calls](/health-data/health) answer the same way on both platforms, with status, permissions, delete and change tokens on iOS as well.
+
 ---
 
 ## Installation

@@ -1,0 +1,149 @@
+---
+title: "Health"
+icon: "heart-pulse"
+description: "One health feature for iOS and Android: the same settings, the same health:// calls and the same answers for Apple HealthKit and Google Health Connect."
+---
+
+Health is one feature on both platforms. On iPhone it reads and writes [Apple HealthKit](/health-data/apple-health); on Android it reads and writes [Google Health Connect](/health-data/google-health). The `health://` calls below behave the same on both and answer in the same shape, so one code path serves both stores.
+
+Your existing calls keep working unchanged: `readhealthkit://`, `writehealthkit://` and `healthkit://...` on both platforms, and `healthconnect://...` on Android.
+
+---
+
+## Setup
+
+Health is built into your app only when you turn it on, because the App Store and Google Play review every app that asks for health data. There is one setting for both platforms: `health`.
+
+| Setting | Meaning |
+| :-- | :-- |
+| `enabled` | Builds health into the app (iOS and Android) |
+| `read` | The types your app reads: HealthKit identifiers, Health Connect record names, Health Connect permission names, or `all` |
+| `write` | The types your app writes, the same spelling |
+| `background` | `true` lets observers deliver while the app is closed |
+| `history` | `true` reads data older than 30 days (Health Connect). HealthKit has no such limit |
+| `privacy_url` | Your privacy policy. Health Connect shows it on its permission screen and Google Play requires it |
+| `usage.share`, `usage.update` | The purpose texts iOS shows in the HealthKit permission sheet |
+
+A type can be written the way either platform spells it: `HKQuantityTypeIdentifierStepCount` and `StepsRecord` both work on both platforms.
+
+Apps set up before this setting existed keep building without a change. The earlier name of the feature (`healthkit_health_connect`) and the earlier Android settings (`DESPIA_HC_READ`, `DESPIA_HC_WRITE`, `DESPIA_HC_BACKGROUND`, `DESPIA_HC_HISTORY`, `DESPIA_HC_PRIVACY_URL`, and their `HEALTH_CONNECT_*` forms) still read, and on iOS `PERM_HEALTHKIT_READ=false` and `PERM_HEALTHKIT_WRITE=false` still switch a direction off. When an earlier and a new spelling are both set, the new one wins.
+
+<Info>
+  The build switch is the Health Data setting, the same one iOS reads. An earlier version of the Google Health page named `HEALTH_CONNECT_ENABLED` as the switch. The build does not read that name.
+</Info>
+
+---
+
+## Calls
+
+Every call returns through `despia(url, [variables])`, as elsewhere.
+
+```javascript
+const ua = navigator.userAgent.toLowerCase()
+const isDespiaHealth = ua.includes('despia') && (ua.includes('iphone') || ua.includes('ipad') || ua.includes('android'))
+
+if (isDespiaHealth) {
+    const { healthStatus } = await despia(
+        'health://status?read=StepsRecord,HKQuantityTypeIdentifierHeartRate&write=WeightRecord',
+        ['healthStatus']
+    )
+}
+```
+
+| Call | Answers in | What it does |
+| :-- | :-- | :-- |
+| `health://read?types=...&days=N` | `healthkitResponse` | Reads types, as `healthkit://read`. Android also takes `start`, `end` and `bucket=hour` |
+| `health://workouts?days=N` | `healthkitWorkouts` | Workouts, as `healthkit://workouts` |
+| `health://write?type=T&value=V` | `healthkitWriteResponse` | Saves a value. `start` and `end` set the period. Blood pressure takes `systolic` and `diastolic` |
+| `health://observe?types=...&server=URL` | `observingHealthKit` | Registers an observer, as `healthkit://observe` |
+| `health://unobserve?types=...` | `observingHealthKit` | Stops observers |
+| `health://status?read=...&write=...` | `healthStatus` | A state per type, without asking |
+| `health://permissions?read=...&write=...` | `healthPermissions` | Asks for what is missing, then reports the same way |
+| `health://delete?type=T&days=N` | `healthDelete` | Deletes your app's own samples of one type in a range |
+| `health://changes?types=...` and `?token=T` | `healthChanges` | Takes a token, then reads what changed since it |
+| `health://settings` | `healthSettings` | Opens the platform's health settings |
+| `health://install` | `healthInstall` | Opens Health Connect in Google Play when it is needed |
+| `health://revoke` | `healthPermissions` | Withdraws your app's permissions where the platform lets an app do that |
+
+`read`, `workouts`, `write` and `observe` answer in the variables the `healthkit://` calls already use, with error codes spelled `health_...` (`health_unavailable`, `health_invalid_request`, `health_read_failed`, `health_not_included`).
+
+### Status and permissions
+
+```javascript
+const { healthPermissions } = await despia(
+    'health://permissions?read=StepsRecord,HKCategoryTypeIdentifierSleepAnalysis&write=WeightRecord',
+    ['healthPermissions']
+)
+// { platform: "ios" | "android", status: "available", available: true,
+//   read:  { StepsRecord: "granted", ... },
+//   write: { WeightRecord: "notDetermined" },
+//   limits?: { SomeId: "why this platform has no such type" } }
+```
+
+Each type has one of these states:
+
+| State | Meaning |
+| :-- | :-- |
+| `granted` | The user allowed it |
+| `denied` | The user refused it |
+| `notDetermined` | Not asked yet |
+| `notDeclared` | Android: your build does not declare it. Add it to the settings and rebuild |
+| `unknown` | iOS: HealthKit does not tell an app whether a read was allowed once it asked. To protect users, a refused read looks like no data. Writes always report `granted` or `denied` |
+| `unsupported` | The platform has no such type. `limits` says why |
+
+`status` is `available`, `unavailable` (no health store on this device, or Health Connect missing), `update_required` (Android) or `not_included` (the build has no health).
+
+### Delete
+
+`health://delete?type=T&days=N` (or `start` and `end`, ISO 8601) deletes the samples your own app saved of one type in that period. Neither platform lets an app delete another app's data. The answer is `{ type, success, startDate, endDate, error? }`. On iOS the type must have write access.
+
+### Changes
+
+```javascript
+const first = await despia('health://changes?types=StepsRecord,WeightRecord', ['healthChanges'])
+// { token, upserts: [], deletions: [], hasMore: false, tokenExpired: false }
+
+const later = await despia(
+    `health://changes?token=${encodeURIComponent(first.healthChanges.token)}`,
+    ['healthChanges']
+)
+// { token, upserts: [{ type, id, startDate, endDate, source }], deletions: [ids], hasMore, tokenExpired }
+```
+
+The first call returns a token that starts at now. Each later call returns what was saved or deleted since the token and a new token. Keep the new token for the next call. When `hasMore` is `true`, call again with the new token. A token is opaque. It starts with `hk1.` on iOS and `hc1.` on Android and works only on the platform that returned it. On Android a token expires after 30 days (`tokenExpired: true`; read the data again and take a new token). On iOS it does not expire.
+
+---
+
+## Differences between the platforms
+
+These come from the platforms themselves, not from Despia.
+
+| Topic | iOS (HealthKit) | Android (Health Connect) |
+| :-- | :-- | :-- |
+| Was a read allowed? | Hidden from apps by design, state `unknown` | `granted` or `denied` |
+| Withdraw permission from the app | No app API. `health://revoke` answers `revoked: false` with a `limit` that points the user to Settings > Health | `health://revoke` removes your permissions |
+| Install | HealthKit is part of iOS: `health://install` answers `opened: false` | A Google Play app on Android 13 and lower, part of the system on Android 14 and later |
+| Profile data (birth date, sex, blood type) | Characteristic types | Health Connect has no such data type: they are `unsupported` |
+| Read range | `days` | `days`, `start`, `end` and `bucket=hour`. On iOS a call with `start`, `end` or `bucket=hour` answers `health_invalid_request` and asks for `days` |
+| Settings screen | Opens the Health app, or your app's page in Settings if iOS does not open it | Opens Health Connect |
+
+Sources, read 25 November 2026: Apple Developer Documentation for [`authorizationStatus(for:)`](https://developer.apple.com/documentation/healthkit/hkhealthstore/authorizationstatus(for:)) (an app cannot determine whether read permission was granted), [`getRequestStatusForAuthorization`](https://developer.apple.com/documentation/healthkit/hkhealthstore/getrequeststatusforauthorization(toshare:read:completion:)) (iOS 12), [`HKAnchoredObjectQuery`](https://developer.apple.com/documentation/healthkit/hkanchoredobjectquery) and [`deleteObjects(of:predicate:withCompletion:)`](https://developer.apple.com/documentation/healthkit/hkhealthstore/deleteobjects(of:predicate:withcompletion:)) (an app deletes only what it saved); Android Developers [Sync data](https://developer.android.com/health-and-fitness/health-connect/sync-data) (changes tokens, 30-day expiry, `deleteRecords`) and [Data types](https://developer.android.com/health-and-fitness/health-connect/data-types).
+
+---
+
+## Builds without health
+
+A build without health still answers every `health://` call at once, with `health_not_included` and `status: "not_included"`, and fires a `despia-feature-not-included` event, so your page never waits.
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Apple Health" icon="apple" href="/health-data/apple-health">
+    The HealthKit identifiers, reads, writes and observers.
+  </Card>
+  <Card title="Google Health" icon="google" href="/health-data/google-health">
+    Health Connect on Android.
+  </Card>
+</CardGroup>

@@ -56,9 +56,9 @@ Check `status` before you offer an upload: `background_upload_available` is `fal
 
 ### Picking
 
-`pick` opens the system picker and answers at once with a `selection_id`. The app must be in the foreground (`not_foreground` otherwise), and one selection at a time (`picker_busy`). Ask `selection` for its state: `presenting` while the picker is open and the copy is made, then `ready`, `cancelled` or `failed`, and later `discarded` or `expired`.
+`pick` opens the system picker and answers at once with a `selection_id`. The app must be in the foreground (`not_foreground` otherwise), and one selection at a time (`picker_busy`). Ask `selection` for its state: `presenting` while the picker is open (on iOS also while the copy is made; on Android the copy is `staging`), then `ready`, `cancelled` or `failed`, and later `discarded` or `expired`.
 
-A file is at most 250 MiB. The newest eight copies are kept and copies older than a day are removed before the next pick, except one an unfinished upload still sends. Call `discard` when you are done with a file.
+There is no size limit on a file: the private copy needs free space on the device, and when it does not fit the selection ends `failed`. The newest eight copies are kept and copies older than a day are removed before the next pick, except one an unfinished upload still sends. Call `discard` when you are done with a file.
 
 ### The request
 
@@ -67,7 +67,7 @@ A file is at most 250 MiB. The newest eight copies are kept and copies older tha
 | `url` | required | Your `https://` endpoint. No user name or password in it, no fragment |
 | `method` | `POST` | `POST`, `PUT` or `PATCH` |
 | `body` | `multipart` | `multipart`, or `raw` to send the file bytes alone |
-| `headers` | none | A JSON object of string values, for example `Authorization` |
+| `headers` | none | A JSON object of string values, for example `Authorization`. A name is at most 128 characters, a value at most 8192 bytes with no line breaks |
 | `fields` | none | A JSON object of extra text parts, sent before the file (multipart) |
 | `file_field` | `file` | The form name of the file part |
 | `metadata_json` | `{}` | A JSON object sent as a text part after the file (multipart) |

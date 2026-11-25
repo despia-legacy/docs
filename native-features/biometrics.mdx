@@ -155,6 +155,8 @@ For any flow where a successful biometric should grant access to a server-protec
 
 For apps that need biometric-gated access to secrets (session tokens, API keys, recovery phrases), [Storage Vault](/native-features/storage-vault) is the right tool. Setting `locked=true` on a vault entry triggers Face ID or Touch ID before reading the value back, so the secret is never exposed to JavaScript without a successful biometric.
 
+To keep private content out of the app switcher and Recents while the app is locked, and to hold the splash cover until the biometric prompt has decided, use [Screen Guard](/native-features/screen-guard) with `hold=true`.
+
 ---
 
 ## Resources

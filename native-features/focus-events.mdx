@@ -102,6 +102,10 @@ if (isDespia) {
 }
 ```
 
+<Note>
+  Do not use `focusout` to hide private content before the app switcher picture is taken: the page may already be suspended. Use [Screen Guard](/native-features/screen-guard), which covers the window natively.
+</Note>
+
 ---
 
 ## Track session duration

@@ -1,0 +1,201 @@
+---
+title: "Screen Guard"
+description: "Hide private pages in the app switcher and Recents with the app's splash screen, hold the cover until your own lock screen is ready, and switch screenshot blocking on and off per page."
+icon: "shield-halved"
+---
+
+`screenguard://` hides the page whenever the app is not in front. While it is on, the app's own splash screen covers the window before the system takes its app-switcher or Recents picture, so the preview never shows private content. `screenshotguard://` is a separate switch that blocks screenshots and screen recording while the user is looking at the page.
+
+Both are off until the page turns them on, and both stay on across page navigations and reloads until the page turns them off or the app is closed.
+
+---
+
+## Installation
+
+<Tabs>
+  <Tab title="Bundle">
+    <CodeGroup>
+
+    ```bash npm
+    npm install despia-native
+    ```
+
+    ```bash pnpm
+    pnpm add despia-native
+    ```
+
+    ```bash yarn
+    yarn add despia-native
+    ```
+
+    </CodeGroup>
+
+    ```javascript
+    import despia from 'despia-native';
+    ```
+  </Tab>
+  <Tab title="CDN">
+    <CodeGroup>
+
+    ```html UMD
+    <script src="https://cdn.jsdelivr.net/npm/despia-native/index.min.js"></script>
+    ```
+
+    ```html ESM
+    <script type="module">
+        import despia from 'https://cdn.jsdelivr.net/npm/despia-native/+esm'
+    </script>
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
+
+---
+
+## Turn it on for private pages
+
+Call `screenguard://on` on every page that shows private data, and `screenguard://off` on public pages. The setting belongs to the app, not to the page, so moving between two private pages leaves no gap.
+
+```javascript
+import despia from 'despia-native'
+
+const isDespia = navigator.userAgent.toLowerCase().includes('despia')
+
+if (isDespia) {
+    despia('screenguard://on')      // private page
+    // despia('screenguard://off')  // public page
+}
+```
+
+| Call | What it does |
+| --- | --- |
+| `screenguard://on` | Arms the guard. The cover goes up when the app leaves the front and comes down by itself when the user returns. |
+| `screenguard://on?hold=true` | Arms the guard in hold mode. The cover stays up on return until the page calls `screenguard://ready`. |
+| `screenguard://on?hold=true&timeout=20` | Hold mode with a 20 second limit instead of the default 10. |
+| `screenguard://ready` | Lifts the cover now. The guard stays armed. |
+| `screenguard://off` | Disarms the guard and lifts the cover. |
+| `screenguard://status` | Changes nothing; answers with the current state. |
+
+<Tip>
+  The guard is off after the app is closed and opened again. The launch splash covers the start, so call `screenguard://on` from a script in `<head>`, before the page renders anything private. A call made while the page is still loading is kept.
+</Tip>
+
+---
+
+## Hold the cover until your lock screen is ready
+
+With `hold=true`, the cover stays up when the user comes back. The page gets a `returned` event, decides what may show (for example after Face ID), and then calls `screenguard://ready`. Native never decides whether the user is unlocked; the page does.
+
+```javascript
+import despia from 'despia-native'
+
+window.onDespiaScreenGuard = function (state) {
+    if (state.event !== 'returned') return
+
+    window.onBioAuthSuccess = function () {
+        showContent()
+        despia('screenguard://ready')
+    }
+    window.onBioAuthFailure = function (errorCode, errorMessage) {
+        showLockScreen()             // your own curtain with an unlock button
+        despia('screenguard://ready')
+    }
+    window.onBioAuthUnavailable = function () {
+        showLockScreen()
+        despia('screenguard://ready')
+    }
+    despia('bioauth://')
+}
+
+despia('screenguard://on?hold=true')
+```
+
+The rule: every time the cover goes up while hold is on, only the page takes it down, with `screenguard://ready` or `screenguard://off`. That includes short trips such as Control Center, a permission prompt or the Face ID sheet itself, because the system reports them the same way as the start of an app-switcher swipe.
+
+Calling `ready` while the app is not in front does nothing; call it again on the next `returned`.
+
+### When the page does not answer
+
+The hold has a limit, 10 seconds by default, counted only while the app is in front. If the page has not called `ready` by then, the app does not lift the cover over the old page. It reloads the page under the cover and lifts the cover when the new page has loaded, so the page starts again through its own boot and lock, the same as a cold start. The new page gets the `reloaded` event. Set the limit with `timeout=<seconds>`.
+
+---
+
+## Block screenshots on some pages
+
+```javascript
+despia('screenshotguard://on')      // block screenshots and screen recording
+despia('screenshotguard://off')     // allow them again
+despia('screenshotguard://status')  // answer only
+```
+
+- Nothing is protected until the page calls `screenshotguard://on`. The editor's screenshot protection setting only configures the app (it is reported as `configured`); it never turns protection on at launch. Call `screenshotguard://on` from `<head>`, before the page renders anything private. The launch splash is all that shows before that.
+- `window.onScreenCaptureAttempt()` is called when the user takes a screenshot or starts recording while protection is on.
+- On Android, blocking screenshots also blocks casting and screen sharing of the app. On iOS, recordings and mirroring show a blank screen.
+
+---
+
+## What the user sees
+
+| | Screen guard on | Screenshot guard on |
+| --- | --- | --- |
+| iOS | The app switcher shows the splash screen. The cover also shows behind Control Center, notifications and system prompts. Screenshots are still allowed. | Screenshots and recordings show a blank screen. iOS has no public blocking API, so this is best effort. |
+| Android 13 and later | The Recents card is a plain card in the splash colour. Android sets a colour for the card, not an image. Screenshots are still allowed. | Screenshots, recording and casting are blocked. |
+| Android 7 to 12L | The Recents card is blank, and screenshots are blocked while the guard is on. These versions have no way to hide only the Recents picture ([`setRecentsScreenshotEnabled`](https://developer.android.com/reference/android/app/Activity#setRecentsScreenshotEnabled(boolean)) was added in API level 33). | Screenshots, recording and casting are blocked. |
+
+When the user returns, the app's own splash cover shows on every platform until it lifts. On Android 10 and later the cover also goes up when the user opens Recents from inside the app, where the card shows the live app window.
+
+---
+
+## State object
+
+Every call answers, and every change sends an event. Both set `window.despiaScreenGuard` and then call `window.onDespiaScreenGuard(window.despiaScreenGuard)` if you defined it.
+
+```javascript
+window.despiaScreenGuard = {
+    ok: true,
+    event: 'state',      // see the list below
+    guard: 'on',         // 'on' | 'off'
+    hold: true,
+    timeout: 10,         // hold limit in seconds
+    covered: true,       // the cover is on screen now
+    active: true,        // the app is in front
+    platform: 'ios',     // 'ios' | 'android'
+    recents: 'cover'     // 'cover' (iOS) | 'hidden' (Android 13+) | 'secure' (Android 7-12L)
+}
+```
+
+| `event` | When |
+| --- | --- |
+| `state` | The answer to a call. |
+| `covered` | The cover went up because the app left the front. |
+| `returned` | Hold mode: the app is in front again and the cover is still up. Show your lock screen or content, then call `ready`. |
+| `uncovered` | The cover came down by itself on return (no hold). |
+| `reloaded` | The hold limit passed, the page was reloaded under the cover, and the cover came down on the new page. |
+
+An unknown verb answers `{ ok: false, code: 'unknown_command' }` and a malformed or unknown option answers `{ ok: false, code: 'bad_request' }`, both with the current state; nothing changes. `hold` takes `true` or `false`, `timeout` is a number of seconds above 0, and `off`, `ready` and `status` take no options.
+
+`screenshotguard://` answers the same way, on `window.despiaScreenshotGuard` and `window.onDespiaScreenshotGuard`:
+
+```javascript
+window.despiaScreenshotGuard = {
+    ok: true,
+    guard: 'on',             // protection in force now
+    source: 'page',          // 'page' (a call set it) | 'none' (no call yet)
+    configured: false,       // the editor's screenshot protection setting (reported only)
+    platform: 'android'
+}
+```
+
+<Warning>
+  Events are best effort: the system may suspend the page while the app is away, so an event can arrive late. The cover never depends on them. Do not rely on `focusout` or on these events to hide private content yourself.
+</Warning>
+
+---
+
+## Rules
+
+- Only the top-level page of the app, on the app's own https address, can turn either guard on or off. A call from an iframe, a popup, an outside site or the in-app browser is ignored. The cover still hides those, because it covers the whole window.
+- A page loaded from a `file://` address (a bundled offline page) cannot call the guards. Serve the page from the app's https address or its local server.
+- Both guards work offline.
+- After the app is closed, both guards are off. Call them again from `<head>`.

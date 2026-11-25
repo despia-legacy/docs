@@ -7,7 +7,7 @@ icon: "shield-check"
 Read the age range the operating system already holds for your user, without asking anyone for a birthdate. iOS and Android both answer with an age band, 13 to 15, 16 to 17, 18 and over, plus how that age was established, so you can gate mature content, unlock adult-only features, or soften an experience for a minor from a single call. The same code works on both platforms and returns the same shape, and on a build or device that cannot answer it says so instead of guessing.
 
 <Info>
-  Age assurance is a software dependency, not a runtime toggle. The native SDKs are linked into your binary at build time, so enabling it in Despia does nothing until you ship a new build with an increased version code. It also needs configuration in the Apple and Google accounts you own. Until all three are done, every call answers `status: "unavailable"`, which is safe to ship but is not an answer. See Enabling age assurance below.
+  Age assurance is a software dependency, not a runtime toggle. The native SDKs are linked into your binary at build time, so enabling the addon does nothing until you ship a new build with an increased version code. It also needs configuration in the Apple and Google accounts you own. Until all three are done, every call answers `status: "unavailable"`, which is safe to ship but is not an answer. See Enabling age assurance below.
 </Info>
 
 ---
@@ -127,11 +127,11 @@ window.onAgeAssuranceResult = function (verdict) {
 </ParamField>
 
 <ParamField path="unavailable" type="object">
-  No provider could answer. `ok` is `false` and `error.code` says why: `os_unsupported`, `not_configured`, `no_play_services`, `no_result`, or a Play condition this install cannot recover from: `api_not_available`, `play_store_not_found`, `play_services_not_found`, `play_store_version_outdated`, `play_services_version_outdated`, `sdk_version_outdated`, `app_not_owned` or `device_not_supported` (Play Age Signals 0.0.6: this type of device is not supported). Use your own gating.
+  No provider could answer. `ok` is `false` and `error.code` says why: `os_unsupported`, `not_configured`, `no_play_services`, `no_result`, `no_activity` (Android: no foreground activity to present the prompt), `no_presenter` (iOS: no view controller to present it), `not_available` (iOS: Apple reports the API cannot answer on this device), or a Play condition this install cannot recover from: `api_not_available`, `play_store_not_found`, `play_services_not_found`, `play_store_version_outdated`, `play_services_version_outdated`, `sdk_version_outdated`, `app_not_owned` or `device_not_supported` (Play Age Signals 0.0.6: this type of device is not supported). Use your own gating.
 </ParamField>
 
 <ParamField path="error" type="object">
-  The call itself failed. `ok` is `false`. `error.code` is stable and machine-readable, `error.message` is advisory text for your logs. Common codes are `invalid_gates`, `too_many_gates`, `unsupported_action`, `network_error`, and `timeout`.
+  The call itself failed. `ok` is `false`. `error.code` is stable and machine-readable, `error.message` is advisory text for your logs. Common codes are `invalid_gates`, `too_many_gates`, `unsupported_action`, `network_error`, and `timeout`. Failures worth a retry on Android arrive as `error` too: `cannot_bind_to_service`, `client_transient_error` and `internal_error`; `invalid_request` (iOS, the range request was rejected) and `unknown_error` cover the rest.
 </ParamField>
 
 ---
@@ -323,11 +323,11 @@ There is no iOS counterpart, because a declined range on iOS is simply declined 
 
 ## Enabling age assurance
 
-Age assurance links native SDKs into your app, so it is enabled at build time rather than at runtime. The toggle, the store-side configuration, and a fresh build are all required before any real signal arrives.
+Age assurance links native SDKs into your app, so it is enabled at build time rather than at runtime. The addon, the store-side configuration, and a fresh build are all required before any real signal arrives.
 
 <Steps>
-  <Step title="Enable the addon in Despia">
-    Open your app in the Despia Editor, go to **App**, then **Addons**, and turn on **Age Assurance**.
+  <Step title="Enable the addon">
+    Enable the **Age Assurance** addon for your app.
   </Step>
   <Step title="Enable the Apple capability">
     Open [Certificates, Identifiers and Profiles](https://developer.apple.com/account/resources/identifiers/list), select the identifier matching your app's bundle ID, and enable **Declared Age Range** under Capabilities. If it is not in the list, open the **Capability Requests** tab on the same identifier and request it.
@@ -342,7 +342,7 @@ Age assurance links native SDKs into your app, so it is enabled at build time ra
     On the same Age signals page, set the minimum ages your app needs, up to three, for example 13, 16 and 18. Match them to the ages you actually gate on: a gate that falls between two configured bands can only ever answer `null`.
   </Step>
   <Step title="Rebuild with an increased version code">
-    Increase your version code, then trigger a fresh build in Despia and ship it. The native SDKs are compiled into the binary, so the addon has no effect on any build made before you turned it on.
+    Increase your version code, then build the app again and ship it. The native SDKs are compiled into the binary, so the addon has no effect on any build made before you turned it on.
   </Step>
 </Steps>
 

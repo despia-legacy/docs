@@ -129,7 +129,7 @@ despia('screenshotguard://off')     // allow them again
 despia('screenshotguard://status')  // answer only
 ```
 
-- The page's call always wins. In an app built with the editor's screenshot protection switch on, protection starts on at launch, and a page can still turn it off with `screenshotguard://off`.
+- The page's call always wins. In an app whose screenshot protection setting is on, protection starts on at launch, and a page can still turn it off with `screenshotguard://off`.
 - `window.onScreenCaptureAttempt()` is called when the user takes a screenshot or starts recording while protection is on.
 - On Android, blocking screenshots also blocks casting and screen sharing of the app. On iOS, recordings and mirroring show a blank screen.
 
@@ -173,7 +173,7 @@ window.despiaScreenGuard = {
 | `uncovered` | The cover came down by itself on return (no hold). |
 | `reloaded` | The hold limit passed, the page was reloaded under the cover, and the cover came down on the new page. |
 
-An unknown verb answers `{ ok: false, code: 'unknown_command' }` and a malformed option (for example `timeout=abc`) answers `{ ok: false, code: 'bad_request' }`, both with the current state; nothing changes.
+An unknown verb answers `{ ok: false, code: 'unknown_command' }` and a malformed or unknown option answers `{ ok: false, code: 'bad_request' }`, both with the current state; nothing changes. `hold` takes `true` or `false`, `timeout` is a number of seconds above 0, and `off`, `ready` and `status` take no options.
 
 `screenshotguard://` answers the same way, on `window.despiaScreenshotGuard` and `window.onDespiaScreenshotGuard`:
 
@@ -181,7 +181,7 @@ An unknown verb answers `{ ok: false, code: 'unknown_command' }` and a malformed
 window.despiaScreenshotGuard = {
     ok: true,
     guard: 'on',             // protection in force now
-    source: 'page',          // 'page' (a call set it) | 'app_setting' (the editor switch)
+    source: 'page',          // 'page' (a call set it) | 'app_setting' (the app's screenshot protection setting)
     platform: 'android'
 }
 ```
@@ -196,4 +196,4 @@ window.despiaScreenshotGuard = {
 
 - Only the top-level page of the app can turn either guard on or off. A call from an iframe, a popup or the in-app browser is ignored. The cover still hides those, because it covers the whole window.
 - Both guards work offline.
-- After the app is closed, both are back to their start state: screen guard off, screenshot guard as set in the editor. Call them again from `<head>`.
+- After the app is closed, both are back to their start state: screen guard off, screenshot guard as the app's screenshot protection setting says. Call them again from `<head>`.

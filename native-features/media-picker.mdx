@@ -81,7 +81,7 @@ The answer variable is `mediaPicker` plus the route (`mediaPickerPick`, `mediaPi
 | `ordered` | show the selection order | `false` |
 | `accent_color` | `#RRGGBB` | the system colour |
 | `tab` | `photos`, `albums` (Android) | `photos` |
-| `preselected` | iOS library asset ids to show as selected | none |
+| `preselected` | `assetId` values from an earlier pick, to show as selected (a JSON array or a comma list) | none |
 
 `source=auto` shows the photo library for images and videos only, the file browser for other types, and a native choice of library, camera and files otherwise. A file above `max_file_mb` fails with `too_large`, one past `max_total_mb` with `total_exceeded`, and files past `limit` with `limit_exceeded`.
 
@@ -132,14 +132,14 @@ Files stay until you `release` them, an upload with `release_after` succeeds, or
 | --- | --- | --- |
 | Library | The system photo picker (no photo permission) | The system Photo Picker (no media permission) |
 | Files | The document picker | The system file picker |
-| Camera | The system camera, with the app's camera permission | The system camera app |
+| Camera | The system camera, with the app's camera permission | The system camera app. It needs no camera permission unless your app declares it; then it is asked first and a refusal answers `permission_denied` |
 | `limit` | Any | Lowered to the Photo Picker's maximum on Android 13 and later (`limitLowered: true`) |
 | `image_format=heic` | Converted | Kept as picked: Android has no HEIC encoder |
-| `preselected` | Applied when the app's photo library setting is on | Not available (`preselectedApplied: false`) |
+| `preselected` | Applied when the app's photo library setting is on | Applied in multi-select (`limit` not 1) on Android 16 and later and on devices whose Photo Picker extension is version 15 or later; otherwise not applied (`preselectedApplied: false`) |
 | `tab` | Not available (`tabApplied: false`) | Applied |
 | Long transcodes | Continue briefly in the background | Run while the app's process lives, unless the build's long-running mode is on |
 
-The camera follows your app's camera setting: a build without it answers `camera_unavailable` for `source=camera` and leaves the camera out of the choice. Without the microphone setting, the camera takes photos only.
+On iOS the camera follows your app's camera setting: a build without it answers `camera_unavailable` for `source=camera` and leaves the camera out of the choice, and without the microphone setting the camera takes photos only. On Android `camera_unavailable` means the device has no camera.
 
 ## Error codes
 
@@ -148,7 +148,7 @@ The camera follows your app's camera setting: a build without it answers `camera
 | `bad_value` | An option is not valid, or does not fit the file or the source |
 | `busy` | A picker is already open, or the file is still in use |
 | `unavailable` | The app is not in the foreground |
-| `camera_unavailable` | No camera on the device, or the app's camera setting is off |
+| `camera_unavailable` | No camera on the device, or (iOS) the app's camera setting is off |
 | `permission_denied` | Camera access was denied |
 | `not_found` | No pick, file or job with that id |
 | `not_supported_on_device` | The device cannot encode that video |

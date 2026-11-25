@@ -9,7 +9,7 @@ Call `despia('stripe://payment?...')` to show the native Stripe Payment Sheet wi
 A second action, `despia('stripe://manage?...')`, opens Stripe's native CustomerSheet so signed-in customers can add, remove, and pick a default among their saved payment methods. Both actions share the same `window.stripeEvent` callback. See [Manage saved cards](#manage-saved-cards).
 
 <Note>
-  Stripe must be enabled in the Despia Editor under **App \> Settings \> Integrations \> Stripe**, followed by a fresh build. With the switch off, the Stripe SDK is left out of the app and `stripe://` calls answer with a `despia-feature-not-included` event. See [Stripe and Despia setup](/payments/stripe/introduction#stripe-and-despia-setup).
+  The Stripe integration must be enabled for your app, followed by a fresh build. With it off, the Stripe SDK is left out of the app and `stripe://` calls answer with a `despia-feature-not-included` event. See [Stripe and Despia setup](/payments/stripe/introduction#stripe-and-despia-setup).
 </Note>
 
 <Danger>
@@ -228,6 +228,74 @@ The same four params apply identically to the `stripe://manage` action covered b
 
 ---
 
+## Apple Pay and Google Pay
+
+The Payment Sheet (`stripe://payment`) and the saved-methods sheet (`stripe://manage`) show Apple Pay on iOS and Google Pay on Android once your app is set up for them. Nothing changes in your web app: the same `despia()` calls show the wallet button above the card form when the device can pay with it.
+
+If a wallet is not set up, or the device cannot use it (no card in Wallet, no Google account, an unsupported region), the sheet shows cards and your other payment methods as usual. A missing wallet never makes a call fail.
+
+### Wallet params
+
+All are optional and use Stripe's own names.
+
+| Param | Values | What it does |
+| --- | --- | --- |
+| `merchant_country_code` | Two-letter country, for example `US` | The country of your Stripe account. Overrides the business country in your app's Stripe configuration for this call. Apple Pay and Google Pay in the Payment Sheet need a country from one of the two. |
+| `currency_code` | Three-letter currency, for example `USD` | Passed to Google Pay. It is optional for Payment Intents; Apple Pay takes the currency from the Payment Intent. |
+| `apple_pay` | `auto` (default) or `never` | `never` leaves Apple Pay out of this one call, in `payment` and `manage`. |
+| `google_pay` | `auto` (default) or `never` | `never` leaves Google Pay out of this one call, in `payment` and `manage`. |
+
+`false`, `off`, `0` and `no` work like `never`. Each platform reads only its own wallet param, so you can send both on every call.
+
+```javascript
+despia(`stripe://payment?publishable_key=${publishable_key}&payment_intent_client_secret=${client_secret}&merchant_country_code=US&currency_code=USD`)
+
+// Cards only for this checkout:
+despia(`stripe://payment?publishable_key=${publishable_key}&payment_intent_client_secret=${client_secret}&apple_pay=never&google_pay=never`)
+```
+
+### Set up Apple Pay (iOS)
+
+You need an Apple Developer account with the Account Holder or Admin role, and Stripe.
+
+1. **Create a merchant ID.** In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources), click **Identifiers**, then **+**. Select **Merchant IDs**, click **Continue**, enter a description and an identifier such as `merchant.com.yourcompany.yourapp`, then click **Continue** and **Register**. A merchant ID never expires, and you can use it for several apps.
+2. **Create the Apple Pay certificate from Stripe.** In the Stripe Dashboard, open [iOS certificate settings](https://dashboard.stripe.com/settings/ios_certificates), click **Add new application**, and download the certificate signing request (CSR). In Apple's portal, open your merchant ID and click **Create Certificate** under **Apple Pay Payment Processing Certificate**. Upload Stripe's CSR, download the `.cer` file, and upload it back to Stripe. Use only the CSR Stripe gives you, not one you made yourself. One CSR makes exactly one certificate. The certificate expires after 25 months.
+3. **Assign the merchant ID to your app.** In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources), open your app's App ID. Turn on **Apple Pay**, click **Edit**, select your merchant ID in the **Merchant ID** table, click **Continue**, then **Save**, and **Confirm** if asked. Apple does not let anyone else do this step for you.
+4. **Turn on Apple Pay in Stripe.** In [Payment methods settings](https://dashboard.stripe.com/settings/payment_methods), make sure **Apple Pay** is on.
+5. **Set the Apple Pay merchant ID and your business country** in your app's Stripe configuration, then start a new iOS build.
+
+At build time Despia checks your provisioning profile. Despia signs the app for Apple Pay only when the profile lists that merchant ID. If step 3 is missing, the build still succeeds without Apple Pay, and the build log explains why.
+
+### Set up Google Pay (Android)
+
+1. **Turn on Google Pay in Stripe.** In [Payment methods settings](https://dashboard.stripe.com/settings/payment_methods), make sure **Google Pay** is on. By using Google Pay you accept Google's [terms of service](https://payments.developers.google.com/terms/sellertos).
+2. **Turn Google Pay on in your app's Stripe configuration**, with your business country and the environment. Use **Test** while you test and **Production** for the store build. With a `pk_test_` key the app always uses Google's test environment.
+3. **Request production access from Google** before you publish. In the [Google Pay & Wallet Console](https://pay.google.com/business/console), create your business profile, open **Google Pay API**, and add your Android app. Choose integration type **Gateway** (Stripe is the gateway). Upload screenshots of your Google Pay checkout from a test build, then click **Save** and **Submit for approval**. Google reviews the request.
+4. Production needs a release build signed with your release key. A debug key does not work in production.
+
+Test Google Pay on a real Android phone that has a Google account with a card in Google Wallet. On an emulator without a Google account, the sheet shows cards only.
+
+### What goes into the app
+
+- Apple Pay off (no merchant ID, or the profile lacks it): no Apple Pay entitlement and no merchant ID in the app.
+- Google Pay off: no Google Pay API entry in the Android manifest, and Google Pay never shows.
+
+In `stripe://manage`, Apple Pay needs only the merchant ID the app is signed for, and Google Pay only the Google Pay setting; the country and currency are not used there.
+
+---
+
+## Redirect payment methods
+
+Some methods send the customer to a bank page or another app and back: Klarna, Affirm, Afterpay, Amazon Pay and similar. Stripe's iOS SDK hides every method that needs a return URL when none is set, so the Despia iOS runtime sets one on both sheets: `<your app's URL scheme>://stripe-redirect`. The scheme is the first URL scheme in the built app, the one Despia writes from your app's scheme setting. If the app has no valid URL scheme, no return URL is set and Stripe leaves those methods out of the sheet.
+
+You add nothing to your page or to your Stripe call. When the customer returns, the app hands the URL to Stripe before any other URL handler. Stripe finishes the payment and closes its web page. Any other URL the app opens takes its usual route. Do not use `stripe-redirect` as a deep link of your own.
+
+On Android the runtime adds no return URL; the sheet returns to the app by itself.
+
+Redirect methods show only when your Payment Intent allows them (for example `automatic_payment_methods` on, or the method in `payment_method_types`) and Stripe offers them for the amount, currency and country.
+
+---
+
 ## Result events
 
 The Despia runtime fires `window.stripeEvent` exactly once per `despia('stripe://payment?...')` call, or zero times if the listener was missing when the result arrived. There are no intermediate `presented`, `processing`, or `dismissing` events. The `method` field on the payload is always the string `paymentSheet`, even though the action is `payment`, so always match on `status`.
@@ -244,7 +312,12 @@ The Despia runtime fires `window.stripeEvent` exactly once per `despia('stripe:/
 
 // status: 'failed' (Stripe SDK error)
 { "method": "paymentSheet", "status": "failed", "error": "The payment intent client secret is invalid." }
+
+// status: 'failed' (iOS: another screen was still closing)
+{ "method": "paymentSheet", "status": "failed", "error": "presenter busy" }
 ```
+
+`presenter busy` (iOS only) means the app was still showing another screen, for example a page alert that was closing, and it had not closed after 2 seconds. The sheet was not shown and nothing was charged. `stripe://manage` answers the same with `method: 'customerSheet'`. Call again once your own dialog is gone; a call made right after a dialog closes waits for it and presents normally.
 
 The literal string `"missing param"` is the only stable matchable error value. It fires in two cases: when `publishable_key` or `payment_intent_client_secret` is missing or empty, and when the optional saved-card pair (`customer_id`, `ephemeral_key_secret`) is half-supplied with exactly one of the two values rather than both or neither. Every other failure (bad client secret, test and live mode mismatch, expired ephemeral key, API version mismatch, network failure, terminal decline) returns Stripe's localized SDK message. Log or display these messages, but never branch on their contents since they are locale-dependent.
 
@@ -465,6 +538,7 @@ async function manageCards() {
 | `ephemeral_key_secret` | Yes | From your server (`ek_...`). API-version-pinned and short-lived. |
 | `setup_intent_client_secret` | No | From your server (`seti_..._secret_...`). Omit to disable the "add card" flow. |
 | `theme`, `accent_color`, `corner_radius`, `action_corner_radius` | No | Same styling as the `payment` action. |
+| `apple_pay`, `google_pay` | No | `never` leaves the wallet out of this sheet. See [Apple Pay and Google Pay](#apple-pay-and-google-pay). |
 
 Missing or empty `publishable_key`, `customer_id`, or `ephemeral_key_secret` returns `{ method: 'customerSheet', status: 'failed', error: 'missing param' }` and the sheet is not shown.
 
@@ -474,7 +548,8 @@ The shape mirrors PaymentSheet, with `method: 'customerSheet'` and a different s
 
 ```javascript
 // status: 'selected'
-{ "method": "customerSheet", "status": "selected" }
+{ "method": "customerSheet", "status": "selected",
+  "paymentOption": { "type": "paymentMethod", "label": "Visa •••• 4242", "paymentMethodId": "pm_..." } }
 
 // status: 'canceled'
 { "method": "customerSheet", "status": "canceled" }
@@ -486,7 +561,15 @@ The shape mirrors PaymentSheet, with `method: 'customerSheet'` and a different s
 { "method": "customerSheet", "status": "failed", "error": "The ephemeral key has expired." }
 ```
 
-The `selected` event fires when the customer confirms a card selection, including immediately after adding a new card via the SetupIntent flow. The chosen card's id, brand, and last four digits are intentionally not included in the event. Read the customer's saved methods from your backend if you need to display the current default.
+The `selected` event fires when the customer confirms a selection, including immediately after adding a new card via the SetupIntent flow. `paymentOption` names the choice:
+
+| Field | Meaning |
+| --- | --- |
+| `type` | `paymentMethod`, `applePay` (iOS) or `googlePay` (Android) |
+| `label` | Stripe's label for the choice |
+| `paymentMethodId` | The saved payment method (`pm_...`), only for `paymentMethod` |
+
+`applePay` and `googlePay` mean "pay with the wallet next time": there is no saved payment method id for them. `paymentOption` is left out when the customer removed their default method and picked none. Confirm the customer's methods on your backend before you rely on the choice.
 
 ---
 

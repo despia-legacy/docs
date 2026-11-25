@@ -138,6 +138,34 @@ For OAuth flows specifically, pair this with a deep link return URL so the syste
 
 ---
 
+## Links that open another app
+
+Page links to a phone number, a text message, a map, an email, a store listing or a chat open the app that handles them, and the page stays where it was.
+
+```html
+<a href="tel:+15551234567">Call us</a>
+<a href="sms:+15551234567">Send a text</a>
+<a href="mailto:hello@example.com">Email us</a>
+<a href="geo:25.2048,55.2708">Open the map</a>
+<a href="market://details?id=com.example.app">Rate us on Google Play</a>
+```
+
+| Link | Android opens |
+| --- | --- |
+| `tel:` | The phone app (dialer) |
+| `sms:` | The messages app |
+| `geo:` and Google Maps links | A maps app |
+| `market:` and `play.google.com` | The Play Store |
+| `mailto:` | A mail app |
+| `whatsapp:` | WhatsApp |
+| `intent:` | The app the intent names |
+
+On Android 11 and later the runtime starts the link and shows "No application can handle this request" only when the device has no app that can open it. It does not check first, because from Android 11 an app cannot see other installed apps unless its manifest lists them, and a list cannot cover every scheme a page might use (Android developers, "Package visibility use cases", read 25 Nov 2026). Before this change, `tel:`, `sms:`, `geo:` and `market:` links showed that message on Android 11 and later even though the dialer, Messages, Maps and the Play Store were installed. `mailto:` and `whatsapp:` links no longer crash a device that has no mail app or no WhatsApp; they show the same message.
+
+Home-screen quick actions whose link is one of these (for example a **Call support** action with `tel:+15551234567`) take the same route.
+
+---
+
 ## Resources
 
 <CardGroup cols={2}>

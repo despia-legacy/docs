@@ -57,7 +57,7 @@ Access Apple HealthKit from your web app through the Despia native bridge. Despi
 
 ## Apple Developer and Despia setup
 
-HealthKit requires the HealthKit capability on your core app bundle ID before any read or write call works. Configure Apple Developer first, then enable Health Data in the Despia Editor and rebuild.
+HealthKit requires the HealthKit capability on your core app bundle ID before any read or write call works. Configure Apple Developer first, then enable the Health Data addon for your app and rebuild.
 
 <Steps>
   <Step title="Sign in to Apple Developer">
@@ -66,16 +66,16 @@ HealthKit requires the HealthKit capability on your core app bundle ID before an
   <Step title="Add HealthKit to your core app bundle ID">
     Find your core app (e.g. `com.despia.myapp`), click into it, and check **HealthKit** under Capabilities. Click **Save**. Without this, HealthKit reads will return empty arrays and writes will fail silently, since iOS rejects HealthKit access for any app whose bundle ID does not declare the capability.
   </Step>
-  <Step title="Enable Health Data in the Despia Editor">
-    Open the Despia Editor and go to **App \> Addons \> Health Data**. Toggle the addon on. This signals Despia to compile the HealthKit framework and the matching usage descriptions into your next build.
+  <Step title="Enable the Health Data addon">
+    Enable the **Health Data** addon for your app. It makes the build compile the HealthKit framework and the matching usage descriptions into your next build.
   </Step>
   <Step title="Rebuild your app">
-    Trigger a fresh build from the Despia Editor. HealthKit linking happens at the binary level, so this cannot be applied over-the-air. After the rebuild, calls to `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, and `healthkit://observe` will function in production.
+    Build the app again. HealthKit linking happens at the binary level, so this cannot be applied over-the-air. After the rebuild, calls to `readhealthkit://`, `writehealthkit://`, `healthkit://workouts`, and `healthkit://observe` will function in production.
   </Step>
 </Steps>
 
 <Warning>
-  Skipping the HealthKit capability on the core bundle ID, or skipping the rebuild after enabling the Despia addon, leaves the integration inactive even when both toggles read enabled. `readhealthkit://` returns empty arrays, `healthkit://workouts` resolves to `[]`, `writehealthkit://` resolves silently without saving, and `healthkit://observe` never fires a webhook. If health data stops working after editing settings, verify the capability is on in Apple Developer and rebuild before opening a support ticket.
+  Skipping the HealthKit capability on the core bundle ID, or skipping the rebuild after enabling the Health Data addon, leaves the integration inactive. Without the capability, `readhealthkit://` returns empty arrays, `healthkit://workouts` resolves to `[]`, `writehealthkit://` resolves silently without saving, and `healthkit://observe` never fires a webhook. A build made without the addon answers every read with `{ "error": "healthkit_read_not_available" }`. If health data stops working after you change the configuration, verify the capability is on in Apple Developer and rebuild before opening a support ticket.
 </Warning>
 
 ---

@@ -1,0 +1,198 @@
+---
+title: "Native Navigation"
+description: "A real native navigation bar, tab bar and back gesture around your web pages, declared with two meta tags and changed from JavaScript."
+icon: "bars"
+---
+
+```html
+<meta name="despia-navigation" content="title=Inbox&style=large">
+<meta name="despia-navigation-tabs" content='items=[{"id":"inbox","title":"Inbox","icon":{"sfSymbol":"tray","svg":"/icons/inbox.svg"},"url":"/inbox"},{"id":"settings","title":"Settings","icon":{"sfSymbol":"gear","svg":"/icons/gear.svg"},"url":"/settings"}]&selected=inbox'>
+```
+
+Native Navigation puts the platform's own navigation bar and tab bar around your pages: `UINavigationController` and `UITabBar` on iOS, Material 3 `MaterialToolbar` and `BottomNavigationView` on Android. Going to another page slides it in like a native screen, and the back button and back gesture return to the page before, with its scroll position.
+
+It is built into the app: there is nothing to install. An app built before it was added needs a new build. Nothing changes until a page declares the chrome. A page that declares nothing keeps your app exactly as it is.
+
+---
+
+## Declaring the chrome
+
+Add `despia-navigation` for the bar and `despia-navigation-tabs` for the tab bar to the page's `<head>`. Each `content` is a query string: `key=value` pairs joined by `&`. A page can declare either one or both.
+
+A `<meta>` tag with a `media` attribute applies only while its media query matches, so one page can declare a different bar for dark mode or a wide screen. Several matching tags are merged, the later ones winning.
+
+When the next document declares nothing, the chrome turns off, unless the bar set `persist=true`.
+
+### From JavaScript
+
+The same keys can be set from your code. A call changes only the keys it names, on the current page, on top of the page's meta tags. An empty value removes a key again.
+
+```javascript
+import despia from 'despia-native';
+
+despia('navigation://bar?title=' + encodeURIComponent('3 unread'));
+despia('navigation://tabs?selected=settings');
+```
+
+| Call | Does |
+| --- | --- |
+| `navigation://bar?<keys>` | Sets bar keys and turns the chrome on |
+| `navigation://tabs?<keys>` | Sets tab bar keys and turns the chrome on |
+| `navigation://back` | Goes back one page |
+| `navigation://ready` | Tells the app the page is ready (with `ready=manual`) |
+| `navigation://forget` | Drops the saved pictures of earlier pages |
+| `navigation://off` | Turns the chrome off |
+
+An unknown key or a value that is not valid is ignored with a console warning.
+
+---
+
+## Bar keys
+
+| Key | Values | Default |
+| --- | --- | --- |
+| `title` | text | the page's `<title>` |
+| `subtitle` | text | none |
+| `style` | `inline`, `large`, `medium` | `inline` |
+| `align` | `start`, `center`: where the title sits (on iOS, `start` needs iOS 16 or later) | `center` on iOS, `start` on Android |
+| `back` | `auto` (shown when there is a page to go back to), `show`, `hide` | `auto` |
+| `backtitle` | text for the back button | the platform's |
+| `backaction` | `history` (go back), `event` (tell the page) | `history` |
+| `swipe` | `true`, `false`: the back gesture | `true` |
+| `hidden` | `true`, `false` | `false` |
+| `items` | a JSON array of buttons (below) | none |
+| `background` | a colour, or `transparent` | the platform's |
+| `tint` | a colour for buttons | the platform's |
+| `titlecolor` | a colour | the platform's |
+| `shadow` | `true`, `false`: the line under the bar | the platform's |
+| `hideonscroll` | `true`, `false`: hide the bar while the page scrolls down | `false` |
+| `transition` | `default` (slide), `fade`, `none`: how a new page comes in | `default` |
+| `ready` | `auto`, `manual` | `auto` |
+| `readytimeout` | milliseconds, 0 to 60000 | `3000`; `1000` going back within one document |
+| `persist` | `true`, `false`: keep the chrome on pages that declare nothing | `false` |
+
+A colour is `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()`. With the reduce-motion setting on, the slide becomes a fade.
+
+## Tab bar keys
+
+| Key | Values | Default |
+| --- | --- | --- |
+| `items` | a JSON array of tabs (below) | none |
+| `selected` | a tab `id` | the first tab |
+| `hidden` | `true`, `false` | `false` |
+| `background` | a colour, or `transparent` | the platform's |
+| `tint` | a colour for the selected tab | the platform's |
+| `transition` | `default`, `fade`, `none`: how the page changes when a tab is tapped | `fade` |
+
+## Buttons and tabs
+
+`items` is a JSON array. Encode it with `encodeURIComponent` in a call.
+
+```javascript
+const items = [
+  { id: 'compose', title: 'New', icon: { sfSymbol: 'square.and.pencil', svg: '/icons/compose.svg' }, style: 'prominent' },
+  { id: 'more', title: 'More', menu: [
+    { id: 'archive', title: 'Archive' },
+    { id: 'delete', title: 'Delete', style: 'destructive' }
+  ] }
+];
+despia('navigation://bar?items=' + encodeURIComponent(JSON.stringify(items)));
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Sent back in the event; defaults to the `title` |
+| `title` | The label; required, an item without one is dropped |
+| `icon.sfSymbol` | An SF Symbol name, used on iOS |
+| `icon.material` | A Material Symbols name, used on Android. Without it the SF Symbol name is mapped to its Material Symbols equivalent where one exists |
+| `icon.svg` or `icon.src` | An image URL, relative to the page; used when the platform has no symbol for the item |
+| `placement` | `leading` or `trailing` (bar buttons; default `trailing`) |
+| `style` | `prominent` for a bar button, `destructive` for a menu row |
+| `enabled` | `false` greys it out |
+| `badge` | A number or short text on a tab or a bar button (on iOS, a bar button badge needs iOS 26 or later) |
+| `url` | A tab with a `url` loads it, relative to the page, when tapped |
+| `menu` | A list of rows shown as a menu instead of a single action |
+
+---
+
+## Events
+
+A tap on a button or a tab, and the back button when `backaction=event`, call `window.onNavigationEvent`:
+
+```javascript
+window.onNavigationEvent = (e) => {
+  if (e.type === 'item' && e.id === 'compose') openComposer();
+  if (e.type === 'tab') console.log('tab', e.id);
+  if (e.type === 'back') confirmLeave().then((ok) => ok && history.back());
+};
+```
+
+`e.source` on a back event is `button` (the back button or `navigation://back`), or `system` (the Android back gesture or button). While `backaction=event`, `navigation://back` sends this event too instead of going back, and the swipe back gesture is off; go back with `history.back()`.
+
+A tab with a `url` sends its event and then loads the URL. A tab without a `url` only changes the selection. A tab is a top-level destination: it has no back button, and the status bar icons follow the bar's background.
+
+## Laying out your page
+
+The bars sit over your page. Their sizes are published as CSS variables, so the content can start below the bar and end above the tab bar:
+
+```css
+main {
+  padding-top: var(--navigation-inset-top, 0px);
+  padding-bottom: var(--navigation-inset-bottom, 0px);
+}
+```
+
+| Variable | Meaning |
+| --- | --- |
+| `--navigation-inset-top` | Space taken at the top, status bar included |
+| `--navigation-bar-height` | The bar's current height |
+| `--navigation-bar-max-height` | The bar's height with a large title open |
+| `--navigation-inset-bottom` | Space taken at the bottom |
+| `--navigation-tab-bar-height` | The tab bar's height |
+
+The same values, with the chrome's state, are on `window.despiaNavigation`, and the `despianavigationchange` event fires when they change:
+
+```javascript
+if (window.despiaNavigation?.supported) {
+  window.addEventListener('despianavigationchange', (e) => {
+    const { active, hidden, canGoBack, depth, tabsHidden, insetTop, insetBottom } = e.detail;
+  });
+}
+```
+
+`window.despiaNavigation` exists only in an app build that has Native Navigation; use it to tell such a build apart. See also [Safe Areas](/native-features/safe-areas).
+
+## Page changes
+
+When a link opens a new document, the old page stays on screen as a picture until the new one is ready, so there is no white flash. With `ready=auto` that is when the document has loaded; with `ready=manual` it is when the page calls `navigation://ready`. After `readytimeout` the picture goes away in any case, and a progress indicator shows if the wait passes 0.4 seconds.
+
+Pages that change the URL with `history.pushState` count as pages too: back returns to them, and their scroll position is restored.
+
+---
+
+## Platform notes
+
+| | iOS | Android |
+| --- | --- | --- |
+| Bar | `UINavigationController`, large titles for `large` and `medium` | `MaterialToolbar`; `CollapsingToolbarLayout` Large or Medium for `large` and `medium` |
+| `subtitle` | Below the title on iOS 26 and later; the line above the title before | The toolbar subtitle |
+| `backtitle` | The back button's text | The back button's spoken name |
+| Back gesture | The edge swipe | The system back gesture, with the predictive back animation on Android 14 and later |
+| Back history | A long press on the back button lists earlier pages | Not available |
+| Tab bar | `UITabBar`, Liquid Glass on iOS 26 and later | `BottomNavigationView`, labels always shown |
+| `placement: "leading"` | Left of the title | At the start of the toolbar, after the back button |
+| `tint` | Bar buttons and the selected tab | Bar buttons, the overflow menu and the back arrow |
+| Icons | `icon.sfSymbol`, else `icon.svg` or `icon.src` | `icon.material`, else the mapped SF Symbol name, else `icon.svg` or `icon.src` |
+| `style: "prominent"` | The bar button's prominent style | Always shown on the bar, never folded into the overflow menu, in the primary colour |
+| `style: "destructive"` | A red menu row | The error colour |
+| Right-to-left | Follows the page's `dir` | Follows the page's `dir` |
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Nothing shows | The tag is in the document's `<head>`, its `name` is spelled exactly, and the app was built after Native Navigation was added (`window.despiaNavigation` exists) |
+| A key has no effect | The console shows a warning for unknown keys and values that are not valid |
+| Content hides under the bar | Pad with the CSS variables above |
+| The chrome disappears on the next page | That page declares nothing; add the tags to it or set `persist=true` |
+| Back closes the page you wanted to keep | Set `backaction=event` and handle `type: "back"` |

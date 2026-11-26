@@ -19,7 +19,7 @@ Health is built into your app only when you turn it on, because the App Store an
 | `enabled` | Builds health into the app (iOS and Android) |
 | `read` | The types your app reads: HealthKit identifiers, Health Connect record names, Health Connect permission names, or `all` |
 | `write` | The types your app writes, the same spelling |
-| `background` | `true` lets observers deliver while the app is closed |
+| `background` | `true` lets observers deliver while the app is closed (Android). On iOS the build adds Apple's background-delivery entitlement whenever `read` is set and does not read this setting |
 | `history` | `true` reads data older than 30 days (Health Connect). HealthKit has no such limit |
 | `privacy_url` | Your privacy policy. Health Connect shows it on its permission screen and Google Play requires it |
 | `usage.share`, `usage.update` | The purpose texts iOS shows in the HealthKit permission sheet |
@@ -52,8 +52,8 @@ if (isDespiaHealth) {
 
 | Call | Answers in | What it does |
 | :-- | :-- | :-- |
-| `health://read?types=...&days=N` | `healthkitResponse` | Reads types, as `healthkit://read`. Android also takes `start`, `end` and `bucket=hour` |
-| `health://workouts?days=N` | `healthkitWorkouts` | Workouts, as `healthkit://workouts` |
+| `health://read?types=...&days=N` | `healthkitResponse` | Reads types, as `healthkit://read`. Also takes `start` and `end` (ISO 8601 instants) and `bucket=hour`, the same on iOS and Android |
+| `health://workouts?days=N` | `healthkitWorkouts` | Workouts, as `healthkit://workouts`. Also takes `start` and `end` |
 | `health://write?type=T&value=V` | `healthkitWriteResponse` | Saves a value. `start` and `end` set the period. Blood pressure takes `systolic` and `diastolic` |
 | `health://observe?types=...&server=URL` | `observingHealthKit` | Registers an observer, as `healthkit://observe` |
 | `health://unobserve?types=...` | `observingHealthKit` | Stops observers |
@@ -124,7 +124,6 @@ These come from the platforms themselves, not from Despia.
 | Withdraw permission from the app | No app API. `health://revoke` answers `revoked: false` with a `limit` that points the user to Settings > Health | `health://revoke` removes your permissions |
 | Install | HealthKit is part of iOS: `health://install` answers `opened: false` | A Google Play app on Android 13 and lower, part of the system on Android 14 and later |
 | Profile data (birth date, sex, blood type) | Characteristic types | Health Connect has no such data type: they are `unsupported` |
-| Read range | `days` | `days`, `start`, `end` and `bucket=hour`. On iOS a call with `start`, `end` or `bucket=hour` answers `health_invalid_request` and asks for `days` |
 | Settings screen | Opens the Health app, or your app's page in Settings if iOS does not open it | Opens Health Connect |
 
 Sources, read 25 November 2026: Apple Developer Documentation for [`authorizationStatus(for:)`](https://developer.apple.com/documentation/healthkit/hkhealthstore/authorizationstatus(for:)) (an app cannot determine whether read permission was granted), [`getRequestStatusForAuthorization`](https://developer.apple.com/documentation/healthkit/hkhealthstore/getrequeststatusforauthorization(toshare:read:completion:)) (iOS 12), [`HKAnchoredObjectQuery`](https://developer.apple.com/documentation/healthkit/hkanchoredobjectquery) and [`deleteObjects(of:predicate:withCompletion:)`](https://developer.apple.com/documentation/healthkit/hkhealthstore/deleteobjects(of:predicate:withcompletion:)) (an app deletes only what it saved); Android Developers [Sync data](https://developer.android.com/health-and-fitness/health-connect/sync-data) (changes tokens, 30-day expiry, `deleteRecords`) and [Data types](https://developer.android.com/health-and-fitness/health-connect/data-types).

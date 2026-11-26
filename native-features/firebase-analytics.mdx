@@ -1,0 +1,110 @@
+---
+title: "Firebase Analytics"
+description: "Google Analytics for Firebase as its own feature: events, screens, users, consent mode v2, data-collection controls and Google Ads conversions, on iOS and Android. Off in every app until you switch it on, and independent of Firebase push."
+icon: "chart-line"
+---
+
+Firebase Analytics adds Google Analytics for Firebase to your app (iOS Firebase 13.2.0, Android `firebase-analytics` 24.0.0). Your web code reports events, screens, users and purchases, and it controls collection and consent. A Google Ads account linked to the Firebase project can use eligible events as conversions. It shows no ads and does not include AdMob.
+
+## A feature of its own, separate from push
+
+Firebase Analytics and Firebase push are two separate switches. Each one builds without the other:
+
+| Firebase Analytics | Firebase push | What the app contains |
+|---|---|---|
+| off | off | No Firebase at all. |
+| off | on | Firebase Messaging only. No Analytics SDK is linked (iOS: no `FirebaseAnalytics` product; Android: no `firebase-analytics` or measurement library). Collection is off anyway (`FIREBASE_ANALYTICS_COLLECTION_ENABLED` / `firebase_analytics_collection_enabled` set to `false`). |
+| on | off | The Analytics SDK only. No push code, no Firebase Messaging, no push service, and the feature adds no push entitlement. |
+| on | on | Both. |
+
+When the feature is off, calls to `extension://firebase_analytics/...` answer `not_registered`.
+
+## Switch it on
+
+1. Switch on **Firebase Analytics** for the app (`features.firebase_analytics.enabled`).
+2. Register the app in a Firebase project and add its configuration to the build: `GoogleService-Info.plist` on iOS and `google-services.json` on Android. For Google Ads conversions, link Analytics to your Google Ads account in Firebase.
+3. Rebuild. Settings take effect only in a new build.
+
+Build settings. Collection and consent settings are off by default; the two identifier settings keep Firebase's own default (on) and only matter once collection is on:
+
+| Setting | What it sets from the first launch |
+|---|---|
+| `analytics_collection_default` | Firebase's collection switch and the default `analytics_storage` consent |
+| `ad_storage`, `ad_user_data`, `ad_personalization` | The default consent for each type |
+| `automatic_screen_reporting` | Firebase's automatic screen views (`FirebaseAutomaticScreenReportingEnabled` / `google_analytics_automatic_screen_reporting_enabled`). Leave it off and report the page's screens with `screen`: the app has one native screen, so automatic reports would all name it. |
+| `collection_deactivated` | Permanently deactivates Analytics collection in this build (`FIREBASE_ANALYTICS_COLLECTION_DEACTIVATED` / `firebase_analytics_collection_deactivated`). It takes priority over every other collection setting and over `setAnalyticsCollectionEnabled`, so `consent` cannot turn collection back on. Default off. |
+| `idfv_collection_enabled` (iOS) | Whether Firebase may collect the Identifier for Vendor (`GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`). Default on, as Firebase ships it; set it to `false` to stop that collection. |
+| `adid_collection_enabled` (Android) | Whether Firebase may collect the Advertising ID (`google_analytics_adid_collection_enabled`). Default on, as Firebase ships it; set it to `false` to stop that collection. |
+
+Leave the first four groups off to collect nothing until the page asks. Firebase documents the deactivation key and the identifier keys on its "Configure Analytics data collection" pages, iOS and Android (read 26 November 2026). Android's page lists no manifest key for the Android ID (SSAID), and the Analytics SDK this build links (24.0.0) does not read one, so there is no setting for it. Firebase's iOS page controls the IDFA by the dependency, not a key: the app links the `FirebaseAnalytics` product, which includes IDFA support, and does not offer Firebase's `FirebaseAnalyticsCore` alternative in this version.
+
+An Android build marked child-directed ships no Google Analytics SDK (Google Play Families policy, read 25 November 2026).
+
+## Consent (consent mode v2) and ATT
+
+1. Ask the person in your own screen. On iOS, use `trackingconsent://` for ATT; Firebase Analytics never shows the prompt.
+2. Call `configure`, then `consent`:
+   - `enabled` (required): the collection switch (`setAnalyticsCollectionEnabled`).
+   - `analytics_storage`: follows `enabled` when you leave it out. Name it to differ, for example `enabled=true&analytics_storage=false` (collection on, storage denied).
+   - `ad_storage`, `ad_user_data`, `ad_personalization`: each is `false` unless you pass `true`.
+   Every `consent` call sets all four types. Firebase keeps them across launches.
+3. Reapply the saved choice after every launch.
+
+Consent types and their meaning: Google, "Set up consent mode for apps", https://developers.google.com/tag-platform/security/guides/app-consent (read 26 November 2026). Disclose Google Analytics for Firebase in your App Store privacy labels and the Google Play Data Safety form, and make the Advertising ID declaration.
+
+## JavaScript API
+
+`extension://firebase_analytics/<route>?<params>`. Result variables are `firebaseAnalytics<Route>Result` and callbacks are `onFirebaseAnalytics<Route>Result` (for example `firebaseAnalyticsSessionTimeoutResult`). The calls and answers are the same on iOS and Android.
+
+| Route | Parameters | Answer in `data` | Needs consent |
+|---|---|---|---|
+| `status` | none | `configured`, `enabled`, `sdk` | no |
+| `configure` | none | `configured`, `enabled` | no |
+| `consent` | `enabled` (required), `analytics_storage`, `ad_storage`, `ad_user_data`, `ad_personalization` | `enabled` | no |
+| `event` | `name` (required, up to 40), `properties` (JSON) | `accepted` | yes |
+| `screen` | `screen_name` (required, up to 100), `screen_class` (up to 100), `properties` (JSON) | `accepted` | yes |
+| `purchase` | `amount`, `currency` (uppercase ISO 4217), `transaction_id` (all required), `properties` | `accepted` | yes |
+| `user` | `id` (up to 256; leave out to clear) | `accepted` | to set; clearing needs none |
+| `property` | `name` (required, up to 24), `value` (up to 36; leave out to clear) | `accepted` | to set; clearing needs none |
+| `defaults` | `properties` (JSON; a `null` value clears that one parameter; leave out to clear all) | `accepted` | yes |
+| `session` | none | `session_id`, `app_instance_id` (as far as the platform reports them) | yes |
+| `session_timeout` | `seconds` (required, whole seconds, at least 1) | `accepted` | no |
+| `conversion_measurement` | exactly one of `email`, `phone` (E.164), `hashed_email`, `hashed_phone` (SHA-256, 64 hex) | `accepted` (iOS) | yes |
+| `reset` | none | `accepted` | no |
+
+- `properties` values are strings or finite numbers. `event` and `purchase` also accept an `items` array of such objects.
+- `screen` logs Firebase's `screen_view` event with `screen_name` and `screen_class` (Firebase, "Measure screenviews", read 26 November 2026).
+- `defaults` adds parameters to every later event, automatic events included. An event's own parameter wins on a name clash.
+- `session_timeout` changes how long an idle session lasts. Firebase's default is 30 minutes.
+- `reset` clears the Analytics data on the device and creates a new app instance id.
+- Limits are Google's: event names up to 40 characters, parameter values up to 100, user property names up to 24 and values up to 36, and user id up to 256 (Google Analytics Help 9267744, read 26 November 2026).
+- `conversion_measurement` starts Google's on-device conversion measurement. On Android it answers `platform_limit`: Google offers it for iOS App campaigns only (Google Ads Help, https://support.google.com/google-ads/answer/12119136, read 24 November 2026).
+- `accepted` means the call was handed to the SDK. It does not mean Google recorded it.
+
+Errors: `not_configured`, `configuration_conflict`, `consent_required`, `bad_request`, `sdk_error`, `platform_limit`, `not_registered`.
+
+```js
+import despia from 'despia-native';
+
+await despia('extension://firebase_analytics/configure', ['firebaseAnalyticsConfigureResult']);
+const c = await despia('extension://firebase_analytics/consent?enabled=true&ad_storage=true&ad_user_data=true&ad_personalization=false',
+  ['firebaseAnalyticsConsentResult']);
+if (c.firebaseAnalyticsConsentResult?.ok) {
+  await despia('extension://firebase_analytics/screen?screen_name=Checkout&screen_class=CheckoutPage', ['firebaseAnalyticsScreenResult']);
+  await despia('extension://firebase_analytics/event?name=generate_lead', ['firebaseAnalyticsEventResult']);
+}
+```
+
+## Calls written for the earlier "googleads" name
+
+The build declares `googleads` as an alias of this feature, so existing `extension://googleads/<route>` calls reach the same routes. The route table is this feature's, so the answers use the result variable and callback names on this page.
+
+## Platform notes
+
+- **Apps that had Firebase push before this feature.** An iOS app with Firebase push used to link the Analytics SDK as well. A push-only app now links Firebase Messaging only: no Analytics product, and collection stays off (`FIREBASE_ANALYTICS_COLLECTION_ENABLED` is `false`). If your app relied on Analytics through push, switch on Firebase Analytics.
+- **Purchases.** `purchase` logs Firebase's `purchase` event from the values you pass. Firebase's StoreKit 2 helper `Analytics.logTransaction` is not exposed.
+
+- A default Firebase app that already exists with another Google app id is kept, and `configure` answers `configuration_conflict`.
+- A successful call is not a Google Ads conversion. Check the linkage, event eligibility and consent in Google Ads before launch.
+
+Sources (read 26 November 2026 unless noted): Firebase Analytics Swift reference (https://firebase.google.com/docs/reference/swift/firebaseanalytics/api/reference/Classes/Analytics); Android FirebaseAnalytics reference (https://firebase.google.com/docs/reference/android/com/google/firebase/analytics/FirebaseAnalytics); https://firebase.google.com/docs/analytics/screenviews; https://firebase.google.com/docs/analytics/configure-data-collection; https://developers.google.com/tag-platform/security/guides/app-consent; https://support.google.com/analytics/answer/9267744.

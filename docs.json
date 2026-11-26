@@ -341,6 +341,7 @@
           "native-features/screenshot",
           "native-features/notification-sounds",
           "native-features/audio-player",
+          "native-features/background-recorder",
           "native-features/age-assurance",
           "native-features/sandbox"
         ]
@@ -563,7 +564,7 @@
     { "source": "/custom-code/extensions", "destination": "/introduction" },
     { "source": "/experiments/v3-extensions", "destination": "/introduction" },
     { "source": "/experiments/extension-troubleshooting", "destination": "/introduction" },
-    { "source": "/experiments/samples/recorder", "destination": "/introduction" },
+    { "source": "/experiments/samples/recorder", "destination": "/native-features/background-recorder" },
     { "source": "/experiments/samples/live-activities", "destination": "/introduction" },
     { "source": "/experiments/samples/home-widgets", "destination": "/native-features/home-widgets" },
     { "source": "/extensions/introduction", "destination": "/introduction" },

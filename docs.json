@@ -318,6 +318,7 @@
           "native-features/biometrics",
           "native-features/speech-recognition",
           "native-features/app-privacy",
+          "native-features/tracking-consent",
           "native-features/safe-areas",
           "native-features/screen-radius",
           "native-features/in-app-rating",
@@ -343,22 +344,6 @@
           "native-features/background-recorder",
           "native-features/age-assurance",
           "native-features/sandbox"
-        ]
-      },
-      {
-        "group": "Experiments",
-        "icon": "flask",
-        "pages": [
-          "experiments/v3-extensions",
-          "experiments/extension-troubleshooting",
-          {
-            "group": "Despia V3 Extensions",
-            "icon": "vial",
-            "pages": [
-              "experiments/samples/live-activities",
-              "experiments/samples/home-widgets"
-            ]
-          }
         ]
       },
       {
@@ -576,8 +561,13 @@
     "indexing": "all"
   },
   "redirects": [
-    { "source": "/custom-code/extensions", "destination": "/experiments/v3-extensions" },
+    { "source": "/custom-code/extensions", "destination": "/introduction" },
+    { "source": "/experiments/v3-extensions", "destination": "/introduction" },
+    { "source": "/experiments/extension-troubleshooting", "destination": "/introduction" },
     { "source": "/experiments/samples/recorder", "destination": "/native-features/background-recorder" },
+    { "source": "/experiments/samples/live-activities", "destination": "/introduction" },
+    { "source": "/experiments/samples/home-widgets", "destination": "/native-features/home-widgets" },
+    { "source": "/extensions/introduction", "destination": "/introduction" },
     { "source": "/local-database/introduction", "destination": "/native-features/storage-vault" },
     { "source": "/local-database/reference", "destination": "/native-features/storage-vault" }
   ]

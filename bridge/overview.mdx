@@ -1,0 +1,104 @@
+---
+title: "Overview"
+description: "Call native features with plain JSON objects and get promises, events and file URLs back."
+icon: "circle-info"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+The JSON bridge is a new way for your web app to talk to the native runtime. Instead of building a URL-scheme string, you call a feature as a method, pass it a plain object, and await the result.
+
+```javascript
+const result = await despia.<feature>.<action>({ /* options */ })
+```
+
+Every `despia("scheme://...")` call you have today keeps working unchanged. Documentation for new features shows only the bridge form. See [Legacy calls](/bridge/legacy-calls).
+
+---
+
+## Why a new bridge
+
+A URL-scheme call packs everything into one string. Values have to be encoded with `encodeURIComponent`, everything arrives on the native side as text, the string gets unwieldy as payloads grow, and results come back through watched `window` variables or global callbacks. The bridge removes each of those steps.
+
+<CardGroup cols={2}>
+  <Card title="Real JSON" icon="brackets-curly">
+    Pass objects, arrays, numbers and booleans as they are. Nested options arrive on the native side with their types intact, and results come back the same way.
+  </Card>
+
+  <Card title="No encoding" icon="text-slash">
+    No `encodeURIComponent`, no query strings, no escaping `?`, `&` or `=` inside values. What you pass is what the runtime reads.
+  </Card>
+
+  <Card title="No length limits" icon="arrows-left-right">
+    Payloads are not squeezed into a URL, so long text and large option objects go through in one call. Files travel as URLs, never as encoded bytes.
+  </Card>
+
+  <Card title="Promises" icon="circle-check">
+    Every call returns a promise. It resolves with the result or rejects with a `DespiaError` that carries a code you can switch on.
+  </Card>
+
+  <Card title="Events" icon="wave-pulse">
+    Subscribe with `.on()` and get an off function back. Long-running jobs report progress, logs and completion under one job id, even across app launches.
+  </Card>
+
+  <Card title="Typed" icon="code">
+    The `despia-native` SDK ships a typed feature map, so editors autocomplete features, actions, options and results.
+  </Card>
+</CardGroup>
+
+---
+
+## At a glance
+
+| | URL-scheme call | JSON bridge |
+| --- | --- | --- |
+| Call | `despia("feature://action?key=value")` | `despia.<feature>.<action>({ key: value })` |
+| Values | Encoded strings | JSON with types preserved |
+| Result | Watched `window` variables | The promise's resolved value |
+| Errors | Feature-specific, often silent | A `DespiaError` with a `code` |
+| Events | One global `window` callback per feature | `.on(event, fn)`, which returns an off function |
+| Files | Feature-specific | A local server URL for every file |
+| Outside the app | Your own user agent check | The call rejects with `not_in_app` |
+
+---
+
+## In this section
+
+<CardGroup cols={2}>
+  <Card title="Calling a feature" icon="play" href="/bridge/calling-a-feature">
+    The call shape, results and typed errors.
+  </Card>
+
+  <Card title="Events" icon="wave-pulse" href="/bridge/events">
+    Listeners, broadcast, and long-running jobs.
+  </Card>
+
+  <Card title="Files" icon="file" href="/bridge/files">
+    Local server URLs, lifetimes, and background transfers.
+  </Card>
+
+  <Card title="TypeScript" icon="brackets-curly" href="/bridge/typescript">
+    The typed feature map in `despia-native`.
+  </Card>
+
+  <Card title="Legacy calls" icon="clock-rotate-left" href="/bridge/legacy-calls">
+    How existing `despia("scheme://...")` calls fit in.
+  </Card>
+</CardGroup>
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

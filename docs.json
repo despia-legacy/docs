@@ -242,6 +242,19 @@
         "tag": "V4"
       },
       {
+        "group": "Bridge",
+        "icon": "bridge",
+        "tag": "Coming soon",
+        "pages": [
+          "bridge/overview",
+          "bridge/calling-a-feature",
+          "bridge/events",
+          "bridge/files",
+          "bridge/typescript",
+          "bridge/legacy-calls"
+        ]
+      },
+      {
         "group": "Native Features",
         "icon": "bolt-lightning",
         "expanded": false,

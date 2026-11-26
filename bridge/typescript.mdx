@@ -1,0 +1,139 @@
+---
+title: "TypeScript"
+description: "Install despia-native and get autocomplete and type checking for every feature, action, option, result and event."
+icon: "brackets-curly"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+The `despia-native` package includes type definitions for the whole bridge. There is nothing extra to install: import `despia` and your editor knows every feature, every action on it, the options each action takes, what it resolves with, and the events it emits.
+
+---
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install despia-native
+```
+
+```bash pnpm
+pnpm add despia-native
+```
+
+```bash yarn
+yarn add despia-native
+```
+
+</CodeGroup>
+
+```typescript
+import despia from 'despia-native'
+```
+
+The types ship inside the package, so no separate `@types` package is needed.
+
+---
+
+## The typed feature map
+
+The SDK describes every feature in a single feature map: for each feature, its actions with their options and results, and its events with their payloads. `despia` is typed from that map, which is what drives autocomplete after `despia.` and after `despia.files.`.
+
+```typescript
+const { url } = await despia.files.keep({ url: photoUrl })
+//      ^? string
+
+await despia.files.expire({ url: photoUrl, after: '1 day' })
+//                                         ~~~~~ type error: after is a number of seconds
+```
+
+Misspelled actions, missing required options and options of the wrong type are caught at compile time instead of failing on a device.
+
+To reuse an action's types in your own code, derive them from the action with the standard utility types:
+
+```typescript
+type UploadOptions = Parameters<typeof despia.files.upload>[0]
+type UploadResult  = Awaited<ReturnType<typeof despia.files.upload>>
+
+function startUpload(options: UploadOptions): Promise<UploadResult> {
+    return despia.files.upload(options)
+}
+```
+
+The map itself is exported as the `DespiaFeatures` type, for code that works across features, such as a wrapper that takes a feature name:
+
+```typescript
+import type { DespiaFeatures } from 'despia-native'
+
+type FeatureName = keyof DespiaFeatures // 'files' | ...
+```
+
+---
+
+## Typed events
+
+Event names are checked against the feature, and the handler's argument is typed for the event you named.
+
+```typescript
+const off = despia.files.on('done', (event) => {
+    // event is typed as the files done event
+    console.log(event.jobId, event.data)
+})
+```
+
+`despia.on` receives a union of every event, so checking `event.feature` and `event.event` narrows it to one event's payload:
+
+```typescript
+despia.on((event) => {
+    if (event.feature === 'files' && event.event === 'progress') {
+        updateProgressBar(event.data)
+    }
+})
+```
+
+---
+
+## Typed errors
+
+`DespiaError` is exported as a class, so `instanceof` narrows a caught value, and `code` is typed as the union of known error codes.
+
+```typescript
+import despia, { DespiaError } from 'despia-native'
+
+try {
+    await despia.files.delete({ url: photoUrl })
+} catch (err) {
+    if (err instanceof DespiaError && err.code === 'not_in_app') {
+        return
+    }
+    throw err
+}
+```
+
+---
+
+## Legacy calls
+
+The same import still accepts URL-scheme strings, typed as before. Both forms can live side by side in one project. See [Legacy calls](/bridge/legacy-calls).
+
+```typescript
+despia('successhaptic://')
+```
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

@@ -1,0 +1,140 @@
+---
+title: "Events"
+description: "Listen to native events per feature or all at once, and follow long-running jobs from start to finish, even across app launches."
+icon: "wave-pulse"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+Some things happen on the native side without your page asking: an upload makes progress, a job finishes, the system reports a change. The bridge delivers these as events. You subscribe with `.on()`, and every subscription gives you back a function that ends it.
+
+---
+
+## Listening to a feature
+
+Call `on` on a feature with the event name and a handler. The return value is an off function: call it to stop listening.
+
+```javascript
+const off = despia.files.on('progress', (event) => {
+    console.log(event.jobId, event.data)
+})
+
+// later, when the component unmounts or the screen closes
+off()
+```
+
+Each feature page lists the events it emits and what each one carries. You can register as many handlers as you like, for the same event or for different ones, and each gets its own off function.
+
+<Tip>
+  In a component framework, subscribe when the component mounts and call the off function when it unmounts, so a handler never outlives the screen that registered it.
+
+  ```javascript
+  useEffect(() => {
+      const off = despia.files.on('progress', onProgress)
+      return off
+  }, [])
+  ```
+</Tip>
+
+---
+
+## Listening to everything
+
+`despia.on(fn)` hears every event from every feature. It is useful for logging, analytics, or a single dispatcher that routes events through your own state management.
+
+```javascript
+const off = despia.on((event) => {
+    console.log(event.feature, event.event, event.data)
+})
+```
+
+The handler receives the same event objects that feature listeners receive, with the feature and event name included so you can tell them apart. Like feature listeners, it returns an off function.
+
+---
+
+## Long-running jobs
+
+Work that takes longer than a single call, such as a background upload or download, runs as a job. The action that starts it resolves straight away with a job id, and everything that happens afterwards arrives as events carrying that same id.
+
+```javascript
+const { jobId } = await despia.files.upload({
+    url: videoUrl,
+    to: 'https://api.example.com/uploads',
+})
+```
+
+A job emits three kinds of events:
+
+| Event | When it fires |
+| --- | --- |
+| `progress` | Repeatedly while the job runs, with how far it has got |
+| `log` | Whenever the job has something worth recording, such as a retry |
+| `done` | Exactly once, when the job ends, with its result or its error |
+
+Match events to the job you started by its id:
+
+```javascript
+const offProgress = despia.files.on('progress', (event) => {
+    if (event.jobId === jobId) updateProgressBar(event.data)
+})
+
+const offDone = despia.files.on('done', (event) => {
+    if (event.jobId !== jobId) return
+    offProgress()
+    offDone()
+    showResult(event.data)
+})
+```
+
+`done` is the last event for a job. After it fires, no further `progress` or `log` events arrive with that id.
+
+---
+
+## Jobs that finish while the app is closed
+
+A job keeps running when the user leaves your app. If it ends while the app is closed, or while your page is not loaded, its events are not lost: they are replayed the next time the app launches.
+
+To receive them, save the job id when you start a job, and register your listeners at startup, before the rest of your app loads, rather than only on the screen that started the job.
+
+```javascript
+// when starting the job
+const { jobId } = await despia.files.upload({ url: videoUrl, to: uploadUrl })
+const pending = JSON.parse(localStorage.getItem('pendingJobs') ?? '{}')
+pending[jobId] = { kind: 'video-upload' }
+localStorage.setItem('pendingJobs', JSON.stringify(pending))
+```
+
+```javascript
+// app entry point
+despia.files.on('done', (event) => {
+    const pending = JSON.parse(localStorage.getItem('pendingJobs') ?? '{}')
+    if (!pending[event.jobId]) return
+
+    delete pending[event.jobId]
+    localStorage.setItem('pendingJobs', JSON.stringify(pending))
+    handleFinishedJob(event)
+})
+```
+
+The saved id is what lets a replayed `done` event be matched to the work it belongs to after a restart.
+
+<Info>
+  A replayed event is the same event your handler would have received had the app been open. Write `done` handlers so they work whether the job finished a second ago or while the app was closed.
+</Info>
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

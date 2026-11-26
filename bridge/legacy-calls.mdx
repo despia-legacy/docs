@@ -1,0 +1,76 @@
+---
+title: "Legacy Calls"
+description: "Existing despia(\"scheme://...\") calls keep working unchanged alongside the JSON bridge."
+icon: "clock-rotate-left"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+The JSON bridge is an addition, not a replacement. Every URL-scheme call your app makes today keeps working exactly as it does now, with the same import, the same strings and the same results.
+
+```javascript
+import despia from 'despia-native'
+
+despia('successhaptic://')
+const device = await despia('get-uuid://', ['uuid'])
+```
+
+There is nothing to migrate and no deadline. Updating `despia-native` or the native runtime does not change how these calls behave.
+
+---
+
+## Mixing both forms
+
+Legacy calls and bridge calls use the same `despia` import and can sit side by side in one app, even in one file. Adopt the bridge one feature at a time, starting wherever it helps most, and leave everything else as it is.
+
+```javascript
+import despia from 'despia-native'
+
+// an existing call, unchanged
+despia('successhaptic://')
+
+// a bridge call
+const { url } = await despia.files.keep({ url: photoUrl })
+```
+
+---
+
+## What the docs show
+
+- **Existing features** keep their URL-scheme documentation on their feature pages, and those calls remain supported.
+- **New features** are documented only in the bridge form, `despia.<feature>.<action>({ ... })`.
+
+If a feature page shows only the bridge form, call it that way.
+
+---
+
+## What changes when you switch a call
+
+When you move a call to the bridge, these habits from URL-scheme calls go away:
+
+| URL-scheme call | JSON bridge |
+| --- | --- |
+| Wrap values in `encodeURIComponent` | Pass values as they are |
+| Check the user agent before calling | Catch `not_in_app` |
+| Read results from watched `window` variables | Await the promise |
+| Define one global `window` callback per feature | Subscribe with `.on()` and call the off function |
+| Pass files in feature-specific ways | Pass the file's URL |
+
+See [Calling a feature](/bridge/calling-a-feature), [Events](/bridge/events) and [Files](/bridge/files) for each of these in detail.
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

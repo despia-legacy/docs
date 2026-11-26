@@ -1,0 +1,149 @@
+---
+title: "Calling a Feature"
+description: "Call a native feature with a JSON object, await its result, and handle typed errors."
+icon: "play"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+Every native feature is an object on `despia`, and every action is a method on that object. You pass one plain object of options and get a promise back.
+
+```javascript
+const result = await despia.<feature>.<action>({ /* options */ })
+```
+
+The examples on this page use the `files` feature, which is described in full on [Files](/bridge/files). Each feature page lists its own actions, options, results and error codes.
+
+---
+
+## Installation
+
+<Tabs>
+  <Tab title="Bundle">
+    <CodeGroup>
+
+    ```bash npm
+    npm install despia-native
+    ```
+
+    ```bash pnpm
+    pnpm add despia-native
+    ```
+
+    ```bash yarn
+    yarn add despia-native
+    ```
+
+    </CodeGroup>
+
+    ```javascript
+    import despia from 'despia-native';
+    ```
+  </Tab>
+  <Tab title="CDN">
+    <CodeGroup>
+
+    ```html UMD
+    <script src="https://cdn.jsdelivr.net/npm/despia-native/index.min.js"></script>
+    ```
+
+    ```html ESM
+    <script type="module">
+        import despia from 'https://cdn.jsdelivr.net/npm/despia-native/+esm'
+    </script>
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
+
+---
+
+## How it works
+
+The options object is sent to the native runtime as JSON. Strings, numbers, booleans, arrays and nested objects arrive with their types intact, so there is nothing to encode and no query string to build.
+
+```javascript
+const { url } = await despia.files.keep({
+    url: photoUrl,
+})
+```
+
+The promise settles exactly once:
+
+- It **resolves** with the action's result, a plain object described on the feature page.
+- It **rejects** with a `DespiaError` when the action cannot complete.
+
+Actions that take no options can be called with no argument. Actions that start long-running work, such as an upload, resolve as soon as the work has started and report the rest through [events](/bridge/events).
+
+---
+
+## Handling errors
+
+A failed call rejects with a `DespiaError`. It is a normal `Error` with a `code` you can switch on and a human-readable `message` for logs.
+
+```javascript
+import despia, { DespiaError } from 'despia-native'
+
+try {
+    await despia.files.delete({ url: photoUrl })
+} catch (err) {
+    if (err instanceof DespiaError) {
+        console.error(err.code, err.message)
+    } else {
+        throw err
+    }
+}
+```
+
+<ParamField path="code" type="string">
+  A stable, machine-readable code such as `not_in_app`. Branch on this, never on the message.
+</ParamField>
+
+<ParamField path="message" type="string">
+  A readable description of what went wrong. Use it for logs and support, not for logic, because the wording can change.
+</ParamField>
+
+Codes that apply to one feature are listed on that feature's page.
+
+---
+
+## Running in a plain browser
+
+The same build of your web app runs in the Despia app and in a normal browser. Outside the app there is no native runtime, so every call rejects with the code `not_in_app`. You do not need a user agent check before each call: catch the error and fall back.
+
+```javascript
+import despia, { DespiaError } from 'despia-native'
+
+async function keepPhoto(photoUrl) {
+    try {
+        return await despia.files.keep({ url: photoUrl })
+    } catch (err) {
+        if (err instanceof DespiaError && err.code === 'not_in_app') {
+            return null // web fallback: nothing to keep
+        }
+        throw err
+    }
+}
+```
+
+<Tip>
+  Handle `not_in_app` in one place, for example in a small wrapper your app calls instead of `despia` directly, so the web fallback lives next to the call rather than scattered through your components.
+</Tip>
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

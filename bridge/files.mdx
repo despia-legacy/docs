@@ -1,0 +1,149 @@
+---
+title: "Files"
+description: "Every file is a local server URL: use it like any URL, choose how long it lives, and move it in the background."
+icon: "file"
+tag: "Coming soon"
+---
+
+<Note>
+  **Coming soon.** The JSON bridge is not released yet. The native runtime and the `despia-native` SDK version that support it ship in a future update, and the [changelog](/changelog) will say when. Until then, use the `despia("scheme://...")` calls shown on each feature page.
+</Note>
+
+Files never cross the bridge as bytes. Whenever a feature produces a file, such as a photo, a recording or a download, it gives you a URL served by the app's on-device server. Whenever a feature needs a file, you pass it that URL. Nothing is base64-encoded and nothing is copied through memory on the way, so a large video moves as easily as a small image.
+
+---
+
+## Using a file URL
+
+A file URL works anywhere a URL works.
+
+```javascript
+// show it
+imageElement.src = photoUrl
+
+// read it
+const blob = await fetch(photoUrl).then((response) => response.blob())
+
+// hand it to another feature
+await despia.files.upload({ url: photoUrl, to: 'https://api.example.com/uploads' })
+```
+
+Treat the URL as opaque. Store and pass the whole string, and do not build file URLs yourself or rely on the shape of their path.
+
+---
+
+## How long a file lives
+
+Every file starts out **temporary**. Temporary files are cleaned up automatically, so a photo the user took and then abandoned does not sit on the device forever. Do not keep a temporary URL across app launches.
+
+You can change a file's lifetime at any time:
+
+| Action | What it does |
+| --- | --- |
+| `despia.files.keep({ url })` | Makes the file permanent. It stays until you delete it. |
+| `despia.files.expire({ url, after })` | Removes the file once `after` seconds have passed. |
+| `despia.files.delete({ url })` | Removes the file now. |
+
+### Keeping a file
+
+Make a file permanent when it has become part of your app's data, such as a saved document or a profile photo. Store the URL that `keep` resolves with.
+
+```javascript
+const { url } = await despia.files.keep({ url: photoUrl })
+saveProfilePhoto(url)
+```
+
+### Expiring a file
+
+Set an expiry when a file is useful for a while but not forever, such as a cached download or a draft attachment.
+
+```javascript
+await despia.files.expire({
+    url: draftUrl,
+    after: 60 * 60 * 24, // one day
+})
+```
+
+### Deleting a file
+
+Delete a file as soon as you are finished with it, for example once an upload has succeeded.
+
+```javascript
+await despia.files.delete({ url: photoUrl })
+```
+
+After a file is deleted or has expired, its URL stops working. Requests to it fail and features that receive it reject with a `DespiaError`.
+
+---
+
+## Background uploads
+
+`despia.files.upload` sends a file to your server as a [long-running job](/bridge/events#long-running-jobs). The upload carries on when the user leaves the app, and if it finishes while the app is closed, its `done` event is replayed on the next launch.
+
+```javascript
+const { jobId } = await despia.files.upload({
+    url: videoUrl,
+    to: 'https://api.example.com/uploads',
+    headers: {
+        Authorization: `Bearer ${sessionToken}`,
+    },
+})
+
+const offProgress = despia.files.on('progress', (event) => {
+    if (event.jobId === jobId) updateProgressBar(event.data)
+})
+
+const offDone = despia.files.on('done', (event) => {
+    if (event.jobId !== jobId) return
+    offProgress()
+    offDone()
+    despia.files.delete({ url: videoUrl })
+})
+```
+
+<Warning>
+  Send your own user's session token in `headers`, never an API key or a secret that belongs to your backend. Anything in your web app can be read by the people using it.
+</Warning>
+
+---
+
+## Background downloads
+
+`despia.files.download` fetches a file from the web to the device as a job. When it finishes, the `done` event carries the URL of the downloaded file, which is temporary like any other.
+
+```javascript
+const { jobId } = await despia.files.download({
+    from: 'https://example.com/files/report.pdf',
+})
+
+const off = despia.files.on('done', async (event) => {
+    if (event.jobId !== jobId) return
+    off()
+    const { url } = await despia.files.keep({ url: event.data.url })
+    saveReport(url)
+})
+```
+
+Keep the downloaded file if your app needs it later, or set an expiry if it is only a cache.
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Events" icon="wave-pulse" href="/bridge/events">
+    Progress, logs, and replayed jobs
+  </Card>
+
+  <Card title="Calling a feature" icon="play" href="/bridge/calling-a-feature">
+    Results and typed errors
+  </Card>
+
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/despia-native">
+    despia-native
+  </Card>
+
+  <Card title="Support" icon="envelope" href="mailto:support@despia.com">
+    [support@despia.com](mailto:support@despia.com)
+  </Card>
+</CardGroup>

@@ -405,8 +405,8 @@ ffmpeg_commit=946fcce07b6dcd0331c8cc609192aeff5e1924f8
 #!/bin/bash
 # Builds the FFmpegKitNext artefact for one platform and variant from the upstream tag in UPSTREAM, with the Despia
 # component allow-list (allowlist.json) and writes the proof files beside it. Runs on a build host, never the Pro:
-#   android: an OVH slot (ovh-take.sh), x86_64 Linux, Android NDK r27d, JDK 17, the Android SDK
-#   ios:     an M4 lane (ios-lane.sh), Xcode, autoconf/automake/libtool/pkg-config/nasm (brew) on the lane
+#   android: an x86_64 Linux build host, Android NDK r27d, JDK 17, the Android SDK
+#   ios:     a macOS build host, Xcode, autoconf/automake/libtool/pkg-config/nasm (brew) on the build host
 # usage: build.sh <android|ios> <variant> <work-dir> <out-dir>
 # Writes <out-dir>: <platform>-<variant>.zip, components.json, strings.txt, SHA256SUMS, build.log, source/ (the
 # source offer bundle: the upstream trees and every fetched dependency source as built).
@@ -433,7 +433,7 @@ case "$PLATFORM" in
     ./android.sh --api-level=24 --enable-lib-android-media-codec --enable-lib-android-zlib --no-ffmpeg-kit-protocols $DESPIA_LIBS \
       --disable-arch-arm-v7a --disable-arch-x86 --jobs="$(nproc)" -f ;;
   ios)
-    # The lane Macs ship no autoconf, automake, libtool, pkg-config, GNU sed, meson or ninja. The captions variant builds
+    # The macOS build hosts ship no autoconf, automake, libtool, pkg-config, GNU sed, meson or ninja. The captions variant builds
     # external libraries from git sources (autoreconf/autogen and meson), so those tools must be on PATH (the build host
     # installs them from release tarballs and pip, see the HANDOFF). For the min variant, which has no external library, the
     # older shim path remains: the autotools outputs of apple/ are generated on Linux (pregen-autotools.sh), autoreconf is a
@@ -446,7 +446,7 @@ case "$PLATFORM" in
       printf '#!/bin/sh\ncase "$*" in *--exists*|*--modversion*|*--atleast*) exit 1;; esac\nexit 0\n' > "$SHIM/pkg-config"
       chmod +x "$SHIM/autoreconf" "$SHIM/pkg-config"; export PATH="$SHIM:$PATH"
     fi
-    # GNU sed 4.9 (gnu.org, sha256 6e226b73...5181) built from source on the lane: the stock BSD sed is refused by the upstream script.
+    # GNU sed 4.9 (gnu.org, sha256 6e226b73...5181) built from source on the build host: the stock BSD sed is refused by the upstream script.
     export SED=${SED:-$WORK/../tools/gnu/bin/sed}
     ./ios.sh --xcframework --enable-lib-ios-videotoolbox --enable-lib-ios-audiotoolbox --enable-lib-ios-zlib \
       --no-ffmpeg-kit-protocols $DESPIA_LIBS --disable-arch-arm64-mac-catalyst --disable-arch-arm64e --disable-arch-x86-64 \

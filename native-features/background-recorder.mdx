@@ -1,12 +1,12 @@
 ---
 title: "Background Recorder"
-description: "Record audio in the background, pause and resume it, and upload the file to your server when recording stops, with a Lock Screen widget on iOS and a notification and home screen widget on Android."
+description: "Record audio in the background, pause and resume it, choose the format and quality, read the file in your page or upload it to your server, with a Lock Screen widget on iOS and a notification and home screen widget on Android."
 icon: "microphone"
 ---
 
-Background Recorder records audio from the microphone, keeps recording when the app goes to the background, lets your page pause and resume it, and uploads the file to your server when recording stops. It shows its state in a Lock Screen widget on iOS, and in a foreground service notification and a home screen widget on Android.
+Background Recorder records audio from the microphone, keeps recording when the app goes to the background, lets your page pause and resume it, and, when recording stops, either uploads the file to your server or leaves it for your page to read. It shows its state in a Lock Screen widget on iOS, and in a foreground service notification and a home screen widget on Android.
 
-Your page only ever sees a recording id and its state. The audio never crosses the bridge.
+While it records, your page sees only a recording id and its state. A finished file reaches the page only when the page asks for it (`read`, or the `fileUrl` of a stopped recording).
 
 ---
 
@@ -44,13 +44,14 @@ When it is off, none of the following is in your app: the iOS background audio a
 
 ## Using it from your web app
 
-The upload URL receives an HTTP `PUT` with `Content-Type: audio/mp4` and an `X-Recording-Id` header (raw body, not multipart). Your endpoint must implement that. An `uploading` state is not server-confirmed completion.
+The upload is optional. When you pass an `upload` URL to `start`, it receives an HTTP `PUT` with `Content-Type: audio/mp4` and an `X-Recording-Id` header (raw body, not multipart). Your endpoint must implement that. An `uploading` state is not server-confirmed completion.
 
 ```javascript
 import despia from 'despia-native';
 
 async function startRecording(uploadUrl) {
-  const reply = await despia('extension://recorder/start?upload=' + encodeURIComponent(uploadUrl), ['recorderStart']);
+  // upload is optional; format and quality are optional too (see Routes)
+  const reply = await despia('extension://recorder/start?format=m4a&quality=high&upload=' + encodeURIComponent(uploadUrl), ['recorderStart']);
   const answer = reply.recorderStart;
   if (answer === undefined) { console.error('No native reply within 30 seconds'); return; }
   if (!answer.ok) { console.error(answer.code, answer.error); return; }
@@ -82,15 +83,24 @@ If the user denies it, `getUserMedia` throws and `start` answers `permission_den
 
 | Route     | Parameters                 | Answer variable and callback           | What it does                                                                           |
 | --------- | -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| `start`   | `upload` (required)        | `recorderStart`, `onRecorderStart`     | Starts a recording and answers with its `recordingId`                                   |
+| `start`   | `upload`, `format`, `quality`, `sampleRate`, `channels`, `bitRate` (all optional) | `recorderStart`, `onRecorderStart`     | Starts a recording and answers with its `recordingId`, `format`, `mimeType`, `sampleRate` and `channels`. Without `upload` the recording stops as `stopped` |
 | `pause`   | `id` (required)            | `recorderPause`, `onRecorderPause`     | Pauses a running recording. The file keeps what was recorded; paused time is not recorded |
 | `resume`  | `id` (required)            | `recorderResume`, `onRecorderResume`   | Continues a paused recording, or one the system interrupted, in the same file            |
-| `stop`    | `id` (required)            | `recorderStop`, `onRecorderStop`       | Stops the recording (also while paused or interrupted) and starts the upload             |
+| `stop`    | `id` (required)            | `recorderStop`, `onRecorderStop`       | Stops the recording (also while paused or interrupted). Starts the upload if `start` had an `upload` URL; otherwise the state is `stopped` |
 | `status`  | `id` (optional)            | `recorderStatus`, `onRecorderStatus`   | The state of a recording, or of the latest one without `id`; `idle` when there is none  |
 | `discard` | `id` (required)            | `recorderDiscard`, `onRecorderDiscard` | Deletes a stopped recording and its file                                                |
-| `upload`  | `id`, `upload` (required)  | `recorderUpload`, `onRecorderUpload`   | Sends a saved recording again to a fresh URL, for example after a presigned URL expired |
+| `upload`  | `id`, `upload` (required)  | `recorderUpload`, `onRecorderUpload`   | Sends a stopped or saved recording to a URL, for example after a presigned URL expired, or when `start` had none |
+| `read`    | `id` (required), `offset`, `length` (optional, at most 1 MiB) | `recorderRead`, `onRecorderRead` | Returns a chunk of the finished file as base64 with `offset`, `length`, `totalBytes`, `eof` and `mimeType`. Repeat with the next `offset` until `eof` is true |
 
 The `state` event calls the declared `onRecorderState(data)` handler on changes.
+
+### Format and quality
+
+`format` is `m4a` (AAC in an MP4 container, the default, `audio/mp4`) or `wav` (16-bit PCM, `audio/wav`). `quality` is `low` (16 kHz, 32 kbit/s), `medium` (44.1 kHz, the default) or `high` (48 kHz, 192 kbit/s). `sampleRate` (8000 to 48000), `channels` (1 or 2) and `bitRate` (16000 to 320000, `m4a` only) override the preset. A bad combination, for example `bitRate` with `wav`, answers `bad_request` and nothing starts. Both platforms use the same table.
+
+### Reading the file
+
+Once a recording is `stopped`, `uploading`, `uploaded` or `failed`, its answers carry `fileUrl`, a `http://127.0.0.1:<port>/...` address that serves the file with byte ranges, so it works in an `<audio>` element or `fetch()`. The address is private to the running app, carries a random token, and is valid for the current app run only; ask `status` again after a restart. If `fileUrl` is not in an answer, use `read`, which returns the file in base64 chunks.
 
 ### States
 
@@ -100,6 +110,7 @@ The `state` event calls the declared `onRecorderState(data)` handler on changes.
 | `recording`   | Recording                                                                             |
 | `paused`      | Paused by your page with `pause`. Only `resume` or `stop` moves it on                  |
 | `interrupted` | Paused by the system because another app took the microphone (a call, an alarm). It continues by itself when the system hands audio back after a short interruption; after a lasting one it waits for `resume` or `stop` |
+| `stopped`     | Stopped with no upload requested. The file is on the device until you `read`, `upload` or `discard` it |
 | `uploading`   | Stopped, and the file is being uploaded                                               |
 | `uploaded`    | The upload finished                                                                   |
 | `failed`      | The upload failed. `reason` says why. Call `upload` with a fresh URL to try again      |
@@ -116,9 +127,10 @@ Answers and events carry `recordingId`, `state`, `durationMs` and `bytes`, plus 
 | Code                  | When                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | `busy`                | A recording is already running, or the recording is not in a state that allows `discard` or `upload` |
-| `invalid_state`       | `pause` was sent to a recording that is not running, or `resume` to one that is not paused or interrupted |
+| `invalid_state`       | `pause` was sent to a recording that is not running, `resume` to one that is not paused or interrupted, or `read` to a recording without a finished file |
 | `permission_denied`   | Microphone access is not granted                                                         |
 | `not_found`           | No recording has this id                                                                 |
+| `bad_request`         | A parameter is missing or out of range, or the `start` options do not combine            |
 | `record_failed`       | The recorder could not start, or the recording was never finished                         |
 | `storage_unavailable` | The recorder's index cannot be read yet. Try again later                                 |
 | `storage_failed`      | The index could not be saved, or the upload could not be scheduled. Nothing changed      |

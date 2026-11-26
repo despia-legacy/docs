@@ -283,6 +283,7 @@
           },
           "native-features/purchases",
           "native-features/paywalls",
+          "native-features/superwall",
           "native-features/restore-purchase",
           "native-features/storage-vault",
           "native-features/service-workers",

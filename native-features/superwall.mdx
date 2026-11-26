@@ -1,0 +1,191 @@
+---
+title: "Superwall"
+description: "Show Superwall paywalls in your iOS and Android app, run purchases and restores through the store, and read the result from your web code."
+icon: "credit-card"
+---
+
+Superwall presents the paywalls you design in your Superwall dashboard and completes the store purchase. With this feature installed, your web code asks for a paywall by placement name, and Despia shows it natively on top of your app.
+
+<Info>
+  Superwall is built into your app only when you install it. An app without it contains no Superwall code, no Superwall SDK and no related entries. Install **Superwall** in your Despia project, enter your two public SDK keys, then ship a new build. Until that build is live, calls to `extension://superwall/...` answer `not_registered`.
+</Info>
+
+<Card title="AI Prompt" icon="sparkles">
+  Add Superwall paywalls to my app using the Despia SDK from: [https://www.npmjs.com/package/despia-native](https://www.npmjs.com/package/despia-native)
+
+  First, install the package: `npm install despia-native`
+
+  Then import it: `import despia from 'despia-native'`
+
+  Start Superwall once, then ask for a paywall by placement name:
+
+  ```javascript
+  const {despiaSuperwallConfigure: configuration} = await despia('extension://superwall/configure', ['despiaSuperwallConfigure']);
+  if (!configuration?.ok) throw new Error(configuration?.error ?? 'Superwall is unavailable');
+
+  const {despiaSuperwallRegister: registration} = await despia(
+    'extension://superwall/register?placement=' + encodeURIComponent('premium_feature'),
+    ['despiaSuperwallRegister']
+  );
+  ```
+
+  Superwall's standard placements `app_install`, `app_launch` and `session_start` fire after your `configure` call and show a paywall only if a campaign uses them. Leave them out of your campaigns if you want a paywall only where your page asks for one.
+
+  Read the outcome with `extension://superwall/events?after=<cursor>` using the `request_id` from the answer. Encode every dynamic value with `encodeURIComponent`, await each call before the next, and run native calls from a mounted component or an event handler.
+</Card>
+
+---
+
+## Setup
+
+1. In Superwall, create the app for iOS and for Android. Each has its own **public API key**. These are the public app keys, not server credentials.
+2. In your Despia project, install **Superwall** and enter the iOS public key and the Android public key. Leave a key empty for a platform you do not ship. The keys are compiled into the build from your project settings. They are never written in source code.
+3. In Superwall, add your products, entitlements and placements. Products must exist in App Store Connect and Google Play.
+4. Ship a new build.
+
+The SDK starts only when your page calls `configure`. It does not start when the app launches.
+
+### Standard placements fire after `configure`
+
+Once your page has called `configure`, Superwall itself fires three standard placements: `app_install` (the first time the SDK starts on a device), `app_launch` (each cold start) and `session_start` (when the app returns after at least 60 minutes in the background). A paywall shows at one of them only if a campaign in your Superwall dashboard uses that placement. The SDK has no setting to hold them back, and Despia does not call them for you. If you do not want a paywall at those moments, leave `app_install`, `app_launch` and `session_start` out of your campaigns. Before your page has called `configure`, none of them can fire, so nothing is shown. Source: [Superwall, Standard Placements](https://superwall.com/docs/dashboard/dashboard-campaigns/campaigns-standard-placements), read 26 Nov 2026.
+
+---
+
+## Use it from your web code
+
+Install the Despia SDK with `npm install despia-native`. Run native calls from a mounted component or an event handler.
+
+```js
+import despia from 'despia-native';
+
+const {despiaSuperwallConfigure: configuration} = await despia(
+  'extension://superwall/configure', ['despiaSuperwallConfigure']
+);
+if (!configuration?.ok) throw new Error(configuration?.error ?? 'Superwall is unavailable');
+
+async function openPremiumFeature() {
+  const {despiaSuperwallStatus: status} = await despia(
+    'extension://superwall/status', ['despiaSuperwallStatus']
+  );
+  if (status?.data?.configuration_status !== 'configured') return;
+
+  const {despiaSuperwallRegister: registration} = await despia(
+    'extension://superwall/register?placement=premium_feature', ['despiaSuperwallRegister']
+  );
+  if (!registration?.ok) throw new Error(registration?.error ?? 'Placement unavailable');
+  return registration.data.request_id;
+}
+```
+
+Encode every dynamic value with `encodeURIComponent`. Await each call before you start the next one.
+
+### Routes
+
+| Route | Parameters | Answer |
+| --- | --- | --- |
+| `configure` | none | Starts the SDK with the public key in your build and returns the status. Repeat calls reuse the same instance. |
+| `status` | none | `configured`, `configuration_status`, `subscription_status`, `active_entitlement_ids`, `declared_sdk` and `purchase_owner`. |
+| `identify` | `user_id` | `accepted`. Associates the SDK with your user and starts a new event generation. It is not backend authentication. |
+| `attributes` | `attributes_json` | `accepted`. A flat JSON object of strings, booleans and finite numbers. `null` removes an attribute. Keys beginning with `$` are reserved by Superwall. |
+| `register` | `placement`, optional `params_json` | `accepted` and `request_id`. Superwall decides whether a paywall shows. |
+| `purchase` | `product_id` | `accepted` and `request_id` after the store product loaded and checkout was admitted. Read `events` for `purchase_finished`. |
+| `restore` | none | `accepted` and `request_id`. The result arrives in `events`. |
+| `dismiss` | none | `accepted` after the SDK dismissed the paywall. It does not cancel a store transaction. |
+| `reset` | none | `accepted`. Logs the SDK user out and discards earlier event results. |
+| `events` | optional `after` | `events`, `last_sequence` and `oldest_sequence`. Pass the last cursor on your next read. |
+
+`configuration_status` is `not_initialized`, `pending`, `configured` or `failed`. Wait for `configured` before the first placement. `subscription_status` is `unknown`, `inactive` or `active` and is separate.
+
+### Events
+
+`register`, `purchase` and `restore` answer at once with a `request_id`. The outcome is read from `events`:
+
+| Event type | Meaning |
+| --- | --- |
+| `presented` | A paywall is on screen. |
+| `dismissed` | The paywall closed. `outcome` is `purchased`, `restored` or `declined`. |
+| `skipped` | Superwall chose not to show a paywall (holdout or no matching campaign). |
+| `presentation_failed` | The paywall could not be shown. |
+| `feature_allowed` | The placement's feature may run. This is a paywall decision, not a receipt. |
+| `purchase_finished` | A direct purchase ended: `purchased`, `cancelled`, `pending` or `failed`. |
+| `restore_finished` | A restore ended: `restored` or `failed`. |
+
+Each event carries a snapshot of the subscription status. Error details, receipts, purchase tokens and user identifiers are never copied into events. The journal keeps the last 128 events in memory, so a restart loses it. Call `status` after a restart. If `oldest_sequence` is greater than your last cursor plus 1, some events were discarded.
+
+```js
+let cursor = 0;
+async function readEvents(requestId) {
+  const {despiaSuperwallEvents: events} = await despia(
+    `extension://superwall/events?after=${cursor}`, ['despiaSuperwallEvents']
+  );
+  if (!events?.ok) return;
+  cursor = events.data.last_sequence;
+  for (const event of events.data.events) {
+    if (event.request_id === requestId) console.log(event.type, event.outcome);
+  }
+}
+```
+
+---
+
+## Purchases and access
+
+Use `purchase` when your own page has the buy button. The product ID must exist in the store and match exactly. The SDK must be configured and the app screen must be in the foreground. A visible paywall, purchase or restore must finish first.
+
+```js
+const productId = 'com.example.pro.monthly';
+const {despiaSuperwallPurchase: answer} = await despia(
+  `extension://superwall/purchase?product_id=${encodeURIComponent(productId)}`,
+  ['despiaSuperwallPurchase']
+);
+if (!answer?.ok) throw new Error(answer?.error ?? 'Purchase did not start');
+```
+
+A `pending` purchase is not active access. No route lets your page assign a subscription or grant an entitlement. Read `subscription_status` and `active_entitlement_ids`, and confirm access on your own backend wherever your product needs server authorization. A successful restore does not by itself prove an active subscription.
+
+Call `identify` and `reset` only for intentional account changes. A changed identity does not cancel a store transaction that already started.
+
+### Testing
+
+Purchases made in debug builds, TestFlight and Play internal testing use the stores' sandboxes. Test with an App Store sandbox account and a Google Play license tester account, and with Superwall's test mode in your own Superwall project.
+
+---
+
+## Using Superwall with RevenueCat
+
+If your app uses the Despia RevenueCat integration, Superwall completes every purchase and restore through your RevenueCat setup, so one SDK finishes each store transaction. RevenueCat keeps its customer info, webhooks and integrations. Superwall's subscription status is your active RevenueCat entitlements plus Superwall web entitlements, so use the same entitlement identifiers in both.
+
+`status` reports `purchase_owner`: `revenuecat` in that case and `superwall` otherwise. Superwall never configures RevenueCat, never logs a RevenueCat user in or out and never replaces a RevenueCat listener. Keep using the RevenueCat calls for identity and offerings.
+
+---
+
+## Error codes
+
+A failed call answers `ok: false` with one of these `code` values:
+
+| Code | Meaning |
+| --- | --- |
+| `not_registered` | Superwall is not installed in this build. |
+| `not_configured` | No public key for this platform is set in your build. Set it and ship a new build. |
+| `already_configured` | Another Superwall integration in the app owns the SDK. |
+| `bad_request` | A missing or malformed parameter, or an attribute that is not a flat scalar. |
+| `not_ready` | Superwall has not finished configuring. |
+| `activity_unavailable` | The app screen is not in the foreground. |
+| `paywall_in_progress` | A paywall is visible. Dismiss it first. |
+| `purchase_in_progress` | A purchase or restore is still running. |
+| `product_unavailable` | The store did not return the product. |
+| `session_changed` | The user changed while the product loaded. |
+| `timeout` | The request expired. |
+| `sdk_init_failed`, `sdk_error` | Android only: the SDK failed to start, or to load, purchase or dismiss. |
+
+---
+
+## Store review
+
+Apple and Google review the features an app ships. Show your paywall at a placement a reviewer can reach, and describe it in your review notes. Superwall's own pages list the data it collects for your App Store privacy answers and Google Play data safety form.
+
+## Platform notes
+
+- iOS uses Superwall iOS 4.19.1 (6 November 2026). Android uses Superwall Android 2.11.0 (23 November 2026), which needs Android 7.0 (API 24) as in every Despia Android app.
+- On Android the Play Billing permission is part of the app when Superwall is installed.
+- Superwall starts its own network and analytics work once configured. There is no zero-network guarantee.

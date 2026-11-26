@@ -19,7 +19,7 @@ Health is built into your app only when you turn it on, because the App Store an
 | `enabled` | Builds health into the app (iOS and Android) |
 | `read` | The types your app reads: HealthKit identifiers, Health Connect record names, Health Connect permission names, or `all` |
 | `write` | The types your app writes, the same spelling |
-| `background` | `true` lets observers deliver while the app is closed (Android). On iOS the build adds Apple's background-delivery entitlement whenever `read` is set and does not read this setting |
+| `background` | `true` lets observers deliver while the app is closed. `false` switches it off on both platforms: on iOS the build adds no background-delivery entitlement and makes no `enableBackgroundDelivery` call, so observers deliver only while the app is open. Not set: Android follows its permission, and iOS keeps background delivery on whenever `read` is set |
 | `history` | `true` reads data older than 30 days (Health Connect). HealthKit has no such limit |
 | `privacy_url` | Your privacy policy. Health Connect shows it on its permission screen and Google Play requires it |
 | `usage.share`, `usage.update` | The purpose texts iOS shows in the HealthKit permission sheet |

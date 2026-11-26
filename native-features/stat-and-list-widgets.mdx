@@ -1,0 +1,88 @@
+---
+title: "Stat and List Widgets"
+description: "Two native home-screen widgets your page fills with typed JSON: a stat with a value, trend, progress and buttons, and a list with up to 8 items. Installed per app."
+icon: "grid-2"
+---
+
+Stat and List are two native home-screen widgets your page fills with JSON. On iOS they are WidgetKit widgets, and on Android they are Jetpack Glance widgets. A tap on a button, a check box or a link comes back to your page as an event.
+
+- **stat:** a title, a value with an optional unit, a caption, a trend (`up`, `down` or `flat`), a progress value from 0 to 1, and up to two buttons.
+- **list:** a title and up to 8 items (each with a title, a subtitle, a check box and a link), an empty text and one header button.
+
+Both take an optional `tint` (`#RRGGBB`) and `link` (an app path such as `/stats/today`).
+
+Stat and List are part of the first-party **Home Widgets and Live Activities** feature, together with [Live Activities](/native-features/live-activities). They are built into the app only when you install the feature. An app without the feature has none of this code and no Stat or List widget in the gallery, and `extension://widgets/...` calls answer `not_registered`. The [Home Widgets](/native-features/home-widgets) image widget (`widget://`) is a separate feature and keeps working either way.
+
+## Install
+
+Install **Home Widgets and Live Activities** for the app. It has one setting, `enabled` (boolean).
+
+On iOS the widgets share data with the app through the App Group `group.<your bundle id>.widgetsharing`. Despia writes the entitlement into the app and its widget extensions. The provisioning profiles of the app and its widget extensions must include that App Group. Without it every route answers `group_unavailable`. Android needs no extra step and no permission.
+
+On Android, the launcher's picker offers Stat and List only after your page's first `set` or `pin`.
+
+## Using it from your web app
+
+```javascript
+import despia from 'despia-native';
+
+const stat = { title: 'Revenue', value: '$12.4k', unit: 'USD', caption: 'Today', progress: 0.42, trend: 'up',
+  link: '/stats/revenue', actions: [{ id: 'refresh', label: 'Refresh' }] };
+
+const reply = await despia(`extension://widgets/set?template=stat&data=${encodeURIComponent(JSON.stringify(stat))}`, ['widgetsSet']);
+const answer = reply.widgetsSet;
+if (answer === undefined) throw new Error('No native reply within 30 seconds');
+if (!answer.ok) throw new Error(answer.code + ': ' + answer.error);
+```
+
+Calls use `extension://widgets/<route>?<params>`. Encode every value with `encodeURIComponent`. The answer variable is `widgets<Route>` and the callback `onWidgets<Route>`. Every answer has `ok`, `data`, and on error `code` and `error`.
+
+On Android, `extension://widgets/pin?template=stat` asks the launcher to place the widget. On iOS the person adds it from the widget gallery, and `pin` answers `platform_limit`.
+
+### Routes
+
+| Route | Parameters | Answer `data` |
+|---|---|---|
+| `set` | `template` (`stat` or `list`, required), `data` (JSON text, required, at most 4096 UTF-8 bytes) | `template`, `stored: true`. Bad data answers `bad_data` with the path and the reason |
+| `get` | `template` (required) | `template`, `data` (the stored form, or `null`) |
+| `clear` | `template` (required) | `template`, `cleared: true` |
+| `reload` | `template` (optional) | `reloaded`. Reloads only these two widgets |
+| `installed` | none | `widgets`: on iOS each placed widget's family, on Android its size in dp |
+| `taps` | `ack` (optional, the last `seq` you handled) | `taps`, `dropped`, `next`: the queued taps after removing those up to `ack` |
+| `pin` | `template` (required) | Android: `requested: true` when the launcher showed the request, else `pin_unavailable`. iOS: `platform_limit` |
+
+### The data
+
+- **stat:** `title` (required, up to 40 characters), `value` (required, up to 16), `unit` (up to 12), `caption` (up to 60), `progress` (0 to 1), `trend`, `tint`, `link` and `actions` (up to 2 buttons, each with an `id` and a `label` of up to 20 characters).
+- **list:** `title` (required, up to 40), `items` (required, up to 8, each with an `id` and a `title` of up to 60 characters, plus `subtitle`, `checked` and `link`), `empty` (up to 60), `tint`, `link` and `action` (one button).
+
+The rules are strict. Duplicate keys, raw control characters, trailing text, nesting deeper than 8 levels and any key not listed above are refused. Lengths count Unicode code points, and the 4096 limit counts UTF-8 bytes. A `link` is an app path that starts with a single `/`.
+
+### Taps
+
+The `tap` event calls `onWidgetTap` with `seq`, `template`, `kind`, `id` and `at`, plus `link` for an open and `checked` for a toggle. `kind` is `open` (a link), `action` (a button) or `toggle` (a check box). A button tap counts only when the stored data declares that button, and a check box tap only for an item that has `checked`.
+
+Every tap is stored before it is sent, so a page that loads after the tap still reads it with `taps`. The queue keeps the newest 32 taps and counts the rest in `dropped`. Read the queue again after a page reload.
+
+```javascript
+const pending = (await despia('extension://widgets/taps', ['widgetsTaps'])).widgetsTaps;
+if (pending?.ok && pending.data.taps.length) {
+  for (const tap of pending.data.taps) console.log(tap);
+  await despia(`extension://widgets/taps?ack=${pending.data.taps.at(-1).seq}`, ['widgetsTaps']);
+}
+```
+
+### Error codes
+
+`bad_data`, `group_unavailable` (iOS: the App Group is missing from a profile), `pin_unavailable` (Android), `platform_limit` (`pin` on iOS), `storage_failed`, plus `bad_request`, `not_registered`, `timeout` and `unavailable`.
+
+## How each platform draws it
+
+- **iOS.** Both widgets come in the small, medium and large home-screen sizes and the Lock Screen inline, circular and rectangular sizes. The small list shows 3 items, and stat buttons show from the medium size up. Buttons and check boxes run in the widget, and a running app sends the tap at once. The app reloads only its own two widgets on `set` and `clear`, so other widgets keep their reload budget.
+- **Android.** Two resizable Glance widgets with Material 3 components. `pin` works where the launcher supports pinning (Android 8 and later). The widgets update on `set`, `clear`, `reload` and a tap.
+
+## Platform limits
+
+- **iOS.** No API adds a widget for the person. They add it from the widget gallery.
+- **Android.** Pinning needs a launcher that supports it.
+- **Both.** At most 4096 UTF-8 bytes of data per widget, and at most 8 list items.

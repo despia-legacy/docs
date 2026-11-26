@@ -1,0 +1,114 @@
+---
+title: "Live Activities"
+description: "Live Activities on the iOS Lock Screen and Dynamic Island, and Live Updates on Android, from four ready templates: delivery, score, timer and navigation. Installed per app."
+icon: "signal-stream"
+---
+
+A Live Activity shows something in progress: a card on the iOS Lock Screen and in the Dynamic Island, and a Live Update on Android 16 and later (an ongoing notification on older Android). Your page starts, updates and ends it. Your server can update and end it with a push, also while the app is closed.
+
+Live Activities are part of the first-party **Home Widgets and Live Activities** feature, together with [Stat and List Widgets](/native-features/stat-and-list-widgets). An app without the feature has none of this code, and `extension://liveactivity/...` calls answer `not_registered`.
+
+## Install
+
+Install **Home Widgets and Live Activities** for the app. It has one setting, `enabled` (boolean). Despia adds `NSSupportsLiveActivities` and `NSSupportsLiveActivitiesFrequentUpdates` to the iOS app and builds the Live Activity extension. The provisioning profiles of the app and its extensions must include the App Group `group.<your bundle id>.widgetsharing`. Live Activities need iOS 16.2 or later.
+
+## Templates
+
+Each template is a fixed design with typed `attributes` (set once at `start`) and `state` (sent with every update). Times are Unix seconds (`Date.now() / 1000`). `attributes` and `state` together are at most 4 KB. A missing required field or a value of the wrong type answers `bad_value` with the field's name.
+
+| Template | `attributes` | `state` |
+|---|---|---|
+| `delivery` | `orderNumber`, `merchant` | `status`, `step`, `stepCount` (integers); optional `etaEpoch`, `courier` |
+| `score` | `league`, `homeTeam`, `awayTeam`; optional `homeShort`, `awayShort` | `homeScore`, `awayScore` (integers), `period`; optional `clock`, `final` (boolean) |
+| `timer` | `title` | `startedAt`, `endsAt`, `label`; optional `pausedRemaining` (seconds left while paused) |
+| `navigation` | `destination` | `instruction`, `maneuver`, `step_distance_m`; optional `eta`, `remaining_m`, `remaining_s`, `progress`, `step`, `steps`, `stop`, `stops`, `stop_name`, `chip`, `state`, `units` |
+
+### The navigation template
+
+Turn-by-turn guidance on the Lock Screen and in the Dynamic Island, and as a Live Update on Android.
+
+- `instruction`: the next step, for example "Turn right onto Main St".
+- `maneuver`: `turn_left`, `turn_right`, `slight_left`, `slight_right`, `sharp_left`, `sharp_right`, `uturn`, `straight`, `merge`, `ramp`, `roundabout`, `fork`, `ferry`, `arrive` or `depart`. It picks the arrow (an SF Symbol on iOS, a Material symbol on Android). Another value shows a straight arrow.
+- `step_distance_m`: metres to the next maneuver. `remaining_m` and `remaining_s`: metres and seconds to the destination. `eta`: the arrival time in Unix seconds.
+- `progress`: the share of the route travelled, from 0 to 1, drawn as a bar.
+- `step` and `steps`, `stop`, `stops` and `stop_name`: step and stop counters. The stop line shows when there is more than one stop.
+- `chip`: the Android status-bar chip text (up to 7 characters). Without it the chip shows the distance to the next maneuver.
+- `state`: `navigating` (the default), `rerouting` or `arrived`.
+- `units`: `metric` (the default: m and km) or `imperial` (ft and mi). Distances are always sent in metres.
+
+```javascript
+import despia from 'despia-native';
+
+const attributes = { destination: 'Job site, 12 Main St' };
+const state = { instruction: 'Turn right onto Main St', maneuver: 'turn_right', step_distance_m: 350,
+  remaining_m: 4200, remaining_s: 600, eta: Date.now() / 1000 + 600, progress: 0.4 };
+
+const reply = await despia(`extension://liveactivity/start?template=navigation&activity_id=trip-42&attributes=${encodeURIComponent(JSON.stringify(attributes))}&state=${encodeURIComponent(JSON.stringify(state))}`, ['liveActivityStart']);
+const started = reply.liveActivityStart;
+if (started === undefined) throw new Error('No native reply within 30 seconds');
+if (!started.ok) throw new Error(started.code + ': ' + started.error);
+```
+
+## Using it from your web app
+
+Calls use `extension://liveactivity/<route>?<params>`. Encode every value with `encodeURIComponent`, including JSON text. The answer variable is `liveActivity<Route>` and the callback `onLiveActivity<Route>`.
+
+```javascript
+const update = { status: 'Out for delivery', step: 3, stepCount: 4, etaEpoch: Date.now() / 1000 + 900 };
+const updated = (await despia(`extension://liveactivity/update?activity_id=order-1042&state=${encodeURIComponent(JSON.stringify(update))}`, ['liveActivityUpdate'])).liveActivityUpdate;
+
+const ended = (await despia(`extension://liveactivity/end?activity_id=order-1042&dismiss=after&dismiss_minutes=30`, ['liveActivityEnd'])).liveActivityEnd;
+```
+
+### Routes
+
+| Route | Parameters | Answer `data` |
+|---|---|---|
+| `start` | `template` (required), `activity_id`, `attributes` (required JSON), `state` (required JSON), `stale_minutes` (0 to 720), `relevance` (0 to 100) | `activityId`, `template`, `state` |
+| `update` | `activity_id` (required), `state` (required JSON), `stale_minutes`, `relevance`, `alert_title` (up to 120), `alert_body` (up to 240) | the activity |
+| `end` | `activity_id` (required), `state`, `dismiss` (`default`, `immediate` or `after`), `dismiss_minutes` (0 to 240) | the activity |
+| `list` | none | `enabled`, `templates`, `activities`, `pushToStart` (a token or `null` per template) |
+| `permission` | none | The authorization state. On Android 13 and later it asks for the notification permission. iOS has no prompt for Live Activities |
+| `settings` | none | Opens the app's Settings page on iOS; on Android the app's Live Update (promotion) settings on Android 16, its notification settings before |
+
+- `activity_id` is 1 to 64 characters of `A-Z a-z 0-9 . _ -`, shared by your page and your server. `start` makes one when you leave it out.
+- `stale_minutes`: on iOS the system marks the activity stale. Android has no stale state, so the activity turns `stale` at that time, and a later update makes it `active` again.
+- `relevance` orders activities on iOS. Android has no relevance score, so there `start` and `update` answer with `platformDifferences`.
+- `list` is how a page catches up after a relaunch: events sent while no page is loaded are not kept.
+
+### Events
+
+| Event | Callback | Data |
+|---|---|---|
+| `token` | `onLiveActivityToken` | `kind` (`update` or `push_to_start`), `activityId` or `template`, `token` |
+| `state` | `onLiveActivityState` | `activityId`, `template`, `state` (`active`, `stale`, `ended` or `dismissed`), `origin` (`app`, `push` or `restored`) |
+| `dismissed` | `onLiveActivityDismissed` | `activityId`, `by` (`user` or `end`) |
+
+### Error codes
+
+`unknown_template`, `activities_disabled`, `exists`, `bad_value`, `too_large`, `unknown_activity`, `storage_failed`, `timeout` and `unavailable`; on Android also `busy` (a notification prompt is already showing); plus `bad_request` and `not_registered`.
+
+## From your server
+
+Update and end a running activity with a push that targets its `activity_id`. The attribute and state keys are the template's, the same on both platforms. On Android the FCM token is the update channel of every activity (`kind: "update"` in the `token` event). OneSignal's `live_notification` data shape works on both platforms:
+
+```json
+{
+  "live_notification": {
+    "key": "order-1042",
+    "template": "delivery",
+    "event": "update",
+    "event_updates": { "status": "Out for delivery", "step": 3, "stepCount": 4, "etaEpoch": 1795000000 }
+  }
+}
+```
+
+`key` is the activity id. Send `event_attributes` too on an update for an id the phone has not seen.
+
+A push starts a new activity only after your page has turned push-to-start on with `widgetjson://activity/push_to_start?enabled=true` (it stays on until the page turns it off). Until then a pushed start answers `push_to_start_off`, and an activity the app already shows can still be updated. On iOS 17.2 and later the `pushToStart` token in `list` and the `push_to_start` token event are what your server uses to start one through APNs. The full push formats are on the [Widget JSON](/native-features/widget-json) page.
+
+## Platform limits
+
+- **iOS.** An activity is active for up to 8 hours, then stays on the Lock Screen for up to 4 more. Push-to-start needs iOS 17.2. iOS limits push updates per hour. A person can turn Live Activities off in Settings: `list` shows `enabled`, and `settings` opens the page.
+- **Android.** Promotion to a Live Update needs Android 16 and is the system's choice. When it does not promote it, the same notification still shows and updates. Swiping it away ends the activity until the next `start`.
+- **Both.** Attributes and state together are at most 4 KB.

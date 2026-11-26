@@ -1,0 +1,569 @@
+---
+title: "FFmpeg"
+description: "Native audio and video processing with FFmpegKitNext, an optional extension. Open-source licenses and corresponding source."
+icon: "film"
+---
+
+FFmpeg is an optional native extension for processing audio and video on the device. Installing it is your own choice and at your own risk. The usage documentation for this extension is being written and will be added to this page.
+
+## Open-source licenses
+
+<Accordion title="Open-source licenses and corresponding source">
+
+### 1. What is in an app that installs the extension
+
+An app that installs this extension contains FFmpegKitNext 9.0.2 and FFmpeg n9.0.2, licensed under the GNU Lesser General Public License, version 3 or later (LGPL-3.0-or-later). The builds are made with `--enable-version3` and without `--enable-gpl` and without `--enable-nonfree`. The `libavcodec` license string of the built libraries is `LGPL version 3 or later`. An app without the extension contains none of this code.
+
+This software uses code of FFmpeg (https://ffmpeg.org) licensed under the LGPLv3 and its source can be downloaded from the links below. Copyright (c) the FFmpeg developers. FFmpegKitNext copyright (c) 2018-2026 Taner Sener and the FFmpegKitNext contributors.
+
+The libraries are linked as dynamic libraries: dynamic frameworks (`.framework` inside an XCFramework, embedded in the app) on iOS and shared objects (`.so` files inside the app) on Android. You can replace them with your own build of the same source, see section 6.
+
+H.264, HEVC and AAC encoding use the encoders of the device's operating system (VideoToolbox and AudioToolbox on iOS, MediaCodec on Android). No x264, x265, or FFmpeg native AAC encoder is built.
+
+### 2. Upstream source at the exact versions we build
+
+| Component | Version | Licence | Source at the exact commit |
+|---|---|---|---|
+| FFmpegKitNext | 9.0.2, tag `v9.0.2` | LGPL-3.0-or-later | [arthenica/ffmpeg-kit-next at 9f04bf1e3c97def70b98e198cb80a57b43ef5b45](https://github.com/arthenica/ffmpeg-kit-next/tree/9f04bf1e3c97def70b98e198cb80a57b43ef5b45) |
+| FFmpeg | n9.0.2, tag `n9.0.2` | LGPL-3.0-or-later (as built) | [arthenica/FFmpeg at 946fcce07b6dcd0331c8cc609192aeff5e1924f8](https://github.com/arthenica/FFmpeg/tree/946fcce07b6dcd0331c8cc609192aeff5e1924f8) |
+
+Variants `captions` (default) and `min`. The external libraries below are built only into the `captions` variant:
+
+| Library | Version | Licence of what is built | Source at the exact commit |
+|---|---|---|---|
+| FreeType | VER-2-14-3 | FreeType License (FTL); the GPLv2 alternative is not used | [arthenica/freetype2 at 0a0221a1347e2f1e07c395263540026e9a0aa7c7](https://github.com/arthenica/freetype2/tree/0a0221a1347e2f1e07c395263540026e9a0aa7c7) |
+| FriBidi | v1.0.16 | LGPL-2.1-or-later | [arthenica/fribidi at 68162babff4f39c4e2dc164a5e825af93bda9983](https://github.com/arthenica/fribidi/tree/68162babff4f39c4e2dc164a5e825af93bda9983) |
+| HarfBuzz | 14.2.1 | Old MIT | [arthenica/harfbuzz at 56feae4035bdd48f62ba2b8d8c16232d4d89b3a4](https://github.com/arthenica/harfbuzz/tree/56feae4035bdd48f62ba2b8d8c16232d4d89b3a4) |
+| libass | 0.17.4 | ISC | [arthenica/libass at bbb3c7f1570a4a021e52683f3fbdf74fe492ae84](https://github.com/arthenica/libass/tree/bbb3c7f1570a4a021e52683f3fbdf74fe492ae84) |
+| libpng | v1.6.58 | PNG Reference Library License v2 | [arthenica/libpng at 3061454d980de7d53608f594194cfac722721d2a](https://github.com/arthenica/libpng/tree/3061454d980de7d53608f594194cfac722721d2a) |
+| GNU libiconv (Android only; iOS uses the system library) | v1.17 | library part LGPL-2.1-or-later | [arthenica/libiconv at 4b9c27bec873392533dd3ef309cd62962a644e18](https://github.com/arthenica/libiconv/tree/4b9c27bec873392533dd3ef309cd62962a644e18), with [arthenica/gnulib at 485d983b7795548fb32b12fbe8370d40789e88c4](https://github.com/arthenica/gnulib/tree/485d983b7795548fb32b12fbe8370d40789e88c4) fetched by its autogen step |
+
+Portions of this software are copyright (c) The FreeType Project (www.freetype.org). All rights reserved. HarfBuzz and libass are used under their own copyright and permission notices, which are in the source trees linked above. The iconv command-line program that sits in the libiconv repository is GPL-3.0-or-later and is not part of any shipped file. zlib is the platform library and is not shipped. The `min` variant has no external library.
+
+A mirror of the full source bundle on a public release asset will follow, so the source stays available even if upstream moves.
+
+### 3. Build configuration
+
+Upstream passes `--enable-version3 --enable-shared --disable-static --enable-small --disable-programs --disable-autodetect` to FFmpeg's configure. Our build appends one allow-list (patch 0001 below) that starts from `--disable-everything` and enables only the listed components, so nothing else is compiled. The lines below are generated from our allow-list file by the build script `flags.py` (section 5).
+
+Upstream script options. Android: `./android.sh --api-level=24 --enable-lib-android-media-codec --enable-lib-android-zlib --no-ffmpeg-kit-protocols <libs> --disable-arch-arm-v7a --disable-arch-x86 -f`. iOS: `./ios.sh --xcframework --enable-lib-ios-videotoolbox --enable-lib-ios-audiotoolbox --enable-lib-ios-zlib --no-ffmpeg-kit-protocols <libs> --disable-arch-arm64-mac-catalyst --disable-arch-arm64e --disable-arch-x86-64 --disable-arch-x86-64-mac-catalyst -f`. `<libs>` is empty for `min` and `--enable-lib-freetype --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-libass` for `captions`. The refused flags are `--enable-gpl`, `--enable-nonfree`, `--enable-libx264`, `--enable-libx265`, `--enable-libfdk-aac`, `--enable-network` and the other GPL, non-free and network options in the allow-list file; the build stops if the line contains one.
+
+The component allow-list (the `DESPIA_COMPONENT_FLAGS` line) for each platform and variant:
+
+**ios / min**, external libraries: `(none)`
+
+```text
+--disable-network
+  --disable-everything
+  --enable-protocol=file
+  --enable-demuxer=mov,matroska,avi,flv,mpegts,mp3,aac,wav,flac,ogg,aiff,caf,amr,h264,hevc,m4v,mjpeg,image2,image2pipe,image_png_pipe,image_jpeg_pipe,image_webp_pipe,image_gif_pipe,gif,srt,ass,webvtt,concat
+  --enable-muxer=mp4,mov,ipod,matroska,webm,mpegts,adts,wav,flac,ogg,opus,image2,gif,hls,segment,srt,ass,webvtt,null
+  --enable-decoder=h264,hevc,vp8,vp9,mpeg4,mjpeg,png,gif,webp,bmp,tiff,aac,aac_latm,mp3,mp3float,opus,vorbis,flac,alac,amrnb,amrwb,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,subrip,ass,webvtt,movtext
+  --enable-encoder=png,mjpeg,gif,bmp,tiff,flac,alac,pcm_s16le,pcm_s24le,pcm_f32le,movtext,subrip,ass,webvtt,prores_ks,h264_videotoolbox,hevc_videotoolbox,prores_videotoolbox,aac_at,alac_at
+  --enable-parser=h264,hevc,aac,aac_latm,mpegaudio,vp8,vp9,opus,vorbis,flac,mjpeg,png,gif,webp,bmp
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,h264_metadata,hevc_metadata,vp9_superframe,dump_extradata,setts,null
+  --enable-filter=format,aformat,scale,crop,pad,trim,atrim,setpts,asetpts,fps,transpose,hflip,vflip,rotate,overlay,concat,split,asplit,amix,amerge,pan,channelsplit,volume,atempo,aresample,loudnorm,ebur128,silencedetect,silenceremove,afade,fade,xfade,acrossfade,equalizer,highpass,lowpass,bandpass,acompressor,dynaudnorm,aecho,afftdn,anlmdn,nlmeans,unsharp,gblur,avgblur,curves,colorbalance,colorchannelmixer,colorlevels,hue,lut,lutrgb,lutyuv,lut3d,chromakey,colorkey,blend,vignette,drawbox,thumbnail,select,aselect,tile,palettegen,paletteuse,zoompan,setsar,setdar,settb,reverse,areverse,tpad,apad,showwavespic,null,anull,copy
+```
+
+**ios / captions**, external libraries: `--enable-lib-freetype --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-libass`
+
+```text
+--disable-network
+  --disable-everything
+  --enable-protocol=file
+  --enable-demuxer=mov,matroska,avi,flv,mpegts,mp3,aac,wav,flac,ogg,aiff,caf,amr,h264,hevc,m4v,mjpeg,image2,image2pipe,image_png_pipe,image_jpeg_pipe,image_webp_pipe,image_gif_pipe,gif,srt,ass,webvtt,concat
+  --enable-muxer=mp4,mov,ipod,matroska,webm,mpegts,adts,wav,flac,ogg,opus,image2,gif,hls,segment,srt,ass,webvtt,null
+  --enable-decoder=h264,hevc,vp8,vp9,mpeg4,mjpeg,png,gif,webp,bmp,tiff,aac,aac_latm,mp3,mp3float,opus,vorbis,flac,alac,amrnb,amrwb,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,subrip,ass,webvtt,movtext
+  --enable-encoder=png,mjpeg,gif,bmp,tiff,flac,alac,pcm_s16le,pcm_s24le,pcm_f32le,movtext,subrip,ass,webvtt,prores_ks,h264_videotoolbox,hevc_videotoolbox,prores_videotoolbox,aac_at,alac_at
+  --enable-parser=h264,hevc,aac,aac_latm,mpegaudio,vp8,vp9,opus,vorbis,flac,mjpeg,png,gif,webp,bmp
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,h264_metadata,hevc_metadata,vp9_superframe,dump_extradata,setts,null
+  --enable-filter=format,aformat,scale,crop,pad,trim,atrim,setpts,asetpts,fps,transpose,hflip,vflip,rotate,overlay,concat,split,asplit,amix,amerge,pan,channelsplit,volume,atempo,aresample,loudnorm,ebur128,silencedetect,silenceremove,afade,fade,xfade,acrossfade,equalizer,highpass,lowpass,bandpass,acompressor,dynaudnorm,aecho,afftdn,anlmdn,nlmeans,unsharp,gblur,avgblur,curves,colorbalance,colorchannelmixer,colorlevels,hue,lut,lutrgb,lutyuv,lut3d,chromakey,colorkey,blend,vignette,drawbox,thumbnail,select,aselect,tile,palettegen,paletteuse,zoompan,setsar,setdar,settb,reverse,areverse,tpad,apad,showwavespic,null,anull,copy,drawtext,subtitles,ass
+```
+
+**android / min**, external libraries: `(none)`
+
+```text
+--disable-network
+  --disable-everything
+  --enable-protocol=file
+  --enable-demuxer=mov,matroska,avi,flv,mpegts,mp3,aac,wav,flac,ogg,aiff,caf,amr,h264,hevc,m4v,mjpeg,image2,image2pipe,image_png_pipe,image_jpeg_pipe,image_webp_pipe,image_gif_pipe,gif,srt,ass,webvtt,concat
+  --enable-muxer=mp4,mov,ipod,matroska,webm,mpegts,adts,wav,flac,ogg,opus,image2,gif,hls,segment,srt,ass,webvtt,null
+  --enable-decoder=h264,hevc,vp8,vp9,mpeg4,mjpeg,png,gif,webp,bmp,tiff,aac,aac_latm,mp3,mp3float,opus,vorbis,flac,alac,amrnb,amrwb,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,subrip,ass,webvtt,movtext,h264_mediacodec,hevc_mediacodec,vp9_mediacodec
+  --enable-encoder=png,mjpeg,gif,bmp,tiff,flac,alac,pcm_s16le,pcm_s24le,pcm_f32le,movtext,subrip,ass,webvtt,prores_ks,h264_mediacodec,hevc_mediacodec
+  --enable-parser=h264,hevc,aac,aac_latm,mpegaudio,vp8,vp9,opus,vorbis,flac,mjpeg,png,gif,webp,bmp
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,h264_metadata,hevc_metadata,vp9_superframe,dump_extradata,setts,null
+  --enable-filter=format,aformat,scale,crop,pad,trim,atrim,setpts,asetpts,fps,transpose,hflip,vflip,rotate,overlay,concat,split,asplit,amix,amerge,pan,channelsplit,volume,atempo,aresample,loudnorm,ebur128,silencedetect,silenceremove,afade,fade,xfade,acrossfade,equalizer,highpass,lowpass,bandpass,acompressor,dynaudnorm,aecho,afftdn,anlmdn,nlmeans,unsharp,gblur,avgblur,curves,colorbalance,colorchannelmixer,colorlevels,hue,lut,lutrgb,lutyuv,lut3d,chromakey,colorkey,blend,vignette,drawbox,thumbnail,select,aselect,tile,palettegen,paletteuse,zoompan,setsar,setdar,settb,reverse,areverse,tpad,apad,showwavespic,null,anull,copy
+```
+
+**android / captions**, external libraries: `--enable-lib-freetype --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-libass`
+
+```text
+--disable-network
+  --disable-everything
+  --enable-protocol=file
+  --enable-demuxer=mov,matroska,avi,flv,mpegts,mp3,aac,wav,flac,ogg,aiff,caf,amr,h264,hevc,m4v,mjpeg,image2,image2pipe,image_png_pipe,image_jpeg_pipe,image_webp_pipe,image_gif_pipe,gif,srt,ass,webvtt,concat
+  --enable-muxer=mp4,mov,ipod,matroska,webm,mpegts,adts,wav,flac,ogg,opus,image2,gif,hls,segment,srt,ass,webvtt,null
+  --enable-decoder=h264,hevc,vp8,vp9,mpeg4,mjpeg,png,gif,webp,bmp,tiff,aac,aac_latm,mp3,mp3float,opus,vorbis,flac,alac,amrnb,amrwb,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,subrip,ass,webvtt,movtext,h264_mediacodec,hevc_mediacodec,vp9_mediacodec
+  --enable-encoder=png,mjpeg,gif,bmp,tiff,flac,alac,pcm_s16le,pcm_s24le,pcm_f32le,movtext,subrip,ass,webvtt,prores_ks,h264_mediacodec,hevc_mediacodec
+  --enable-parser=h264,hevc,aac,aac_latm,mpegaudio,vp8,vp9,opus,vorbis,flac,mjpeg,png,gif,webp,bmp
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,h264_metadata,hevc_metadata,vp9_superframe,dump_extradata,setts,null
+  --enable-filter=format,aformat,scale,crop,pad,trim,atrim,setpts,asetpts,fps,transpose,hflip,vflip,rotate,overlay,concat,split,asplit,amix,amerge,pan,channelsplit,volume,atempo,aresample,loudnorm,ebur128,silencedetect,silenceremove,afade,fade,xfade,acrossfade,equalizer,highpass,lowpass,bandpass,acompressor,dynaudnorm,aecho,afftdn,anlmdn,nlmeans,unsharp,gblur,avgblur,curves,colorbalance,colorchannelmixer,colorlevels,hue,lut,lutrgb,lutyuv,lut3d,chromakey,colorkey,blend,vignette,drawbox,thumbnail,select,aselect,tile,palettegen,paletteuse,zoompan,setsar,setdar,settb,reverse,areverse,tpad,apad,showwavespic,null,anull,copy,drawtext,subtitles,ass
+```
+
+### 4. Patches we apply to the upstream tree, in full
+
+Applied in order to the FFmpegKitNext checkout at the commit above with `git apply`. Patch 0001 adds the allow-list hook, 0002 silences one warning that the upstream Android build treats as an error, 0003 removes fontconfig, expat, libuuid, brotli and libjxl from the caption libraries' dependency graph (and enables CoreText in libass on iOS).
+
+**0001-despia-components-android.patch**
+
+```diff
+diff --git a/scripts/android/ffmpeg.sh b/scripts/android/ffmpeg.sh
+index da177b8..f455ee5 100755
+--- a/scripts/android/ffmpeg.sh
++++ b/scripts/android/ffmpeg.sh
+@@ -363,6 +363,12 @@ if [ "$GPL_ENABLED" == "yes" ]; then
+   CONFIGURE_POSTFIX+=" --enable-gpl"
+ fi
+ 
++# Despia: the component allow-list (LGPL-3.0 only, platform encoders only, file protocol only). Appended last so that
++# it runs after every other option (configure applies options in order). Set by firstparty/ffmpeg/build/build.sh.
++if [[ -n ${DESPIA_COMPONENT_FLAGS} ]]; then
++  CONFIGURE_POSTFIX+=" ${DESPIA_COMPONENT_FLAGS}"
++fi
++
+ export LDFLAGS+=" -L${ANDROID_NDK_ROOT}/platforms/android-${API}/arch-$(get_toolchain_arch)/usr/lib"
+ 
+ # ALWAYS BUILD SHARED LIBRARIES
+```
+
+**0001-despia-components-ios.patch**
+
+```diff
+diff --git a/scripts/apple/ffmpeg.sh b/scripts/apple/ffmpeg.sh
+index 7466f05..ac2ae28 100755
+--- a/scripts/apple/ffmpeg.sh
++++ b/scripts/apple/ffmpeg.sh
+@@ -516,6 +516,12 @@ if [ "$GPL_ENABLED" == "yes" ]; then
+   CONFIGURE_POSTFIX+=" --enable-gpl"
+ fi
+ 
++# Despia: the component allow-list (LGPL-3.0 only, platform encoders only, file protocol only). Appended last so that
++# it runs after every other option (configure applies options in order). Set by firstparty/ffmpeg/build/build.sh.
++if [[ -n ${DESPIA_COMPONENT_FLAGS} ]]; then
++  CONFIGURE_POSTFIX+=" ${DESPIA_COMPONENT_FLAGS}"
++fi
++
+ # ALWAYS BUILD SHARED LIBRARIES
+ BUILD_LIBRARY_OPTIONS="--enable-shared --disable-static --install-name-dir=@rpath"
+ 
+```
+
+**0002-despia-no-protocols-unused-android.patch**
+
+```diff
+diff --git a/android/jni/Android.mk b/android/jni/Android.mk
+index 8478b66..b1af880 100644
+--- a/android/jni/Android.mk
++++ b/android/jni/Android.mk
+@@ -63,7 +63,7 @@ $(call import-module, cpu-features)
+ 
+ MY_SRC_FILES := ffmpegkit.c ffprobekit.c fftools/cmdutils.c fftools/ffmpeg.c fftools/ffprobe.c fftools/ffmpeg_mux.c fftools/ffmpeg_mux_init.c fftools/ffmpeg_demux.c fftools/ffmpeg_enc.c fftools/ffmpeg_dec.c fftools/ffmpeg_opt.c fftools/ffmpeg_sched.c fftools/opt_common.c fftools/ffmpeg_hw.c fftools/ffmpeg_filter.c fftools/graph/graphprint.c fftools/resources/graph_resources.c fftools/resources/resman.c fftools/textformat/avtextformat.c fftools/textformat/tf_compact.c fftools/textformat/tf_default.c fftools/textformat/tf_flat.c fftools/textformat/tf_ini.c fftools/textformat/tf_json.c fftools/textformat/tf_mermaid.c fftools/textformat/tf_xml.c fftools/sync_queue.c fftools/thread_queue.c fftools/textformat/tw_avio.c fftools/textformat/tw_buffer.c fftools/textformat/tw_stdout.c android_support.c ffmpeg_context.c compat/android/binder.c
+ 
+-MY_CFLAGS := -Wall -Werror -Wno-unused-parameter -fPIC -Wno-switch -Wno-sign-compare $(FFMPEG_KIT_PACKAGE_NAME_CFLAG)
++MY_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-function -fPIC -Wno-switch -Wno-sign-compare $(FFMPEG_KIT_PACKAGE_NAME_CFLAG)
+ MY_LDLIBS := -llog -lz -landroid
+ 
+ MY_BUILD_GENERIC_FFMPEG_KIT := true
+```
+
+**0003-despia-captions-deps-android.patch**
+
+```diff
+diff --git a/scripts/android/freetype.sh b/scripts/android/freetype.sh
+index 9a676ad..56bc9bd 100755
+--- a/scripts/android/freetype.sh
++++ b/scripts/android/freetype.sh
+@@ -3,8 +3,6 @@
+ # UPDATE BUILD FLAGS
+ export LIBPNG_CFLAGS="-I${LIB_INSTALL_BASE}/libpng/include"
+ export LIBPNG_LIBS="-L${LIB_INSTALL_BASE}/libpng/lib"
+-export BROTLI_CFLAGS="$(pkg-config --cflags libbrotlidec 2>>"${BASEDIR}"/build.log)" || return 1
+-export BROTLI_LIBS="$(pkg-config --libs --static libbrotlidec 2>>"${BASEDIR}"/build.log)" || return 1
+ 
+ # ALWAYS CLEAN THE PREVIOUS BUILD
+ make distclean 2>/dev/null 1>/dev/null
+@@ -21,7 +19,7 @@ fi
+   --with-pic \
+   --with-zlib \
+   --with-png \
+-  --with-brotli=yes \
++  --with-brotli=no \
+   --with-sysroot="${ANDROID_SYSROOT}" \
+   --without-harfbuzz \
+   --without-bzip2 \
+diff --git a/scripts/android/libass.sh b/scripts/android/libass.sh
+index 28de06f..893ea2e 100755
+--- a/scripts/android/libass.sh
++++ b/scripts/android/libass.sh
+@@ -34,6 +34,7 @@ fi
+   --disable-test \
+   --disable-profile \
+   --disable-coretext \
++  --disable-fontconfig \
+   ${ASM_OPTIONS} \
+   --host="${HOST}" || return 1
+ 
+diff --git a/scripts/function-android.sh b/scripts/function-android.sh
+index e872b1f..ac36a73 100755
+--- a/scripts/function-android.sh
++++ b/scripts/function-android.sh
+@@ -573,7 +573,7 @@ URL: https://freetype.org
+ Description: A free, high-quality, and portable font engine.
+ Version: ${FREETYPE_VERSION}
+ Requires: libpng
+-Requires.private: zlib, libbrotlidec
++Requires.private: zlib
+ Libs: -L\${libdir} -lfreetype
+ Libs.private:
+ Cflags: -I\${includedir}/freetype2
+diff --git a/scripts/function.sh b/scripts/function.sh
+index 61e3d2f..b800a04 100755
+--- a/scripts/function.sh
++++ b/scripts/function.sh
+@@ -1421,10 +1421,10 @@ set_library() {
+     set_library "freetype" $2
+     ;;
+   freetype)
++    # Despia: no brotli (WOFF2), so no libjxl.
+     ENABLED_LIBRARIES[LIBRARY_FREETYPE]=$2
+     set_virtual_library "zlib" $2
+     set_library "libpng" $2
+-    set_library "libjxl" $2
+     ;;
+   fribidi)
+     ENABLED_LIBRARIES[LIBRARY_FRIBIDI]=$2
+@@ -1454,12 +1454,10 @@ set_library() {
+     ENABLED_LIBRARIES[LIBRARY_LIBAOM]=$2
+     ;;
+   libass)
++    # Despia: no fontconfig, expat or libuuid (libass uses CoreText on Apple and explicit font directories on Android).
+     ENABLED_LIBRARIES[LIBRARY_LIBASS]=$2
+-    ENABLED_LIBRARIES[LIBRARY_EXPAT]=$2
+-    set_virtual_library "libuuid" $2
+     set_library "freetype" $2
+     set_library "fribidi" $2
+-    set_library "fontconfig" $2
+     set_library "harfbuzz" $2
+     set_virtual_library "libiconv" $2
+     ;;
+diff --git a/scripts/main-android.sh b/scripts/main-android.sh
+index 698fdbd..67f9441 100755
+--- a/scripts/main-android.sh
++++ b/scripts/main-android.sh
+@@ -59,7 +59,7 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
+       fi
+       ;;
+     freetype)
+-      if [[ $OK_libpng -eq 1 ]] && [[ $OK_libjxl -eq 1 ]]; then
++      if [[ $OK_libpng -eq 1 ]]; then
+         run=1
+       fi
+       ;;
+@@ -79,7 +79,7 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
+       fi
+       ;;
+     libass)
+-      if [[ $OK_libuuid -eq 1 ]] && [[ $OK_expat -eq 1 ]] && [[ $OK_libiconv -eq 1 ]] && [[ $OK_freetype -eq 1 ]] && [[ $OK_fribidi -eq 1 ]] && [[ $OK_fontconfig -eq 1 ]] && [[ $OK_libpng -eq 1 ]] && [[ $OK_harfbuzz -eq 1 ]]; then
++      if [[ $OK_libiconv -eq 1 ]] && [[ $OK_freetype -eq 1 ]] && [[ $OK_fribidi -eq 1 ]] && [[ $OK_libpng -eq 1 ]] && [[ $OK_harfbuzz -eq 1 ]]; then
+         run=1
+       fi
+       ;;
+```
+
+**0003-despia-captions-deps-ios.patch**
+
+```diff
+diff --git a/scripts/apple/freetype.sh b/scripts/apple/freetype.sh
+index 2394ea0..836a04e 100755
+--- a/scripts/apple/freetype.sh
++++ b/scripts/apple/freetype.sh
+@@ -3,8 +3,6 @@
+ # UPDATE BUILD FLAGS
+ export LIBPNG_CFLAGS="-I${LIB_INSTALL_BASE}/libpng/include"
+ export LIBPNG_LIBS="-L${LIB_INSTALL_BASE}/libpng/lib"
+-export BROTLI_CFLAGS="$(pkg-config --cflags libbrotlidec 2>>"${BASEDIR}"/build.log)" || return 1
+-export BROTLI_LIBS="$(pkg-config --libs --static libbrotlidec 2>>"${BASEDIR}"/build.log)" || return 1
+ 
+ # ALWAYS CLEAN THE PREVIOUS BUILD
+ make distclean 2>/dev/null 1>/dev/null
+@@ -25,7 +23,7 @@ overwrite_file "${FFMPEG_KIT_TMPDIR}"/source/config/config.sub "${BASEDIR}"/src/
+   --with-pic \
+   --with-zlib \
+   --with-png \
+-  --with-brotli=yes \
++  --with-brotli=no \
+   --with-sysroot="${SDK_PATH}" \
+   --without-harfbuzz \
+   --without-bzip2 \
+diff --git a/scripts/apple/libass.sh b/scripts/apple/libass.sh
+index c40df9e..81c7109 100755
+--- a/scripts/apple/libass.sh
++++ b/scripts/apple/libass.sh
+@@ -27,7 +27,8 @@ fi
+   --disable-fast-install \
+   --disable-test \
+   --disable-profile \
+-  --disable-coretext \
++  --enable-coretext \
++  --disable-fontconfig \
+   ${ASM_OPTIONS} \
+   --host="${HOST}" || return 1
+ 
+diff --git a/scripts/function-apple.sh b/scripts/function-apple.sh
+index c193172..72038e6 100755
+--- a/scripts/function-apple.sh
++++ b/scripts/function-apple.sh
+@@ -1426,7 +1426,7 @@ URL: https://freetype.org
+ Description: A free, high-quality, and portable font engine.
+ Version: ${FREETYPE_VERSION}
+ Requires: libpng
+-Requires.private: zlib, libbrotlidec
++Requires.private: zlib
+ Libs: -L\${libdir} -lfreetype
+ Libs.private:
+ Cflags: -I\${includedir}/freetype2
+diff --git a/scripts/function.sh b/scripts/function.sh
+index 61e3d2f..b800a04 100755
+--- a/scripts/function.sh
++++ b/scripts/function.sh
+@@ -1421,10 +1421,10 @@ set_library() {
+     set_library "freetype" $2
+     ;;
+   freetype)
++    # Despia: no brotli (WOFF2), so no libjxl.
+     ENABLED_LIBRARIES[LIBRARY_FREETYPE]=$2
+     set_virtual_library "zlib" $2
+     set_library "libpng" $2
+-    set_library "libjxl" $2
+     ;;
+   fribidi)
+     ENABLED_LIBRARIES[LIBRARY_FRIBIDI]=$2
+@@ -1454,12 +1454,10 @@ set_library() {
+     ENABLED_LIBRARIES[LIBRARY_LIBAOM]=$2
+     ;;
+   libass)
++    # Despia: no fontconfig, expat or libuuid (libass uses CoreText on Apple and explicit font directories on Android).
+     ENABLED_LIBRARIES[LIBRARY_LIBASS]=$2
+-    ENABLED_LIBRARIES[LIBRARY_EXPAT]=$2
+-    set_virtual_library "libuuid" $2
+     set_library "freetype" $2
+     set_library "fribidi" $2
+-    set_library "fontconfig" $2
+     set_library "harfbuzz" $2
+     set_virtual_library "libiconv" $2
+     ;;
+diff --git a/scripts/main-ios.sh b/scripts/main-ios.sh
+index 5adbdea..65dd523 100755
+--- a/scripts/main-ios.sh
++++ b/scripts/main-ios.sh
+@@ -56,7 +56,7 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
+       fi
+       ;;
+     freetype)
+-      if [[ $OK_libpng -eq 1 ]] && [[ $OK_libjxl -eq 1 ]]; then
++      if [[ $OK_libpng -eq 1 ]]; then
+         run=1
+       fi
+       ;;
+@@ -76,7 +76,7 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
+       fi
+       ;;
+     libass)
+-      if [[ $OK_expat -eq 1 ]] && [[ $OK_freetype -eq 1 ]] && [[ $OK_fribidi -eq 1 ]] && [[ $OK_fontconfig -eq 1 ]] && [[ $OK_libpng -eq 1 ]] && [[ $OK_harfbuzz -eq 1 ]]; then
++      if [[ $OK_freetype -eq 1 ]] && [[ $OK_fribidi -eq 1 ]] && [[ $OK_libpng -eq 1 ]] && [[ $OK_harfbuzz -eq 1 ]]; then
+         run=1
+       fi
+       ;;
+```
+
+### 5. Build scripts, in full
+
+The build runs on a Linux x86_64 host with Android NDK r27d for Android and on macOS with Xcode for iOS. Run `build.sh <android|ios> <variant> <work-dir> <out-dir>`. `UPSTREAM` pins the commits:
+
+```text
+repo=https://github.com/arthenica/ffmpeg-kit-next
+tag=v9.0.2
+commit=9f04bf1e3c97def70b98e198cb80a57b43ef5b45
+ffmpeg_repo=https://github.com/arthenica/FFmpeg
+ffmpeg_tag=n9.0.2
+ffmpeg_commit=946fcce07b6dcd0331c8cc609192aeff5e1924f8
+```
+
+**build.sh**
+
+```bash
+#!/bin/bash
+# Builds the FFmpegKitNext artefact for one platform and variant from the upstream tag in UPSTREAM, with the Despia
+# component allow-list (allowlist.json) and writes the proof files beside it. Runs on a build host, never the Pro:
+#   android: an x86_64 Linux build host, Android NDK r27d, JDK 17, the Android SDK
+#   ios:     a macOS build host, Xcode, autoconf/automake/libtool/pkg-config/nasm (brew) on the build host
+# usage: build.sh <android|ios> <variant> <work-dir> <out-dir>
+# Writes <out-dir>: <platform>-<variant>.zip, components.json, strings.txt, SHA256SUMS, build.log, source/ (the
+# source offer bundle: the upstream trees and every fetched dependency source as built).
+set -euo pipefail
+PLATFORM=${1:?platform} VARIANT=${2:?variant} WORK=${3:?work dir} OUT=${4:?out dir}
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/UPSTREAM"
+mkdir -p "$WORK" "$OUT"
+KIT="$WORK/kit"
+if [ ! -d "$KIT/.git" ]; then git clone -q "$repo" "$KIT"; fi
+git -C "$KIT" rev-parse -q --verify "refs/tags/$tag" >/dev/null || git -C "$KIT" fetch -q --tags
+git -C "$KIT" checkout -q -f "$tag"
+[ "$(git -C "$KIT" rev-parse HEAD)" = "$commit" ] || { echo "build: tag $tag is not commit $commit"; exit 2; }
+if [ "$PLATFORM" != ios ]; then git -C "$KIT" clean -fdxq -e src -e prebuilt; fi   # ios: keeps the pre-generated autotools files (below)
+for p in "$HERE"/patches/*-"$PLATFORM".patch; do git -C "$KIT" apply --check "$p" && git -C "$KIT" apply "$p"; done
+export DESPIA_COMPONENT_FLAGS; DESPIA_COMPONENT_FLAGS=$(python3 "$HERE/flags.py" "$PLATFORM" "$VARIANT")
+case "$DESPIA_COMPONENT_FLAGS" in *enable-gpl*|*enable-nonfree*|*libx264*|*libx265*) echo "build: refused flag in the allow-list"; exit 2;; esac
+export DESPIA_LIBS; DESPIA_LIBS=$(python3 "$HERE/flags.py" "$PLATFORM" "$VARIANT" libs)   # external libraries of the variant, empty for min
+cd "$KIT"
+case "$PLATFORM" in
+  android)
+    : "${ANDROID_SDK_ROOT:?}" "${ANDROID_NDK_ROOT:?}"
+    export HOST_CC=${HOST_CC:-gcc}   # the upstream script needs a build-machine C compiler
+    ./android.sh --api-level=24 --enable-lib-android-media-codec --enable-lib-android-zlib --no-ffmpeg-kit-protocols $DESPIA_LIBS \
+      --disable-arch-arm-v7a --disable-arch-x86 --jobs="$(nproc)" -f ;;
+  ios)
+    # The macOS build hosts ship no autoconf, automake, libtool, pkg-config, GNU sed, meson or ninja. The captions variant builds
+    # external libraries from git sources (autoreconf/autogen and meson), so those tools must be on PATH (the build host
+    # installs them from release tarballs and pip, see the HANDOFF). For the min variant, which has no external library, the
+    # older shim path remains: the autotools outputs of apple/ are generated on Linux (pregen-autotools.sh), autoreconf is a
+    # no-op and pkg-config only answers the zlib flag queries.
+    if ! command -v autoreconf >/dev/null 2>&1 || ! command -v pkg-config >/dev/null 2>&1; then
+      [ -n "$DESPIA_LIBS" ] && { echo "build: variant $VARIANT needs real autoconf and pkg-config on PATH"; exit 2; }
+      [ -f "$KIT/apple/configure" ] || { echo "build: apple/configure missing; run pregen-autotools.sh on Linux first"; exit 2; }
+      SHIM="$WORK/shim"; mkdir -p "$SHIM"
+      printf '#!/bin/sh\nexit 0\n' > "$SHIM/autoreconf"
+      printf '#!/bin/sh\ncase "$*" in *--exists*|*--modversion*|*--atleast*) exit 1;; esac\nexit 0\n' > "$SHIM/pkg-config"
+      chmod +x "$SHIM/autoreconf" "$SHIM/pkg-config"; export PATH="$SHIM:$PATH"
+    fi
+    # GNU sed 4.9 (gnu.org, sha256 6e226b73...5181) built from source on the build host: the stock BSD sed is refused by the upstream script.
+    export SED=${SED:-$WORK/../tools/gnu/bin/sed}
+    ./ios.sh --xcframework --enable-lib-ios-videotoolbox --enable-lib-ios-audiotoolbox --enable-lib-ios-zlib \
+      --no-ffmpeg-kit-protocols $DESPIA_LIBS --disable-arch-arm64-mac-catalyst --disable-arch-arm64e --disable-arch-x86-64 \
+      --disable-arch-x86-64-mac-catalyst --jobs="$(sysctl -n hw.ncpu)" -f ;;
+  *) echo "build: unknown platform"; exit 2;;
+esac
+cp build.log "$OUT/build.log"
+echo "build: upstream script finished; collect the proof files with collect.sh"
+```
+
+**flags.py**
+
+```python
+#!/usr/bin/env python3
+"""Prints the DESPIA_COMPONENT_FLAGS configure line for one platform and variant, from allowlist.json.
+usage: flags.py <android|ios> <variant> [libs]
+  without "libs": the DESPIA_COMPONENT_FLAGS line; with "libs": the upstream external-library options of the variant
+  (--enable-lib-<name>), each checked against permitted_libs of allowlist.json."""
+import json, os, sys
+HERE = os.path.dirname(os.path.abspath(__file__))
+def flags(platform, variant):
+    a = json.load(open(os.path.join(HERE, "allowlist.json")))
+    v = a["variants"][variant][platform]
+    out = ["--disable-network", "--disable-everything"]
+    for kind, opt in (("protocols", "protocol"), ("demuxers", "demuxer"), ("muxers", "muxer"), ("decoders", "decoder"),
+                      ("encoders", "encoder"), ("parsers", "parser"), ("bsfs", "bsf"), ("filters", "filter")):
+        out.append("--enable-%s=%s" % (opt, ",".join(v[kind])))
+    return " ".join(out)
+def libs(platform, variant):
+    a = json.load(open(os.path.join(HERE, "allowlist.json")))
+    out = []
+    for lib in a["variants"][variant][platform].get("libs", []):
+        if lib not in a.get("permitted_libs", {}):
+            raise SystemExit("flags: library %s is not in permitted_libs" % lib)
+        out.append("--enable-lib-" + lib)
+    return " ".join(out)
+if __name__ == "__main__":
+    print(libs(sys.argv[1], sys.argv[2]) if len(sys.argv) > 3 and sys.argv[3] == "libs" else flags(sys.argv[1], sys.argv[2]))
+```
+
+**collect.sh**
+
+```bash
+#!/bin/bash
+# Collects the proof files of one built artefact. Runs on the build host, after build.sh.
+# usage: collect.sh <android|ios> <variant> <kit-dir> <out-dir>
+# Writes <out-dir>: <platform>-<variant>.<aar|xcframeworks.zip>, strings.txt (configuration string, license strings),
+# sizes.txt (per architecture, raw and compressed), checks.txt (T-LINK/T-16K/T-POLICY facts), SHA256SUMS.
+set -euo pipefail
+PLATFORM=${1:?} VARIANT=${2:?} KIT=${3:?} OUT=${4:?}
+mkdir -p "$OUT"; X="$OUT/x"; mkdir -p "$X"
+conf() { strings -a "$1" | grep -E -- '--enable-version3' | head -1; }
+case "$PLATFORM" in
+  android)
+    AAR=$(ls "$KIT"/prebuilt/bundle-android-aar-*/com/arthenica/ffmpeg-kit-next/*/ffmpeg-kit-next-*.aar)
+    cp "$AAR" "$OUT/android-$VARIANT.aar"; (cd "$X" && unzip -oq "$OUT/android-$VARIANT.aar")
+    : > "$OUT/strings.txt"; : > "$OUT/sizes.txt"; : > "$OUT/checks.txt"
+    for abi in arm64-v8a armeabi-v7a x86_64; do
+      u=$(ls "$X"/jni/$abi/libavutil*.so); c=$(ls "$X"/jni/$abi/libavcodec*.so)
+      { echo "[$abi] $(strings -a "$c" | grep -m1 'libavcodec license')"; echo "[$abi] config: $(conf "$u")"; } >> "$OUT/strings.txt"
+      python3 - "$X/jni/$abi" "$abi" >> "$OUT/sizes.txt" <<'P'
+import sys,os,zipfile,io
+d,abi=sys.argv[1:3]; raw=0; b=io.BytesIO()
+with zipfile.ZipFile(b,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+    for f in sorted(os.listdir(d)):
+        raw+=os.path.getsize(os.path.join(d,f)); z.write(os.path.join(d,f),f)
+print(f"{abi} raw={raw} deflate={len(b.getvalue())}")
+P
+      for so in "$X"/jni/$abi/*.so; do
+        echo "$abi $(basename "$so") loadalign=$(readelf -lW "$so" | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ',') needed=$(readelf -d "$so" | awk '/NEEDED/{gsub(/[\[\]]/,"",$NF);printf "%s,",$NF}')" >> "$OUT/checks.txt"
+      done
+    done ;;
+  ios)
+    : > "$OUT/strings.txt"; : > "$OUT/sizes.txt"; : > "$OUT/checks.txt"
+    for xc in "$KIT"/prebuilt/bundle-apple-xcframework-ios*/*.xcframework; do
+      n=$(basename "$xc" .xcframework)
+      for slice in "$xc"/*/; do
+        s=$(basename "$slice"); bin=$(ls "$slice"/*.framework/"$n" 2>/dev/null | head -1); [ -n "$bin" ] || continue
+        echo "[$n/$s] $(lipo -archs "$bin") size=$(stat -f %z "$bin")" >> "$OUT/sizes.txt"
+        strings -a "$bin" | grep -E "license: |--enable-version3" | cut -c1-4000 | sed "s|^|[$n/$s] |" >> "$OUT/strings.txt" || true
+        echo "[$n/$s] $(otool -L "$bin" | tail -n +2 | awk '{printf "%s,",$1}')" >> "$OUT/checks.txt"
+      done
+    done
+    (cd "$(ls -d "$KIT"/prebuilt/bundle-apple-xcframework-ios*)" && ditto -c -k --keepParent . "$OUT/ios-$VARIANT.xcframeworks.zip") ;;
+esac
+if grep -Eq -- 'enable-gpl|enable-nonfree|libx264|libx265|GPL version 2|(^|[^L])GPL version 3' "$OUT/strings.txt"; then echo "collect: GPL or nonfree marker in the build"; exit 3; fi
+( cd "$OUT" && f=$(ls *.aar *.zip 2>/dev/null) && { shasum -a 256 $f 2>/dev/null || sha256sum $f; } > SHA256SUMS )
+echo "collect: ok"; cat "$OUT/sizes.txt"
+```
+
+**pregen-autotools.sh**
+
+```bash
+#!/bin/bash
+# Generates the autotools outputs of apple/ (configure, ltmain.sh, Makefile.in, aclocal.m4, ...) for the iOS build on a Linux host
+# that has autoconf, automake and libtool, from the pinned upstream tag, then prints the sha256 of every generated file.
+# usage: pregen-autotools.sh <kit-checkout-at-the-tag>
+set -euo pipefail
+KIT=${1:?kit checkout}
+. "$(cd "$(dirname "$0")" && pwd)/UPSTREAM"
+[ "$(git -C "$KIT" rev-parse HEAD)" = "$commit" ] || { echo "pregen: $KIT is not $commit"; exit 2; }
+( cd "$KIT/apple" && autoreconf --force --install -I m4 )
+( cd "$KIT/apple" && git status --porcelain --ignored . | awk '{print $2}' | sort | while read -r f; do [ -f "$f" ] && sha256sum "$f"; done )
+```
+
+### 6. Replacing the library
+
+The FFmpeg libraries are not part of your app's main program: on iOS they are separate dynamic frameworks embedded in the app, and on Android they are separate `.so` files inside the app. To use a modified version, rebuild the libraries from the source above with the scripts above (change the source or the patches as you like), then replace the corresponding frameworks or `.so` files in your app project and build and sign the app again with your own certificate. Our component allow-list and configuration are the ones shown in section 3.
+
+### 7. GNU Lesser General Public License, version 3
+
+FFmpegKitNext and FFmpeg are free software; you can redistribute them and modify them under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. They are distributed in the hope that they will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+The full texts are at https://www.gnu.org/licenses/lgpl-3.0.txt and https://www.gnu.org/licenses/gpl-3.0.txt. The LGPL-3.0 incorporates the terms and conditions of the GPL-3.0, so both texts apply. The libraries are used under the LGPL-3.0 and are not covered by the GPL.
+
+### 8. At your own risk
+
+The FFmpeg extension is optional. You install it as an option, at your own risk. The libraries are provided without warranty, as stated in the LGPL-3.0.
+
+</Accordion>

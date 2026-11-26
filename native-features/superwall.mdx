@@ -29,6 +29,8 @@ Superwall presents the paywalls you design in your Superwall dashboard and compl
   );
   ```
 
+  Superwall's standard placements `app_install`, `app_launch` and `session_start` fire after your `configure` call and show a paywall only if a campaign uses them. Leave them out of your campaigns if you want a paywall only where your page asks for one.
+
   Read the outcome with `extension://superwall/events?after=<cursor>` using the `request_id` from the answer. Encode every dynamic value with `encodeURIComponent`, await each call before the next, and run native calls from a mounted component or an event handler.
 </Card>
 
@@ -42,6 +44,10 @@ Superwall presents the paywalls you design in your Superwall dashboard and compl
 4. Ship a new build.
 
 The SDK starts only when your page calls `configure`. It does not start when the app launches.
+
+### Standard placements fire after `configure`
+
+Once your page has called `configure`, Superwall itself fires three standard placements: `app_install` (the first time the SDK starts on a device), `app_launch` (each cold start) and `session_start` (when the app returns after at least 60 minutes in the background). A paywall shows at one of them only if a campaign in your Superwall dashboard uses that placement. The SDK has no setting to hold them back, and Despia does not call them for you. If you do not want a paywall at those moments, leave `app_install`, `app_launch` and `session_start` out of your campaigns. Before your page has called `configure`, none of them can fire, so nothing is shown. Source: [Superwall, Standard Placements](https://superwall.com/docs/dashboard/dashboard-campaigns/campaigns-standard-placements), read 26 Nov 2026.
 
 ---
 
